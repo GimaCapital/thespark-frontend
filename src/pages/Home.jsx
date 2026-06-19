@@ -133,7 +133,8 @@ export default function Home() {
 
     const fetchSuccessStories = async () => {
         try {
-            const response = await api.get('/success-stories');
+            // const response = await api.get('/success-stories');
+            const response = await api.get('/api/success-stories');
             setSuccessStories(response.data);
         } catch (error) {
             console.error('Failed to fetch success stories:', error);
