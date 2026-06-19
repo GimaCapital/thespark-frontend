@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: thespark-frontend
+    runtime: static
+    plan: free
+    buildCommand: npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+      - key: VITE_FLW_PUBLIC_KEY
+        sync: false
