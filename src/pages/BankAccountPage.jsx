@@ -4,6 +4,9 @@ import { api, setAuthToken } from '../services/api';
 import { auth } from '../services/firebase';
 import toast from 'react-hot-toast';
 import FlutterwaveVirtualAccount from '../components/Dashboard/FlutterwaveVirtualAccount';
+// import BvnStatusCard from '../components/BvnStatusCard';
+// ✅ For .jsx file, include the extension
+import BvnStatusCard from '../components/BvnStatusCard.jsx';
 
 const getBankIcon = (bankName) => {
     if (!bankName) return '🏛️';
@@ -205,36 +208,37 @@ export default function BankAccount() {
     };
 
     const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    try {
-        // ✅ SIMPLE FIX: Handle both Firestore timestamp and ISO string
-        let date;
-        if (timestamp.toDate) {
-            date = timestamp.toDate();
-        } else if (timestamp._seconds) {
-            date = new Date(timestamp._seconds * 1000);
-        } else {
-            date = new Date(timestamp);
+        if (!timestamp) return 'N/A';
+        try {
+            let date;
+            if (timestamp.toDate) {
+                date = timestamp.toDate();
+            } else if (timestamp._seconds) {
+                date = new Date(timestamp._seconds * 1000);
+            } else {
+                date = new Date(timestamp);
+            }
+            
+            if (isNaN(date.getTime())) return 'Invalid Date';
+            
+            return date.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return 'Invalid Date';
         }
-        
-        if (isNaN(date.getTime())) return 'Invalid Date';
-        
-        return date.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric', 
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    } catch (e) {
-        return 'Invalid Date';
-    }
-};
+    };
 
     if (loading) {
         return (
-            <div className="text-center py-6">
+            // <div className="text-center py-6">
+             <div className="flex justify-center items-center min-h-[200px]">
                 <div className="spinner"></div>
+                <p className="text-sm text-gray-500">Loading your bank account details...</p>
             </div>
         );
     }
@@ -246,6 +250,11 @@ export default function BankAccount() {
                 <Link to="/dashboard" className="text-sm text-spark-500 hover:text-spark-600 font-medium inline-flex items-center gap-1 transition">
                     ← Back to Dashboard
                 </Link>
+            </div>
+
+            {/* ✅ BVN STATUS CARD - Add here */}
+            <div className="mb-4">
+                <BvnStatusCard />
             </div>
 
             {/* Virtual Account Section */}
@@ -293,7 +302,6 @@ export default function BankAccount() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <span className="text-xs text-gray-400">Last updated: {formatDate(bankAccount.bankAccountUpdatedAt)}</span>
-                                
                             </div>
                             <button
                                 onClick={handleRemove}

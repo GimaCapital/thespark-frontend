@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import founderImage from '../assets/20220716_202342.jpg';
+import StatModal from '../components/StatModal';
 
 export default function Home() {
     const { user } = useAuth();
@@ -31,6 +32,13 @@ export default function Home() {
     const [typedSpark, setTypedSpark] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
     const fullSparkText = "Be the spark.";
+
+     const handleClose = useCallback(() => {
+        // Small delay to let React finish
+        requestAnimationFrame(() => {
+            setSelectedStat(null);
+        });
+    }, []);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -133,8 +141,7 @@ export default function Home() {
 
     const fetchSuccessStories = async () => {
         try {
-            // const response = await api.get('/success-stories');
-            const response = await api.get('/api/success-stories');
+            const response = await api.get('/success-stories');
             setSuccessStories(response.data);
         } catch (error) {
             console.error('Failed to fetch success stories:', error);
@@ -686,64 +693,103 @@ export default function Home() {
                 </div>
 
                 {/* Stat Detail Modal - Full View */}
-                {selectedStat && (
-                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setSelectedStat(null)}>
-                        <div className="bg-white rounded-2xl max-w-3xl w-full p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-between items-center mb-6 pb-3 border-b border-gray-100">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-5xl">{selectedStat.icon}</span>
-                                    <div>
-                                        <h3 className="text-2xl font-bold text-gray-800">{selectedStat.label}</h3>
-                                        <p className="text-sm text-gray-400">{selectedStat.trend}</p>
-                                    </div>
-                                </div>
-                                <button onClick={() => setSelectedStat(null)} className="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
-                            </div>
+{/* Stat Detail Modal - With Fixed Close */}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Left Column */}
-                                <div>
-                                    <div className={`text-7xl font-bold ${selectedStat.text} mb-3`}>{selectedStat.value}</div>
-                                    <div className="w-full h-2 bg-gray-100 rounded-full mb-6 overflow-hidden">
-                                        <div className={`h-full w-3/4 bg-gradient-to-r ${selectedStat.text.replace('text-', 'from-')} to-${selectedStat.text.replace('text-', 'to-')} rounded-full`}></div>
-                                    </div>
-
-                                    <div className="bg-gray-50 rounded-xl p-5">
-                                        <p className="text-sm font-semibold text-gray-700 mb-2">📊 What this means:</p>
-                                        <p className="text-gray-600 text-sm leading-relaxed">{selectedStat.detail}</p>
-                                    </div>
-                                </div>
-
-                                {/* Right Column */}
-                                <div>
-                                    <div className="bg-amber-50 rounded-xl p-5 mb-5">
-                                        <p className="text-sm font-semibold text-amber-700 mb-2">⚠️ The Impact:</p>
-                                        <p className="text-gray-600 text-sm leading-relaxed">{selectedStat.impact}</p>
-                                    </div>
-
-                                    <div className="bg-spark-50 rounded-xl p-4">
-                                        <p className="text-xs text-gray-500 mb-2">📖 Source:</p>
-                                        <a
-                                            href={selectedStat.sourceLink}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-sm text-spark-600 hover:underline break-all"
-                                        >
-                                            {selectedStat.source}
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mt-8 pt-4 border-t border-gray-100">
-                                <button onClick={() => setSelectedStat(null)} className="w-full px-5 py-3 bg-spark-600 text-white rounded-xl font-semibold hover:bg-spark-700 transition text-base">
-                                    Close
-                                </button>
-                            </div>
+{/* 
+{/* {selectedStat && (
+    <div 
+        className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-[9999] p-3 sm:p-4" 
+        onClick={() => {
+            setTimeout(() => setSelectedStat(null), 50);  // ✅ FIXED
+        }}
+    >
+        <div 
+            className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-3xl max-h-[85vh] sm:max-h-[80vh] overflow-y-auto shadow-2xl animate-slide-up pb-safe" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ paddingBottom: '120px' }}
+        >
+          
+            <div className="sticky top-0 bg-white z-10 px-5 sm:px-8 pt-5 sm:pt-8 pb-4 border-b border-gray-100 rounded-t-2xl">
+                <div className="flex justify-between items-start gap-3">
+                    <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+                        <span className="text-4xl sm:text-5xl flex-shrink-0">{selectedStat.icon}</span>
+                        <div className="min-w-0">
+                            <h3 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">{selectedStat.label}</h3>
+                            <p className="text-xs sm:text-sm text-gray-400">{selectedStat.trend}</p>
                         </div>
                     </div>
-                )}
+                    <button 
+                        onClick={() => {
+                            setTimeout(() => setSelectedStat(null), 50);  // ✅ FIXED
+                        }}
+                        className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 text-2xl leading-none transition-colors"
+                        aria-label="Close"
+                    >
+                        ✕
+                    </button>
+                </div>
+            </div>
 
+         
+            <div className="px-5 sm:px-8 py-5 sm:py-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+              
+                    <div>
+                        <div className={`text-5xl sm:text-7xl font-bold ${selectedStat.text} mb-2 sm:mb-3`}>
+                            {selectedStat.value}
+                        </div>
+                        <div className="w-full h-2 bg-gray-100 rounded-full mb-4 sm:mb-6 overflow-hidden">
+                            <div className={`h-full w-3/4 bg-gradient-to-r ${selectedStat.text.replace('text-', 'from-')} to-${selectedStat.text.replace('text-', 'to-')} rounded-full`}></div>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4 sm:p-5">
+                            <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-2">📊 What this means:</p>
+                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{selectedStat.detail}</p>
+                        </div>
+                    </div>
+
+                   
+                    <div>
+                        <div className="bg-amber-50 rounded-xl p-4 sm:p-5 mb-4 sm:mb-5">
+                            <p className="text-xs sm:text-sm font-semibold text-amber-700 mb-2">⚠️ The Impact:</p>
+                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{selectedStat.impact}</p>
+                        </div>
+
+                        <div className="bg-spark-50 rounded-xl p-4">
+                            <p className="text-xs text-gray-500 mb-2">📖 Source:</p>
+                            <a
+                                href={selectedStat.sourceLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-spark-600 hover:underline break-all"
+                            >
+                                {selectedStat.source}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+               
+                <div className="mt-6 sm:mt-8 pt-4 border-t border-gray-100">
+                    <button 
+                        onClick={() => {
+                            setTimeout(() => setSelectedStat(null), 50);  // ✅ FIXED
+                        }}
+                        className="w-full px-5 py-4 bg-spark-600 text-white rounded-xl font-semibold hover:bg-spark-700 transition text-base active:scale-[0.98] shadow-lg"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+)} */} 
+
+ <StatModal 
+                stat={selectedStat}
+                isOpen={!!selectedStat}
+                onClose={() => setSelectedStat(null)}
+            />
 
 
 

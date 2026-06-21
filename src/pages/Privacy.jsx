@@ -72,9 +72,9 @@ export default function Privacy() {
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     <div className="flex items-center justify-between py-3">
                         <Link to="/" className="flex items-center gap-2 group">
-                            <div className="w-8 h-8 bg-spark-600 rounded-lg flex items-center justify-center">
+                            {/* <div className="w-8 h-8 bg-spark-600 rounded-lg flex items-center justify-center">
                                 <span className="text-white text-sm font-bold">TS</span>
-                            </div>
+                            </div> */}
                             <span className="text-gray-700 font-medium group-hover:text-spark-600 transition">TheSpark</span>
                         </Link>
                         <div className="hidden lg:flex items-center gap-1">

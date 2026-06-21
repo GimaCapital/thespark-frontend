@@ -404,7 +404,7 @@ export default function Dashboard() {
                         <div>
                             <p style={{ fontSize: '0.7rem', color: '#999', margin: 0 }}>Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'},</p>
                             <h1 style={{ fontSize: '1.25rem', fontWeight: '600', margin: '0.25rem 0 0 0', color: '#1A1A1A' }}>
-                                {userData?.fullName?.split(' ')[0] || 'User'}
+                                {userData?.fullName?.split(' ')[0] || 'thespark User'}
                             </h1>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -495,35 +495,35 @@ export default function Dashboard() {
                 </div>
 
                 {/* Quick Actions Grid - Updated to 5 columns with Bank link */}
+                {/* Quick Actions Grid - Updated to 5 columns with Bank link */}
                 <div className="grid grid-cols-5 gap-3 mb-4">
                     <button 
                         onClick={() => setShowWithdrawModal(true)}
-                        className="bg-white rounded-xl p-3 text-center border-none cursor-pointer"
+                        className="bg-white rounded-xl py-3 px-2 text-center border-none cursor-pointer flex flex-col items-center w-full"
                         style={{ border: '1px solid #F0F0F0' }}
                     >
                         <div className="text-2xl mb-1">💸</div>
-                        <span className="text-xs text-gray-600">Withdraw</span>
+                        <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">Withdraw</span>
                     </button>
                     <button 
                         onClick={scrollToDeposit}
-                        className="bg-white rounded-xl p-3 text-center border-none cursor-pointer"
+                        className="bg-white rounded-xl py-3 px-2 text-center border-none cursor-pointer flex flex-col items-center w-full"
                         style={{ border: '1px solid #F0F0F0' }}
                     >
                         <div className="text-2xl mb-1">➕</div>
-                        <span className="text-xs text-gray-600">Deposit</span>
+                        <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">Deposit</span>
                     </button>
-                    <Link to="/transactions" className="bg-white rounded-xl p-3 text-center no-underline" style={{ border: '1px solid #F0F0F0' }}>
+                    <Link to="/transactions" className="bg-white rounded-xl py-3 px-2 text-center no-underline flex flex-col items-center w-full" style={{ border: '1px solid #F0F0F0' }}>
                         <div className="text-2xl mb-1">📋</div>
-                        <span className="text-xs text-gray-600">History</span>
+                        <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">History</span>
                     </Link>
-                    <Link to="/referral" className="bg-white rounded-xl p-3 text-center no-underline" style={{ border: '1px solid #F0F0F0' }}>
+                    <Link to="/referral" className="bg-white rounded-xl py-3 px-2 text-center no-underline flex flex-col items-center w-full" style={{ border: '1px solid #F0F0F0' }}>
                         <div className="text-2xl mb-1">👥</div>
-                        <span className="text-xs text-gray-600">Refer</span>
+                        <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">Refer</span>
                     </Link>
-                    {/* ⭐ NEW: Bank Management Link */}
-                    <Link to="/bank-account" className="bg-white rounded-xl p-3 text-center no-underline" style={{ border: '1px solid #F0F0F0' }}>
+                    <Link to="/bank-account" className="bg-white rounded-xl py-3 px-2 text-center no-underline flex flex-col items-center w-full" style={{ border: '1px solid #F0F0F0' }}>
                         <div className="text-2xl mb-1">🏦</div>
-                        <span className="text-xs text-gray-600">Bank</span>
+                        <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">Bank</span>
                     </Link>
                 </div>
 

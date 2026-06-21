@@ -43,29 +43,47 @@ export default function Referral() {
         }
     };
 
+    // ✅ Get the full share message with referral link
+    const getShareMessage = () => {
+        const referralCode = referralData?.referralCode || '';
+        const referralLink = `${window.location.origin}/register?ref=${referralCode}`;
+        
+        return `🔥 Join me on TheSpark — the wealth-building platform that teaches Nigerians how to save, grow, and achieve financial freedom!
+
+💰 Start with as little as ₦100/day
+📈 Track your progress every 21-day cycle
+🎓 Graduate in 6 months with real wealth skills
+🤝 Earn ₦500 when your friends join
+
+Use my referral link to sign up:
+${referralLink}
+
+TheSpark — One spark. One fire. One wealthy Nigeria. 🇳🇬`;
+    };
+
     const handleShare = async (platform) => {
+        const shareText = getShareMessage();
         const referralCode = referralData?.referralCode;
-        const shareText = `Join me on TheSpark Savings! Use my referral code ${referralCode} to get started and earn bonuses. Sign up at ${window.location.origin}/signup?ref=${referralCode}`;
-        const shareUrl = `${window.location.origin}/signup?ref=${referralCode}`;
+        const shareUrl = `${window.location.origin}/register?ref=${referralCode}`;
         
         switch(platform) {
             case 'whatsapp':
                 window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
                 break;
             case 'facebook':
-                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`, '_blank');
                 break;
             case 'twitter':
                 window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`, '_blank');
                 break;
             case 'email':
-                window.location.href = `mailto:?subject=Join me on Spark Savings&body=${encodeURIComponent(shareText)}`;
+                window.location.href = `mailto:?subject=Join me on TheSpark - Wealth Building Platform&body=${encodeURIComponent(shareText)}`;
                 break;
             case 'native':
                 if (navigator.share) {
                     try {
                         await navigator.share({
-                            title: 'Join me on Spark Savings',
+                            title: 'Join TheSpark - Wealth Building Platform',
                             text: shareText,
                             url: shareUrl
                         });
@@ -76,7 +94,7 @@ export default function Referral() {
                         }
                     }
                 } else {
-                    copyToClipboard(shareText, 'Link copied to clipboard!');
+                    copyToClipboard(shareText, 'Message copied to clipboard!');
                 }
                 break;
             default:
@@ -93,7 +111,7 @@ export default function Referral() {
     }
 
     return (
-        <div className="bg-spark-50" style={{ minHeight: '100vh', paddingBottom: '2rem' }}>
+        <div className="container bg-spark-50" style={{ minHeight: '100vh', paddingBottom: '2rem' }}>
             <HeaderMissionCard />
             {/* Header */}
             <div style={{ backgroundColor: 'white', padding: '1rem', borderBottom: '1px solid #F0F0F0' }}>
@@ -121,69 +139,57 @@ export default function Referral() {
                 }}>
                     <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🎁</div>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: '0 0 0.5rem 0' }}>
-                        Get ₦5,000 Per Referral
+                        Get ₦500 Per Referral
                     </h2>
                     <p style={{ fontSize: '0.8rem', opacity: 0.9, margin: 0 }}>
-                        Invite friends to join Spark Savings and earn bonuses when they start saving!
+                        Invite friends to join TheSpark and earn bonuses when they start saving!
                     </p>
                 </div>
 
                 {/* Referral Code Card */}
-                <div style={{ backgroundColor: 'white', borderRadius: '1rem', padding: '1.5rem', border: '1px solid #F0F0F0', marginBottom: '1rem', textAlign: 'center' }}>
-                    <p style={{ fontSize: '0.75rem', color: '#999', marginBottom: '0.5rem' }}>YOUR REFERRAL CODE</p>
-                    <div style={{ 
-                        backgroundColor: '#FFF4E6', 
-                        padding: '1rem', 
-                        borderRadius: '0.75rem',
-                        marginBottom: '1rem',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: '1rem'
+            <div style={{ backgroundColor: 'white', borderRadius: '1rem', padding: '1.5rem', border: '1px solid #F0F0F0', marginBottom: '1rem', textAlign: 'center' }}>
+                
+                {/* Referral Link - Just the code (no URL) */}
+                <div style={{ 
+                    backgroundColor: '#FFF4E6', 
+                    padding: '1rem', 
+                    borderRadius: '0.75rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem'
+                }}>
+                    <code style={{ 
+                        fontSize: '1.5rem', 
+                        fontWeight: '700', 
+                        color: '#FF8A00', 
+                        letterSpacing: '2px',
+                        flex: 1,
+                        textAlign: 'left'
                     }}>
-                        <code style={{ fontSize: '1.5rem', fontWeight: '700', color: '#FF8A00', letterSpacing: '2px' }}>
-                            {referralData?.referralCode || 'LOADING'}
-                        </code>
-                        <button
-                            onClick={() => copyToClipboard(referralData?.referralCode, 'Referral code copied!')}
-                            style={{
-                                backgroundColor: '#FF8A00',
-                                color: 'white',
-                                border: 'none',
-                                padding: '0.5rem 1rem',
-                                borderRadius: '0.5rem',
-                                cursor: 'pointer',
-                                fontSize: '0.8rem',
-                                fontWeight: '600'
-                            }}
-                        >
-                            {copied ? '✓ Copied!' : 'Copy'}
-                        </button>
-                    </div>
-                    
-                    <div style={{ backgroundColor: '#F8F9FA', padding: '1rem', borderRadius: '0.75rem', marginBottom: '1rem' }}>
-                        <p style={{ fontSize: '0.7rem', color: '#999', marginBottom: '0.25rem' }}>REFERRAL LINK</p>
-                        <p style={{ fontSize: '0.75rem', color: '#666', wordBreak: 'break-all', marginBottom: '0.5rem' }}>
-                            {`${window.location.origin}/signup?ref=${referralData?.referralCode}`}
-                        </p>
-                        <button
-                            onClick={() => copyToClipboard(`${window.location.origin}/signup?ref=${referralData?.referralCode}`, 'Referral link copied!')}
-                            style={{
-                                backgroundColor: '#FF8A00',
-                                color: 'white',
-                                border: 'none',
-                                padding: '0.5rem 1rem',
-                                borderRadius: '0.5rem',
-                                cursor: 'pointer',
-                                fontSize: '0.8rem',
-                                fontWeight: '600',
-                                width: '100%'
-                            }}
-                        >
-                            Copy Link
-                        </button>
-                    </div>
+                        {referralData?.referralCode || 'LOADING'}
+                    </code>
+                    <button
+                        onClick={() => {
+                            const shareText = getShareMessage();
+                            copyToClipboard(shareText, 'Referral message copied!');
+                        }}
+                        style={{
+                            backgroundColor: '#FF8A00',
+                            color: 'white',
+                            border: 'none',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '0.5rem',
+                            cursor: 'pointer',
+                            fontSize: '0.8rem',
+                            fontWeight: '600',
+                            whiteSpace: 'nowrap'
+                        }}
+                    >
+                        📋 Copy
+                    </button>
                 </div>
+            </div>
 
                 {/* Share Options */}
                 <div style={{ backgroundColor: 'white', borderRadius: '1rem', padding: '1.5rem', border: '1px solid #F0F0F0', marginBottom: '1rem' }}>
@@ -284,22 +290,22 @@ export default function Referral() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <div style={{ width: '2rem', height: '2rem', backgroundColor: '#FFF4E6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF8A00', fontWeight: 'bold' }}>1</div>
                             <div>
-                                <p style={{ fontSize: '0.85rem', fontWeight: '500', margin: 0 }}>Share Your Code</p>
-                                <p style={{ fontSize: '0.7rem', color: '#999', margin: '0.25rem 0 0 0' }}>Share your unique referral code with friends</p>
+                                <p style={{ fontSize: '0.85rem', fontWeight: '500', margin: 0 }}>Share Your Link</p>
+                                <p style={{ fontSize: '0.7rem', color: '#999', margin: '0.25rem 0 0 0' }}>Share your unique referral link with friends</p>
                             </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <div style={{ width: '2rem', height: '2rem', backgroundColor: '#FFF4E6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF8A00', fontWeight: 'bold' }}>2</div>
                             <div>
                                 <p style={{ fontSize: '0.85rem', fontWeight: '500', margin: 0 }}>Friend Signs Up</p>
-                                <p style={{ fontSize: '0.7rem', color: '#999', margin: '0.25rem 0 0 0' }}>They use your code when creating their account</p>
+                                <p style={{ fontSize: '0.7rem', color: '#999', margin: '0.25rem 0 0 0' }}>They use your link when creating their account</p>
                             </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <div style={{ width: '2rem', height: '2rem', backgroundColor: '#FFF4E6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF8A00', fontWeight: 'bold' }}>3</div>
                             <div>
                                 <p style={{ fontSize: '0.85rem', fontWeight: '500', margin: 0 }}>Earn Bonuses</p>
-                                <p style={{ fontSize: '0.7rem', color: '#999', margin: '0.25rem 0 0 0' }}>Get ₦5,000 when they make their first deposit</p>
+                                <p style={{ fontSize: '0.7rem', color: '#999', margin: '0.25rem 0 0 0' }}>Get ₦500 when any referral completes their first cycle</p>
                             </div>
                         </div>
                     </div>

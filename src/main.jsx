@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './styles/globals.css';
+import 'antd/dist/reset.css';  // ← ADD THIS LINE
 
 // Register both service workers
 if ('serviceWorker' in navigator) {
@@ -21,6 +22,11 @@ if ('serviceWorker' in navigator) {
         }
     });
 }
+
+// Add portal root
+const portalRoot = document.createElement('div');
+portalRoot.id = 'portal-root';
+document.body.appendChild(portalRoot);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>

@@ -86,7 +86,8 @@
 //     //             await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
 //     //         }
             
-//     //         toast.success('Welcome to TheSpark!');
+//     //          const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+        // toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
 //     //         return true;
 //     //     } catch (error) {
 //     //         console.error('Google sign in error:', error);
@@ -149,7 +150,8 @@
 //             await createFlutterwaveVirtualAccount(firebaseUser.uid, firebaseUser.email, firebaseUser.displayName);
 //         }
         
-//         toast.success('Welcome to TheSpark!');
+//          const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+        // toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
 //         return true;
 //     } catch (error) {
 //         console.error('Google sign in error:', error);
@@ -235,7 +237,8 @@
 //     //             await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
 //     //         }
             
-//     //         toast.success('Welcome to TheSpark!');
+//     //          const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+        // toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
 //     //         return { success: true };
 //     //     } catch (error) {
 //     //         console.error('Verify OTP error:', error);
@@ -314,7 +317,8 @@
 //             await createFlutterwaveVirtualAccount(firebaseUser.uid, firebaseUser.email || fullName, fullName);
 //         }
         
-//         toast.success('Welcome to TheSpark!');
+//          const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+        // toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
 //         return { success: true };
 //     } catch (error) {
 //         console.error('Verify OTP error:', error);
@@ -586,6 +590,7 @@ export function AuthProvider({ children }) {
         try {
             const result = await signInWithPopup(auth, googleProvider);
             const firebaseUser = result.user;
+             const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
             
             const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
             
@@ -628,7 +633,8 @@ export function AuthProvider({ children }) {
                 // Virtual account will be created when user adds BVN
             }
             
-            toast.success('Welcome to TheSpark!');
+            //  const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+             toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
             return true;
         } catch (error) {
             console.error('Google sign in error:', error);
@@ -653,6 +659,7 @@ export function AuthProvider({ children }) {
         try {
             const result = await confirmationResult.confirm(code);
             const firebaseUser = result.user;
+            const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
             
             const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
             
@@ -713,7 +720,8 @@ export function AuthProvider({ children }) {
                 await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
             }
             
-            toast.success('Welcome to TheSpark!');
+            //  const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+             toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
             return { success: true };
         } catch (error) {
             console.error('Verify OTP error:', error);

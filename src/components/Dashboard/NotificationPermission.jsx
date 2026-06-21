@@ -56,28 +56,31 @@ export default function NotificationPermission() {
     }
     
     return (
-        <div className="fixed bottom-4 left-4 right-4 z-50 max-w-md mx-auto">
-            <div className="bg-white rounded-xl shadow-2xl p-4 border-l-4 border-spark-500">
-                <div className="flex items-start gap-3">
-                    <div className="text-2xl">🔔</div>
-                    <div className="flex-1">
-                        <h4 className="font-semibold text-gray-800">Get Daily Lessons</h4>
-                        <p className="text-xs text-gray-500 mt-1">
-                            Receive your daily wealth lesson every morning at 6 AM
-                        </p>
-                        <div className="flex gap-2 mt-3">
-                            <button
-                                onClick={enableNotifications}
-                                className="btn btn-primary btn-sm"
-                            >
-                                Enable Notifications
-                            </button>
-                            <button
-                                onClick={remindLater}
-                                className="btn btn-secondary btn-sm"
-                            >
-                                Remind Later
-                            </button>
+        // ✅ Fix: Position at top of screen (not bottom)
+        <div className="fixed top-4 left-0 right-0 z-[9999] px-4 pointer-events-none">
+            <div className="max-w-md mx-auto pointer-events-auto">
+                <div className="bg-white rounded-xl shadow-2xl p-4 border-l-4 border-spark-500 animate-slide-down">
+                    <div className="flex items-start gap-3">
+                        <div className="text-2xl flex-shrink-0">🔔</div>
+                        <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-gray-800 text-sm">Get Daily Lessons</h4>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Receive your daily wealth lesson every morning at 6 AM
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                <button
+                                    onClick={enableNotifications}
+                                    className="px-4 py-2 bg-gradient-to-r from-spark-500 to-spark-600 text-white text-sm font-semibold rounded-xl hover:shadow-md transition-all flex-1 min-w-[100px]"
+                                >
+                                    Enable 🔔
+                                </button>
+                                <button
+                                    onClick={remindLater}
+                                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-all flex-1 min-w-[80px]"
+                                >
+                                    Later
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -463,18 +463,38 @@ export default function Profile() {
                 </div>
                 
                 {/* Referral Code Card */}
-                <div className="card" style={{ marginBottom: '1rem', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.5rem' }}>Your Referral Code</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#F97316', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-                        {userData?.referralCode || 'SPARK'}
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.75rem' }}>
-                        Share your code. Get ₦500 when they join!
-                    </div>
-                    <button onClick={copyReferralCode} className="btn btn-primary btn-sm btn-full">
-                        Copy Referral Code
-                    </button>
-                </div>
+            <div className="card" style={{ marginBottom: '1rem', textAlign: 'center' }}>
+    <div style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.5rem' }}>Your Referral Code</div>
+    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#F97316', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+        {userData?.referralCode || 'SPARK'}
+    </div>
+    <div style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.75rem' }}>
+        Share your code. Get ₦500 when they join!
+    </div>
+    <button 
+        onClick={() => {
+            const referralCode = userData?.referralCode || 'SPARK';
+            const link = `${window.location.origin}/register?ref=${referralCode}`;
+            const message = `🔥 Join me on TheSpark — the wealth-building platform that teaches Nigerians how to save, grow, and achieve financial freedom!
+
+💰 Start with as little as ₦100/day
+📈 Track your progress every 21-day cycle
+🎓 Graduate in 6 months with real wealth skills
+🤝 Earn ₦500 when your friends join
+
+Use my referral link to sign up:
+${link}
+
+TheSpark — One spark. One fire. One wealthy Nigeria. 🇳🇬`;
+            
+            navigator.clipboard.writeText(message);
+            toast.success('Referral message copied!');
+        }} 
+        className="btn btn-primary btn-sm btn-full"
+    >
+        📋 Copy Referral Code
+    </button>
+</div>
                 
                 {/* Menu Items */}
                 {visibleMenuItems.map((item, index) => (
