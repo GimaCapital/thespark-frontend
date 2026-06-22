@@ -466,7 +466,7 @@ export default function Dashboard() {
                 }}>
                     <div>
                         <p style={{ fontSize: '0.75rem', fontWeight: '600', margin: 0, color: 'white' }}>🎉 Invite Friends</p>
-                        <p style={{ fontSize: '0.65rem', margin: '0.25rem 0 0 0', color: 'rgba(255,255,255,0.9)' }}>Get ₦5,000 per referral</p>
+                        <p style={{ fontSize: '0.65rem', margin: '0.25rem 0 0 0', color: 'rgba(255,255,255,0.9)' }}>Get ₦500 per referral</p>
                     </div>
                     <button 
                         onClick={handleShare}

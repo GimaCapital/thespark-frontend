@@ -5,6 +5,9 @@
 // export default defineConfig({
 //   plugins: [react()],
 // })
+
+
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -48,6 +51,26 @@ export default defineConfig({
             '/api': {
                 target: 'http://localhost:3001',
                 changeOrigin: true
+            }
+        }
+    },
+    build: {
+        // ✅ Increase chunk size warning limit
+        chunkSizeWarningLimit: 1500,
+        
+        // ✅ Code splitting configuration
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    // Split React into its own chunk
+                    'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+                    
+                    // Split Firebase into its own chunk
+                    'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+                    
+                    // Split other large libraries
+                    'utils-vendor': ['axios', 'framer-motion', 'react-hot-toast'],
+                }
             }
         }
     }

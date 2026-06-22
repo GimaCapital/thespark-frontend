@@ -178,14 +178,13 @@
 //     );
 // }
 
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate } from '../utils/dateUtils';
 import toast from 'react-hot-toast';
 import { api, setAuthToken } from '../services/api';
-import { auth } from '../services/firebase';
+import { auth, requestNotificationPermission } from '../services/firebase';
 
 // 🎯 COMPLETELY DYNAMIC - No hardcoded bank names!
 const getBankIcon = (bankName) => {
@@ -205,12 +204,22 @@ export default function Profile() {
     const { userData, refreshUserData, logout, isAdmin } = useAuth();
     const [bankAccount, setBankAccount] = useState(null);
     const [loadingBank, setLoadingBank] = useState(true);
+    const [notificationStatus, setNotificationStatus] = useState('default');
+    const [isNotificationLoading, setIsNotificationLoading] = useState(false);
     const isGraduated = userData?.currentCycle > 8 || userData?.graduationDate;
     
     useEffect(() => {
         refreshUserData();
         loadBankAccount();
+        checkNotificationStatus();
     }, []);
+
+    // ✅ Function to check notification status
+    const checkNotificationStatus = () => {
+        if ('Notification' in window) {
+            setNotificationStatus(Notification.permission);
+        }
+    };
 
     const loadBankAccount = async () => {
         setLoadingBank(true);
@@ -251,6 +260,104 @@ export default function Profile() {
             setBankAccount(null);
         } catch (error) {
             toast.error('Failed to remove bank account');
+        }
+    };
+
+    // ✅ FIX: Handle notification permission with auto-refresh
+    const handleEnableNotifications = async () => {
+        setIsNotificationLoading(true);
+        try {
+            const idToken = await auth.currentUser.getIdToken();
+            setAuthToken(idToken);
+            
+            // Request permission and save token
+            const token = await requestNotificationPermission(userData?.uid, async (fcmToken) => {
+                await api.post('/users/save-fcm-token', { fcmToken: token });
+                
+                // ✅ Update status immediately
+                setNotificationStatus('granted');
+                
+                // ✅ Refresh user data to get updated token
+                await refreshUserData();
+                
+                toast.success('✅ Notifications enabled! You\'ll receive daily lessons at 6 AM.');
+                
+                // ✅ Also update the NotificationPermission component if it's mounted
+                // This will trigger a re-render of the top banner too
+                window.dispatchEvent(new Event('notificationStatusChanged'));
+            });
+            
+            if (token) {
+                setNotificationStatus('granted');
+                await refreshUserData();
+            }
+        } catch (error) {
+            console.error('Failed to enable notifications:', error);
+            // Check if permission was denied
+            if ('Notification' in window) {
+                const newStatus = Notification.permission;
+                setNotificationStatus(newStatus);
+                
+                if (newStatus === 'denied') {
+                    toast.error('Notifications blocked. Please enable in browser settings.');
+                } else {
+                    toast.error('Could not enable notifications. Please try again.');
+                }
+            }
+        } finally {
+            setIsNotificationLoading(false);
+        }
+    };
+
+    const handleOpenBrowserSettings = () => {
+        if (navigator.userAgent.includes('Chrome')) {
+            window.open('chrome://settings/content/notifications', '_blank');
+        } else if (navigator.userAgent.includes('Firefox')) {
+            window.open('about:preferences#privacy', '_blank');
+        } else if (navigator.userAgent.includes('Safari')) {
+            toast.info('Open Safari Preferences > Websites > Notifications');
+        } else {
+            toast.info('Check your browser settings for notification permissions.');
+        }
+        
+        // ✅ Listen for user returning from settings
+        // Check permission again after they come back
+        const checkPermission = setInterval(() => {
+            if ('Notification' in window) {
+                const newStatus = Notification.permission;
+                if (newStatus !== notificationStatus) {
+                    setNotificationStatus(newStatus);
+                    if (newStatus === 'granted') {
+                        toast.success('✅ Notifications enabled! Refreshing...');
+                        // Refresh user data and page state
+                        refreshUserData();
+                        // Also try to save the token
+                        handleSaveTokenAfterReEnable();
+                    }
+                    clearInterval(checkPermission);
+                }
+            }
+        }, 2000);
+        
+        // Stop checking after 30 seconds
+        setTimeout(() => clearInterval(checkPermission), 30000);
+    };
+    
+    // ✅ New: Save token after user re-enables from settings
+    const handleSaveTokenAfterReEnable = async () => {
+        try {
+            const idToken = await auth.currentUser.getIdToken();
+            setAuthToken(idToken);
+            
+            // Get the token again
+            const token = await requestNotificationPermission(userData?.uid, async (fcmToken) => {
+                await api.post('/users/save-fcm-token', { fcmToken: token });
+                setNotificationStatus('granted');
+                await refreshUserData();
+                toast.success('✅ Notifications re-enabled!');
+            });
+        } catch (error) {
+            console.error('Failed to save token after re-enable:', error);
         }
     };
     
@@ -346,6 +453,105 @@ export default function Profile() {
             </div>
             
             <div className="profile-content">
+                {/* ============ NOTIFICATION SETTINGS ============ */}
+                <div className="card" style={{ marginBottom: '1rem' }}>
+                    <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
+                        <span style={{ fontWeight: '600', color: '#1F2937' }}>🔔 Notifications</span>
+                        <span style={{ 
+                            fontSize: '0.7rem', 
+                            color: notificationStatus === 'granted' ? '#10B981' : 
+                                   notificationStatus === 'denied' ? '#EF4444' : '#F97316'
+                        }}>
+                            {notificationStatus === 'granted' ? '✅ Enabled' : 
+                             notificationStatus === 'denied' ? '❌ Blocked' : '⏳ Not set'}
+                        </span>
+                    </div>
+                    
+                    {notificationStatus === 'granted' ? (
+                        <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>
+                            <p>✅ You're receiving daily lessons at 6 AM</p>
+                            <p style={{ fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                📱 Daily wealth lessons delivered to your device
+                            </p>
+                        </div>
+                    ) : notificationStatus === 'denied' ? (
+                        <div>
+                            <div style={{ 
+                                fontSize: '0.75rem', 
+                                color: '#6B7280',
+                                marginBottom: '0.5rem'
+                            }}>
+                                <p>🔕 Notifications are blocked in your browser.</p>
+                                <p style={{ fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                    To enable them:
+                                </p>
+                                <ol style={{ 
+                                    fontSize: '0.7rem', 
+                                    color: '#6B7280',
+                                    paddingLeft: '1.25rem',
+                                    marginTop: '0.25rem',
+                                    lineHeight: '1.6'
+                                }}>
+                                    <li>Click the <strong>🔒 lock icon</strong> in your browser's address bar</li>
+                                    <li>Find <strong>Notifications</strong> and change to <strong>Allow</strong></li>
+                                    <li>Refresh this page</li>
+                                </ol>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                                <button
+                                    onClick={handleOpenBrowserSettings}
+                                    style={{
+                                        flex: 1,
+                                        fontSize: '0.75rem',
+                                        color: 'white',
+                                        fontWeight: '600',
+                                        padding: '0.5rem',
+                                        borderRadius: '0.375rem',
+                                        backgroundColor: '#3B82F6',
+                                        border: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    🔧 Open Browser Settings
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div>
+                            <p style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.5rem' }}>
+                                Receive daily wealth lessons every morning at 6 AM
+                            </p>
+                            <button
+                                onClick={handleEnableNotifications}
+                                disabled={isNotificationLoading}
+                                style={{
+                                    fontSize: '0.75rem',
+                                    color: 'white',
+                                    fontWeight: '600',
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '0.375rem',
+                                    backgroundColor: isNotificationLoading ? '#9CA3AF' : '#F97316',
+                                    border: 'none',
+                                    cursor: isNotificationLoading ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (!isNotificationLoading) {
+                                        e.target.style.backgroundColor = '#EA580C';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (!isNotificationLoading) {
+                                        e.target.style.backgroundColor = '#F97316';
+                                    }
+                                }}
+                            >
+                                {isNotificationLoading ? 'Enabling...' : 'Enable Notifications 🔔'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+
                 {/* ============ BANK ACCOUNT SECTION ============ */}
                 <div className="card" style={{ marginBottom: '1rem' }}>
                     <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
