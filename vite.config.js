@@ -7,7 +7,6 @@
 // })
 
 
-
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -58,18 +57,24 @@ export default defineConfig({
         // ✅ Increase chunk size warning limit
         chunkSizeWarningLimit: 1500,
         
-        // ✅ Code splitting configuration
+        // ✅ Code splitting configuration - UPDATED to function format
         rollupOptions: {
             output: {
-                manualChunks: {
+                manualChunks(id) {
                     // Split React into its own chunk
-                    'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-                    
-                    // Split Firebase into its own chunk
-                    'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-                    
-                    // Split other large libraries
-                    'utils-vendor': ['axios', 'framer-motion', 'react-hot-toast'],
+                    if (id.includes('node_modules')) {
+                        if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+                            return 'react-vendor';
+                        }
+                        if (id.includes('firebase') || id.includes('@firebase')) {
+                            return 'firebase-vendor';
+                        }
+                        if (id.includes('axios') || id.includes('framer-motion') || id.includes('react-hot-toast')) {
+                            return 'utils-vendor';
+                        }
+                        // Everything else in node_modules
+                        return 'vendor';
+                    }
                 }
             }
         }
