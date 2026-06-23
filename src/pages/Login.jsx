@@ -149,13 +149,17 @@
 //         </div>
 //     );
 // }
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+
+
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderMissionCard from '../components/Common/HeaderMissionCard';
 
 export default function Login() {
     const { signInWithGoogle, sendOTP, verifyOTP } = useAuth();
+    const [searchParams] = useSearchParams();
+    
     const [method, setMethod] = useState('google');
     const [phone, setPhone] = useState('');
     const [code, setCode] = useState('');
@@ -164,9 +168,18 @@ export default function Login() {
     const [confirmationResult, setConfirmationResult] = useState(null);
     const [loading, setLoading] = useState(false);
 
+    // ✅ Read referral code from URL
+    useEffect(() => {
+        const ref = searchParams.get('ref');
+        if (ref) {
+            setReferralCode(ref);
+            console.log('✅ Referral code loaded from URL:', ref);
+        }
+    }, [searchParams]);
+
     const handleGoogleSignIn = async () => {
         setLoading(true);
-        await signInWithGoogle();
+        await signInWithGoogle(referralCode);  // ✅ Pass referral code
         setLoading(false);
     };
 
@@ -246,6 +259,13 @@ export default function Login() {
                                                 Welcome Back to <span className="text-spark-600">TheSpark</span>
                                             </h2>
                                             <p className="text-gray-500 text-sm mb-6">Access your dashboard and continue building wealth.</p>
+                                            
+                                            {/* ✅ Show referral code if present */}
+                                            {referralCode && (
+                                                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
+                                                    🎁 Referral code: <strong>{referralCode}</strong> - Share this code with friends!
+                                                </div>
+                                            )}
 
                                             {/* Method Selection - Book Style Tabs */}
                                             <div className="flex gap-3 mb-6">
