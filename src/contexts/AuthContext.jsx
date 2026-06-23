@@ -969,7 +969,6 @@ export function AuthProvider({ children }) {
         }
     };
 
-    // ✅ UPDATED: Google sign-in with referral code support
     const signInWithGoogle = async (referralCode = null) => {
         try {
             const result = await signInWithPopup(auth, googleProvider);
@@ -1016,7 +1015,6 @@ export function AuthProvider({ children }) {
                     bvn: null
                 };
                 
-                // ✅ Handle referral code for Google sign-in
                 if (referralCode) {
                     const usersRef = collection(db, 'users');
                     const q = query(usersRef, where('referralCode', '==', referralCode));
@@ -1026,15 +1024,32 @@ export function AuthProvider({ children }) {
                         const referrer = querySnapshot.docs[0];
                         newUser.referredBy = referrer.id;
                         
+                        // ✅ New user gets ₦50 instantly
+                        newUser.currentBalance = 50;
+                        newUser.totalPrincipalSaved = 50;
+                        
+                        // Create referral record
                         await addDoc(collection(db, 'referrals'), {
                             referrerId: referrer.id,
                             referredId: firebaseUser.uid,
-                            rewardAmount: 500,
-                            rewardPaid: false,
+                            newUserBonus: 50,
+                            referrerBonus: 500,
+                            newUserPaid: true,
+                            referrerPaid: false,
                             createdAt: new Date()
                         });
                         
-                        console.log(`✅ Google sign-in: Referral tracked for ${referralCode}`);
+                        // Record transaction for new user bonus
+                        await addDoc(collection(db, 'transactions'), {
+                            userId: firebaseUser.uid,
+                            type: 'referral_bonus',
+                            amount: 50,
+                            description: 'Referral sign-up bonus from ' + referrer.data().fullName,
+                            balanceAfter: 50,
+                            createdAt: new Date()
+                        });
+                        
+                        console.log(`✅ New user ${firebaseUser.uid} got ₦50 referral bonus from ${referrer.id}`);
                     }
                 }
                 
@@ -1117,13 +1132,32 @@ export function AuthProvider({ children }) {
                         const referrer = querySnapshot.docs[0];
                         newUser.referredBy = referrer.id;
                         
+                        // ✅ New user gets ₦50 instantly
+                        newUser.currentBalance = 50;
+                        newUser.totalPrincipalSaved = 50;
+                        
+                        // Create referral record
                         await addDoc(collection(db, 'referrals'), {
                             referrerId: referrer.id,
                             referredId: firebaseUser.uid,
-                            rewardAmount: 500,
-                            rewardPaid: false,
+                            newUserBonus: 50,
+                            referrerBonus: 500,
+                            newUserPaid: true,
+                            referrerPaid: false,
                             createdAt: new Date()
                         });
+                        
+                        // Record transaction for new user bonus
+                        await addDoc(collection(db, 'transactions'), {
+                            userId: firebaseUser.uid,
+                            type: 'referral_bonus',
+                            amount: 50,
+                            description: 'Referral sign-up bonus from ' + referrer.data().fullName,
+                            balanceAfter: 50,
+                            createdAt: new Date()
+                        });
+                        
+                        console.log(`✅ New user ${firebaseUser.uid} got ₦50 referral bonus from ${referrer.id}`);
                     }
                 }
                 
