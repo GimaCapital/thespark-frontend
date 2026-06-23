@@ -81,10 +81,16 @@
 //         </div>
 //     );
 // }
+
+
 import React, { useState, useEffect } from 'react';
+import { Modal, Input, Button, Spin, Typography, Divider, Skeleton, Space, Alert } from 'antd';
+import { CheckCircleOutlined, WarningOutlined, LoadingOutlined } from '@ant-design/icons';
 import { api, setAuthToken } from '../../services/api';
 import { auth } from '../../services/firebase';
 import toast from 'react-hot-toast';
+
+const { Text } = Typography;
 
 // 🎯 COMPLETELY DYNAMIC - No hardcoded bank names!
 const getBankIcon = (bankName) => {
@@ -157,8 +163,6 @@ export default function WithdrawModal({ isOpen, onClose, currentBalance, current
         }
     };
 
-    if (!isOpen) return null;
-
     const handleWithdraw = async () => {
         const numAmount = parseFloat(amount);
 
@@ -204,135 +208,181 @@ export default function WithdrawModal({ isOpen, onClose, currentBalance, current
     const numAmount = parseFloat(amount);
     const totalCost = numAmount + (feeDetails?.totalFee || 0);
 
-    // Safely format numbers with fallback
     const formatNumber = (value) => {
         if (value === undefined || value === null) return '0.00';
         return value.toFixed(2);
     };
 
+    const hasBankAccount = !!bankAccount;
+
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                <h2 className="modal-header">Request Withdrawal</h2>
-                <div className="modal-body">
-                    <p className="text-body spacer-sm">
-                        Available Balance: <strong>₦{currentBalance?.toLocaleString()}</strong>
-                    </p>
+        <Modal
+            title={
+                <Space>
+                    <span className="text-xl">💰</span>
+                    <span className="text-lg font-semibold text-gray-800">Request Withdrawal</span>
+                </Space>
+            }
+            open={isOpen}
+            onCancel={onClose}
+            footer={null}
+            width={440}
+            centered
+            destroyOnClose
+            maskClosable={!loading}
+            className="withdraw-modal"
+        >
+            <div className="py-1">
+                {/* Available Balance - Spark Color Background */}
+                <div className="bg-gradient-to-r from-spark-500 to-spark-600 rounded-xl p-6 mb-5 text-center">
+                    <span className="text-white/80 text-sm block">Available Balance</span>
+                    <span className="text-3xl font-bold text-white">
+                        ₦{currentBalance?.toLocaleString()}
+                    </span>
+                </div>
 
-                    {/* DYNAMIC BANK ACCOUNT DISPLAY */}
-                    {loadingBank ? (
-                        <div className="text-center py-3">
-                            <div className="spinner-sm"></div>
-                        </div>
-                    ) : bankAccount ? (
-                        <div className="bg-blue-50 rounded-lg p-3 border border-blue-200 mb-4">
-                            <p className="text-xs text-gray-500 font-medium mb-2">💰 Money will be sent to:</p>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                                    <span className="text-xl">{getBankIcon(bankAccount.bankName)}</span>
-                                </div>
-                                <div>
-                                    <p className="font-semibold text-gray-900">{bankAccount.bankName}</p>
-                                    <p className="text-sm font-mono text-gray-600">{bankAccount.accountNumber}</p>
-                                    <p className="text-xs text-gray-500">{bankAccount.accountName}</p>
-                                </div>
+                {/* Bank Account - Clean Display */}
+                {loadingBank ? (
+                    <div className="mb-5">
+                        <Skeleton.Input active size="small" block className="mb-2" />
+                        <Skeleton.Input active size="small" block />
+                    </div>
+                ) : hasBankAccount ? (
+                    <div className="mb-5">
+                        <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-xl">
+                                {getBankIcon(bankAccount.bankName)}
                             </div>
-                            <div className="mt-2 flex items-center gap-2">
-                                <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                <span className="text-xs text-green-600">Verified account</span>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="bg-amber-50 rounded-lg p-3 border border-amber-200 mb-4">
-                            <div className="flex items-center gap-2">
-                                <span className="text-lg">⚠️</span>
-                                <div>
-                                    <p className="text-sm font-medium text-amber-800">No Bank Account Added</p>
-                                    <p className="text-xs text-amber-700">Please add a bank account before withdrawing</p>
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-medium text-gray-900">{bankAccount.bankName}</span>
+                                    <CheckCircleOutlined className="text-green-500 text-xs" />
                                 </div>
-                            </div>
-                            <button
-                                onClick={() => {
-                                    onClose();
-                                    window.location.href = '/bank-account';
-                                }}
-                                className="mt-2 text-xs bg-amber-600 text-white px-3 py-1 rounded-lg hover:bg-amber-700 transition"
-                            >
-                                Add Bank Account →
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Fee Breakdown - with safe checks */}
-                    {feeDetails && (
-                        <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 mb-3">
-                            <p className="text-xs font-medium text-gray-700 mb-2">Fee Breakdown</p>
-                            <div className="space-y-1 text-xs text-gray-600">
-                                <div className="flex justify-between">
-                                    <span>Withdrawal Fee</span>
-                                    <span>₦{formatNumber(feeDetails.fee)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>VAT (7.5%)</span>
-                                    <span>₦{formatNumber(feeDetails.vat)}</span>
-                                </div>
-                                <div className="flex justify-between pt-1 border-t border-gray-200 font-medium">
-                                    <span>Total Fee</span>
-                                    <span className="text-amber-600">₦{formatNumber(feeDetails.totalFee)}</span>
-                                </div>
-                                <div className="flex justify-between pt-1 border-t border-gray-200 font-medium">
-                                    <span>You'll Receive</span>
-                                    <span className="text-green-600">₦{formatNumber(numAmount)}</span>
-                                </div>
-                                <div className="flex justify-between pt-1 border-t border-gray-200 font-semibold">
-                                    <span>Total Cost</span>
-                                    <span className="text-spark-500">₦{formatNumber(totalCost)}</span>
-                                </div>
+                                <span className="text-sm font-mono text-gray-600">{bankAccount.accountNumber}</span>
+                                <span className="text-xs text-gray-400 block">{bankAccount.accountName}</span>
                             </div>
                         </div>
-                    )}
+                    </div>
+                ) : (
+                    <div className="mb-5">
+                        <Alert
+                            message="No Bank Account Added"
+                            description="Please add a bank account before withdrawing"
+                            type="warning"
+                            showIcon
+                            action={
+                                <Button
+                                    size="small"
+                                    type="primary"
+                                    className="bg-spark-500 hover:bg-spark-600 border-spark-500"
+                                    onClick={() => {
+                                        onClose();
+                                        window.location.href = '/bank-account';
+                                    }}
+                                >
+                                    Add Account
+                                </Button>
+                            }
+                            className="rounded-xl"
+                        />
+                    </div>
+                )}
 
-                    {calculatingFee && amount && (
-                        <div className="text-center py-2">
-                            <div className="spinner-sm"></div>
-                            <p className="text-xs text-gray-400 mt-1">Calculating fee...</p>
+                {/* Fee Breakdown - Clean */}
+                {feeDetails && (
+                    <div className="bg-gray-50 rounded-xl p-4 mb-5">
+                        <span className="text-xs font-medium text-gray-500 block mb-3">Fee Breakdown</span>
+                        <div className="space-y-1.5 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Withdrawal Fee</span>
+                                <span>₦{formatNumber(feeDetails.fee)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">VAT (7.5%)</span>
+                                <span>₦{formatNumber(feeDetails.vat)}</span>
+                            </div>
+                            <Divider className="my-1" />
+                            <div className="flex justify-between font-medium">
+                                <span>Total Fee</span>
+                                <span className="text-amber-600">₦{formatNumber(feeDetails.totalFee)}</span>
+                            </div>
+                            <div className="flex justify-between font-medium">
+                                <span>You'll Receive</span>
+                                <span className="text-green-600">₦{formatNumber(numAmount)}</span>
+                            </div>
+                            <Divider className="my-1" />
+                            <div className="flex justify-between font-semibold">
+                                <span>Total Cost</span>
+                                <span className="text-spark-500">₦{formatNumber(totalCost)}</span>
+                            </div>
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    <p className="text-warning text-small spacer-md">
-                        ⚠️ Money withdrawn during a cycle earns 0% interest for that cycle.
-                    </p>
+                {calculatingFee && amount && (
+                    <div className="text-center py-2 mb-3">
+                        <Spin indicator={<LoadingOutlined spin />} size="small" />
+                        <span className="text-xs text-gray-400 ml-2">Calculating fee...</span>
+                    </div>
+                )}
 
-                    <input
+                {/* Warning - Clean Alert */}
+                <Alert
+                    message="⚠️ Interest Warning"
+                    description="Money withdrawn during a cycle earns 0% interest for that cycle."
+                    type="info"
+                    showIcon
+                    className="mb-5 rounded-xl bg-yellow-50 border-yellow-200"
+                />
+
+                {/* Amount Input */}
+                <div className="mb-5">
+                    <label className="font-medium text-gray-700 block mb-2 text-sm">Amount (₦)</label>
+                    <Input
                         type="number"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder="Enter amount"
-                        className="input"
-                        disabled={!bankAccount || loading}
+                        size="large"
+                        disabled={!hasBankAccount || loading}
+                        prefix="₦"
+                        className="rounded-xl"
                     />
-
                     {amount && feeDetails && totalCost > currentBalance && (
-                        <p className="text-xs text-red-500 mt-2">
-                            Insufficient balance. You need ₦{totalCost.toFixed(2)} (withdrawal + fee)
-                        </p>
+                        <span className="text-red-500 text-xs block mt-2">
+                            Insufficient balance. You need ₦{totalCost.toFixed(2)}
+                        </span>
                     )}
                 </div>
-                <div className="modal-footer">
-                    <button onClick={onClose} className="btn btn-secondary flex-1">
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleWithdraw}
-                        disabled={loading || !bankAccount || !amount || totalCost > currentBalance}
-                        className={`btn btn-danger flex-1 ${loading || !bankAccount || !amount || totalCost > currentBalance ? 'btn-disabled' : ''}`}
+
+                {/* Action Buttons - Green Withdraw Button */}
+                <div className="flex gap-3 mt-2">
+                    <Button
+                        size="large"
+                        className="flex-1 rounded-xl h-12"
+                        onClick={onClose}
+                        disabled={loading}
                     >
-                        {loading ? 'Processing...' : 'Request Withdrawal'}
-                    </button>
+                        Cancel
+                    </Button>
+                    <Button
+                        type="primary"
+                        size="large"
+                        className="flex-1 rounded-xl h-12 font-semibold bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700"
+                        onClick={handleWithdraw}
+                        loading={loading}
+                        disabled={
+                            loading ||
+                            !hasBankAccount ||
+                            !amount ||
+                            totalCost > currentBalance ||
+                            numAmount <= 0
+                        }
+                    >
+                        {loading ? 'Processing...' : 'Withdraw'}
+                    </Button>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 }

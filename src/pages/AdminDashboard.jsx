@@ -765,8 +765,8 @@ export default function AdminDashboard() {
     const [selectedStory, setSelectedStory] = useState(null);
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [processingWithdrawal, setProcessingWithdrawal] = useState(null);
+    const [retryingWithdrawal, setRetryingWithdrawal] = useState(null);
     
-    // START: ADDED FOR FLAGGED DEPOSITS
     const [flaggedDeposits, setFlaggedDeposits] = useState([]);
     const [flaggedLoading, setFlaggedLoading] = useState(false);
     const [showResolveModal, setShowResolveModal] = useState(false);
@@ -776,7 +776,6 @@ export default function AdminDashboard() {
     const [showReverseModal, setShowReverseModal] = useState(false);
     const [reverseReason, setReverseReason] = useState('');
     const [reversingFlagged, setReversingFlagged] = useState(false);
-    // END: ADDED FOR FLAGGED DEPOSITS
 
     useEffect(() => {
         if (user) {
@@ -954,18 +953,42 @@ export default function AdminDashboard() {
         }
     };
 
+    // ✅ FIXED: Approve withdrawal with better error handling
     const approveWithdrawal = async (requestId) => {
         setProcessingWithdrawal(requestId);
         
         try {
-            const approveResponse = await api.post(`/admin/withdrawals/${requestId}/approve`);
+            const response = await api.post(`/admin/withdrawals/${requestId}/approve`);
             toast.success('Withdrawal approved successfully!');
             await loadAdminData();
         } catch (error) {
-            const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
+            const errorMessage = error.response?.data?.details || error.response?.data?.error || error.message || 'Unknown error';
             toast.error(`Failed: ${errorMessage}`);
+            console.error('Withdrawal approval failed:', {
+                requestId,
+                error: errorMessage,
+                fullError: error
+            });
+            // ✅ Reload to show updated status (will show as 'failed')
+            await loadAdminData();
         } finally {
             setProcessingWithdrawal(null);
+        }
+    };
+
+    // ✅ NEW: Retry failed withdrawal
+    const retryWithdrawal = async (requestId) => {
+        setRetryingWithdrawal(requestId);
+        
+        try {
+            await api.post(`/admin/withdrawals/${requestId}/retry`);
+            toast.success('Withdrawal reset to pending for retry');
+            await loadAdminData();
+        } catch (error) {
+            const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
+            toast.error(`Failed to retry: ${errorMessage}`);
+        } finally {
+            setRetryingWithdrawal(null);
         }
     };
 
@@ -1037,25 +1060,25 @@ export default function AdminDashboard() {
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Header with Brand Color */}
+                {/* Header */}
                 <div className="flex justify-between items-center mb-8">
-    <div>
-        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">Manage platform operations and compliance</p>
-    </div>
-    <div className="flex items-center gap-4">
-        <NotificationBell />  {/* ADD THIS LINE */}
-        <Link to="/admin-management" className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
-            Manage Admins
-        </Link>
-    </div>
-</div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+                        <p className="text-sm text-gray-500 mt-1">Manage platform operations and compliance</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <NotificationBell />
+                        <Link to="/admin-management" className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Manage Admins
+                        </Link>
+                    </div>
+                </div>
                 
-                {/* Navigation Tabs with Brand Color */}
+                {/* Navigation Tabs */}
                 <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-200">
                     {[
                         { id: 'stats', label: 'Overview', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-                        { id: 'withdrawals', label: 'Withdrawals', count: pendingWithdrawals.length, icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z' },
+                        { id: 'withdrawals', label: 'Withdrawals', count: pendingWithdrawals.filter(w => w.status === 'pending').length, icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z' },
                         { id: 'users', label: 'Customers', count: users.length, icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
                         { id: 'stories', label: 'Stories', count: pendingStories.length, icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z' },
                         { id: 'flagged', label: 'Flagged', count: flaggedDeposits.filter(f => f.status === 'review_needed' || !f.status).length, icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' }
@@ -1196,15 +1219,21 @@ export default function AdminDashboard() {
                 )}
                 
                 {/* ============ WITHDRAWALS TAB ============ */}
+           {/* ============ WITHDRAWALS TAB - UPDATED ============ */}
                 {activeTab === 'withdrawals' && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-between mb-6">
                             <div>
-                                <h2 className="text-lg font-semibold text-gray-900">Pending Withdrawal Requests</h2>
+                                <h2 className="text-lg font-semibold text-gray-900">Withdrawal Requests</h2>
                                 <p className="text-sm text-gray-500 mt-1">Review and process customer withdrawal requests</p>
                             </div>
-                            <div className="px-3 py-1 rounded-lg text-sm font-medium bg-spark-50 text-spark-600">
-                                {pendingWithdrawals.length} Pending
+                            <div className="flex gap-2">
+                                <span className="px-3 py-1 rounded-lg text-sm font-medium bg-yellow-50 text-yellow-600">
+                                    Pending: {pendingWithdrawals.filter(w => w.status === 'pending').length}
+                                </span>
+                                <span className="px-3 py-1 rounded-lg text-sm font-medium bg-red-50 text-red-600">
+                                    Failed: {pendingWithdrawals.filter(w => w.status === 'failed').length}
+                                </span>
                             </div>
                         </div>
                         
@@ -1215,7 +1244,7 @@ export default function AdminDashboard() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
-                                <h3 className="text-lg font-medium text-gray-900 mb-1">No Pending Withdrawals</h3>
+                                <h3 className="text-lg font-medium text-gray-900 mb-1">No Withdrawals</h3>
                                 <p className="text-gray-500">All withdrawal requests have been processed</p>
                             </div>
                         ) : (
@@ -1232,23 +1261,57 @@ export default function AdminDashboard() {
                                                 <div>
                                                     <p className="font-semibold text-gray-900">{w.userName}</p>
                                                     <p className="text-xs text-gray-500 mt-0.5">Request ID: {w.id}</p>
+                                                    {/* ✅ Status Badge */}
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
+                                                        w.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                        w.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                                        w.status === 'failed' ? 'bg-red-100 text-red-800' :
+                                                        'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                        {w.status || 'pending'}
+                                                    </span>
+                                                    {w.error && (
+                                                        <p className="text-xs text-red-600 mt-1">Error: {w.error}</p>
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2">
+                                            {/* ✅ Action Buttons based on status */}
+                                            {w.status === 'pending' && (
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => approveWithdrawal(w.id)}
+                                                        disabled={processingWithdrawal === w.id}
+                                                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50"
+                                                    >
+                                                        {processingWithdrawal === w.id ? 'Processing...' : 'Approve'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => rejectWithdrawal(w.id)}
+                                                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {w.status === 'failed' && (
                                                 <button
-                                                    onClick={() => approveWithdrawal(w.id)}
-                                                    disabled={processingWithdrawal === w.id}
-                                                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50"
+                                                    onClick={() => retryWithdrawal(w.id)}
+                                                    disabled={retryingWithdrawal === w.id}
+                                                    className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50"
                                                 >
-                                                    {processingWithdrawal === w.id ? 'Processing...' : 'Approve'}
+                                                    {retryingWithdrawal === w.id ? 'Retrying...' : '🔄 Retry'}
                                                 </button>
-                                                <button
-                                                    onClick={() => rejectWithdrawal(w.id)}
-                                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all"
-                                                >
-                                                    Reject
-                                                </button>
-                                            </div>
+                                            )}
+                                            {w.status === 'approved' && (
+                                                <span className="px-4 py-2 bg-green-100 text-green-700 text-sm font-medium rounded-xl">
+                                                    ✅ Approved
+                                                </span>
+                                            )}
+                                            {w.status === 'rejected' && (
+                                                <span className="px-4 py-2 bg-red-100 text-red-700 text-sm font-medium rounded-xl">
+                                                    ❌ Rejected
+                                                </span>
+                                            )}
                                         </div>
                                         
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
