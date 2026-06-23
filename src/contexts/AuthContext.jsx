@@ -894,7 +894,6 @@
 //         </AuthContext.Provider>
 //     );
 // }
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { 
     auth, 
@@ -1015,45 +1014,34 @@ export function AuthProvider({ children }) {
                     bvn: null
                 };
                 
-                if (referralCode) {
-                    const usersRef = collection(db, 'users');
-                    const q = query(usersRef, where('referralCode', '==', referralCode));
-                    const querySnapshot = await getDocs(q);
-                    
-                    if (!querySnapshot.empty) {
-                        const referrer = querySnapshot.docs[0];
-                        newUser.referredBy = referrer.id;
-                        
-                        // ✅ New user gets ₦50 instantly
-                        newUser.currentBalance = 50;
-                        newUser.totalPrincipalSaved = 50;
-                        
-                        // Create referral record
-                        await addDoc(collection(db, 'referrals'), {
-                            referrerId: referrer.id,
-                            referredId: firebaseUser.uid,
-                            newUserBonus: 50,
-                            referrerBonus: 500,
-                            newUserPaid: true,
-                            referrerPaid: false,
-                            createdAt: new Date()
-                        });
-                        
-                        // Record transaction for new user bonus
-                        await addDoc(collection(db, 'transactions'), {
-                            userId: firebaseUser.uid,
-                            type: 'referral_bonus',
-                            amount: 50,
-                            description: 'Referral sign-up bonus from ' + referrer.data().fullName,
-                            balanceAfter: 50,
-                            createdAt: new Date()
-                        });
-                        
-                        console.log(`✅ New user ${firebaseUser.uid} got ₦50 referral bonus from ${referrer.id}`);
-                    }
-                }
-                
                 await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+            }
+            
+            // ✅ Only call backend - server handles ALL database operations
+            if (referralCode) {
+                try {
+                    const token = await firebaseUser.getIdToken();
+                    const response = await fetch(`${import.meta.env.VITE_API_URL}/users/process-referral`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ referralCode })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success && data.bonus) {
+                        toast.success(`🎉 You got ₦${data.bonus} referral bonus!`);
+                        await refreshUserData();
+                    } else if (data.alreadyReferred) {
+                        console.log('User already has a referrer');
+                    } else if (!data.success && data.error) {
+                        toast.error(data.error);
+                    }
+                } catch (error) {
+                    console.error('Failed to process referral:', error);
+                }
             }
             
             toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
@@ -1123,45 +1111,34 @@ export function AuthProvider({ children }) {
                     bvn: null
                 };
                 
-                if (referralCode) {
-                    const usersRef = collection(db, 'users');
-                    const q = query(usersRef, where('referralCode', '==', referralCode));
-                    const querySnapshot = await getDocs(q);
-                    
-                    if (!querySnapshot.empty) {
-                        const referrer = querySnapshot.docs[0];
-                        newUser.referredBy = referrer.id;
-                        
-                        // ✅ New user gets ₦50 instantly
-                        newUser.currentBalance = 50;
-                        newUser.totalPrincipalSaved = 50;
-                        
-                        // Create referral record
-                        await addDoc(collection(db, 'referrals'), {
-                            referrerId: referrer.id,
-                            referredId: firebaseUser.uid,
-                            newUserBonus: 50,
-                            referrerBonus: 500,
-                            newUserPaid: true,
-                            referrerPaid: false,
-                            createdAt: new Date()
-                        });
-                        
-                        // Record transaction for new user bonus
-                        await addDoc(collection(db, 'transactions'), {
-                            userId: firebaseUser.uid,
-                            type: 'referral_bonus',
-                            amount: 50,
-                            description: 'Referral sign-up bonus from ' + referrer.data().fullName,
-                            balanceAfter: 50,
-                            createdAt: new Date()
-                        });
-                        
-                        console.log(`✅ New user ${firebaseUser.uid} got ₦50 referral bonus from ${referrer.id}`);
-                    }
-                }
-                
                 await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+            }
+            
+            // ✅ Only call backend - server handles ALL database operations
+            if (referralCode) {
+                try {
+                    const token = await firebaseUser.getIdToken();
+                    const response = await fetch(`${import.meta.env.VITE_API_URL}/users/process-referral`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ referralCode })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success && data.bonus) {
+                        toast.success(`🎉 You got ₦${data.bonus} referral bonus!`);
+                        await refreshUserData();
+                    } else if (data.alreadyReferred) {
+                        console.log('User already has a referrer');
+                    } else if (!data.success && data.error) {
+                        toast.error(data.error);
+                    }
+                } catch (error) {
+                    console.error('Failed to process referral:', error);
+                }
             }
             
             toast.success(`👋 Welcome to TheSpark, ${firstName}!`);

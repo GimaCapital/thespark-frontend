@@ -4,6 +4,7 @@ import { api, setAuthToken } from '../services/api';
 import HeaderMissionCard from '../components/Common/HeaderMissionCard';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { REFERRAL_CONSTANTS } from '../utils/referralConstants';
 
 export default function Referral() {
     const { user } = useAuth();
@@ -53,7 +54,7 @@ export default function Referral() {
 💰 Start with as little as ₦100/day
 📈 Track your progress every 21-day cycle
 🎓 Graduate in 6 months with real wealth skills
-🤝 Earn ₦500 when your friends join
+🤝 Earn ₦${REFERRAL_CONSTANTS.REFERRER_BONUS} when your friends join
 
 Use my referral link to sign up:
 ${referralLink}
@@ -139,7 +140,7 @@ TheSpark — One spark. One fire. One wealthy Nigeria. 🇳🇬`;
                 }}>
                     <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🎁</div>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: '0 0 0.5rem 0' }}>
-                        Get ₦500 Per Referral
+                        Get ₦{REFERRAL_CONSTANTS.REFERRER_BONUS} Per Referral
                     </h2>
                     <p style={{ fontSize: '0.8rem', opacity: 0.9, margin: 0 }}>
                         Invite friends to join TheSpark and earn bonuses when they start saving!
@@ -147,49 +148,49 @@ TheSpark — One spark. One fire. One wealthy Nigeria. 🇳🇬`;
                 </div>
 
                 {/* Referral Code Card */}
-            <div style={{ backgroundColor: 'white', borderRadius: '1rem', padding: '1.5rem', border: '1px solid #F0F0F0', marginBottom: '1rem', textAlign: 'center' }}>
-                
-                {/* Referral Link - Just the code (no URL) */}
-                <div style={{ 
-                    backgroundColor: '#FFF4E6', 
-                    padding: '1rem', 
-                    borderRadius: '0.75rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '1rem'
-                }}>
-                    <code style={{ 
-                        fontSize: '1.5rem', 
-                        fontWeight: '700', 
-                        color: '#FF8A00', 
-                        letterSpacing: '2px',
-                        flex: 1,
-                        textAlign: 'left'
+                <div style={{ backgroundColor: 'white', borderRadius: '1rem', padding: '1.5rem', border: '1px solid #F0F0F0', marginBottom: '1rem', textAlign: 'center' }}>
+                    
+                    {/* Referral Link - Just the code (no URL) */}
+                    <div style={{ 
+                        backgroundColor: '#FFF4E6', 
+                        padding: '1rem', 
+                        borderRadius: '0.75rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '1rem'
                     }}>
-                        {referralData?.referralCode || 'LOADING'}
-                    </code>
-                    <button
-                        onClick={() => {
-                            const shareText = getShareMessage();
-                            copyToClipboard(shareText, 'Referral message copied!');
-                        }}
-                        style={{
-                            backgroundColor: '#FF8A00',
-                            color: 'white',
-                            border: 'none',
-                            padding: '0.5rem 1rem',
-                            borderRadius: '0.5rem',
-                            cursor: 'pointer',
-                            fontSize: '0.8rem',
-                            fontWeight: '600',
-                            whiteSpace: 'nowrap'
-                        }}
-                    >
-                        📋 Copy
-                    </button>
+                        <code style={{ 
+                            fontSize: '1.5rem', 
+                            fontWeight: '700', 
+                            color: '#FF8A00', 
+                            letterSpacing: '2px',
+                            flex: 1,
+                            textAlign: 'left'
+                        }}>
+                            {referralData?.referralCode || 'LOADING'}
+                        </code>
+                        <button
+                            onClick={() => {
+                                const shareText = getShareMessage();
+                                copyToClipboard(shareText, 'Referral message copied!');
+                            }}
+                            style={{
+                                backgroundColor: '#FF8A00',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '0.5rem',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem',
+                                fontWeight: '600',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            📋 Copy
+                        </button>
+                    </div>
                 </div>
-            </div>
 
                 {/* Share Options */}
                 <div style={{ backgroundColor: 'white', borderRadius: '1rem', padding: '1.5rem', border: '1px solid #F0F0F0', marginBottom: '1rem' }}>
@@ -305,7 +306,9 @@ TheSpark — One spark. One fire. One wealthy Nigeria. 🇳🇬`;
                             <div style={{ width: '2rem', height: '2rem', backgroundColor: '#FFF4E6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF8A00', fontWeight: 'bold' }}>3</div>
                             <div>
                                 <p style={{ fontSize: '0.85rem', fontWeight: '500', margin: 0 }}>Earn Bonuses</p>
-                                <p style={{ fontSize: '0.7rem', color: '#999', margin: '0.25rem 0 0 0' }}>Get ₦500 when any referral completes their first cycle</p>
+                                <p style={{ fontSize: '0.7rem', color: '#999', margin: '0.25rem 0 0 0' }}>
+                                    Get ₦{REFERRAL_CONSTANTS.REFERRER_BONUS} when any referral completes their first cycle
+                                </p>
                             </div>
                         </div>
                     </div>
