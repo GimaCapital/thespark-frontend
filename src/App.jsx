@@ -139,6 +139,7 @@ import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import BvnCollection from './components/BvnCollection';
 import BankAccountPage from './pages/BankAccountPage';
+import Investor from './pages/thesparkprivateinvestment';
 
 // BVN Protection Route Component
 function BvnProtectedRoute({ children }) {
@@ -177,6 +178,7 @@ function AppContent() {
                 <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/how-it-works" element={<HowItWorks />} />
+                    <Route path="/investor" element={<Investor />} />
                     <Route path="/7-rules" element={<The7Rules />} />
                     <Route path="/success-stories" element={<SuccessStories />} />
                     <Route path="/faq" element={<FAQ />} />
