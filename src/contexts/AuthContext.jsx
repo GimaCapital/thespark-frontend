@@ -894,6 +894,9 @@
 //         </AuthContext.Provider>
 //     );
 // }
+
+
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { 
     auth, 
@@ -1015,7 +1018,27 @@ export function AuthProvider({ children }) {
                 };
                 
                 await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+
+                    // ✅ Send welcome email directly here
+                try {
+                    const token = await firebaseUser.getIdToken();
+                    await fetch(`${import.meta.env.VITE_API_URL}/users/send-welcome-email`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            email: firebaseUser.email,
+                            fullName: firebaseUser.displayName || 'Saver'
+                        })
+                    });
+                    console.log('✅ Welcome email sent');
+                } catch (emailError) {
+                    console.error('Failed to send welcome email:', emailError);
+                }
             }
+                
             
             // ✅ Only call backend - server handles ALL database operations
             if (referralCode) {

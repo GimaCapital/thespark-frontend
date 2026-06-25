@@ -1048,6 +1048,21 @@ export default function AdminDashboard() {
         }
     };
 
+    // Add this function in the WITHDRAWAL FUNCTIONS section
+    const deleteWithdrawal = async (requestId) => {
+        if (!window.confirm('Delete this withdrawal?')) return;
+        
+        try {
+            const idToken = await user.getIdToken();
+            setAuthToken(idToken);
+            await api.delete(`/admin/withdrawals/${requestId}`);
+            toast.success('Deleted successfully');
+            loadAdminData();
+        } catch (error) {
+            toast.error('Failed to delete');
+        }
+    };
+
     // ============ ADMIN MANAGEMENT FUNCTIONS ============
     const makeAdmin = async (userId, fullName) => {
         if (!window.confirm(`Make ${fullName} an admin?`)) return;
@@ -1435,7 +1450,7 @@ const sendInvestorEmail = async (interest) => {
                                 </span>
                             </div>
                         </div>
-                        
+
                         {pendingWithdrawals.length === 0 ? (
                             <div className="bg-white rounded-2xl p-12 text-center">
                                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1458,7 +1473,15 @@ const sendInvestorEmail = async (interest) => {
                                                     </svg>
                                                 </div>
                                                 <div>
-                                                    <p className="font-semibold text-gray-900">{w.userName}</p>
+                                                    {/* ✅ FIX: Show user info with ID if deleted */}
+                                                   <p className="font-semibold text-gray-900">
+                                                        {w.userName && w.userName !== 'Deleted User' 
+                                                            ? `${w.userName} (${w.userId})` 
+                                                            : w.userId 
+                                                                ? `👻 Deleted User (${w.userId})` 
+                                                                : 'Unknown User'
+                                                        }
+                                                    </p>
                                                     <p className="text-xs text-gray-500 mt-0.5">Request ID: {w.id}</p>
                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
                                                         w.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -1491,13 +1514,21 @@ const sendInvestorEmail = async (interest) => {
                                                 </div>
                                             )}
                                             {w.status === 'failed' && (
-                                                <button
-                                                    onClick={() => retryWithdrawal(w.id)}
-                                                    disabled={retryingWithdrawal === w.id}
-                                                    className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50"
-                                                >
-                                                    {retryingWithdrawal === w.id ? 'Retrying...' : '🔄 Retry'}
-                                                </button>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => retryWithdrawal(w.id)}
+                                                        disabled={retryingWithdrawal === w.id}
+                                                        className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50"
+                                                    >
+                                                        {retryingWithdrawal === w.id ? 'Retrying...' : '🔄 Retry'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteWithdrawal(w.id)}
+                                                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-xl transition-all"
+                                                    >
+                                                        🗑️ Delete
+                                                    </button>
+                                                </div>
                                             )}
                                             {w.status === 'approved' && (
                                                 <span className="px-4 py-2 bg-green-100 text-green-700 text-sm font-medium rounded-xl">
