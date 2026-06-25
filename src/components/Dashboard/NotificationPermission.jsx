@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api, setAuthToken } from '../../services/api';
 import { requestNotificationPermission, onForegroundMessage } from '../../services/firebase';
@@ -9,22 +9,39 @@ export default function NotificationPermission() {
     const [permissionStatus, setPermissionStatus] = useState('default');
     const [showPrompt, setShowPrompt] = useState(false);
     const [showBlockedMessage, setShowBlockedMessage] = useState(false);
-    
-    useEffect(() => {
-        // Check current permission status
+    const checkInterval = useRef(null);
+
+    const checkPermissionStatus = () => {
         if ('Notification' in window) {
-            setPermissionStatus(Notification.permission);
+            const status = Notification.permission;
+            setPermissionStatus(status);
             
-            if (Notification.permission === 'default') {
+            if (status === 'default') {
                 setShowPrompt(true);
                 setShowBlockedMessage(false);
-            } else if (Notification.permission === 'denied') {
-                // ✅ Show helpful message for blocked users
+            } else if (status === 'granted') {
+                setShowPrompt(false);
+                setShowBlockedMessage(false);
+            } else if (status === 'denied') {
                 setShowBlockedMessage(true);
                 setShowPrompt(false);
             }
         }
-        
+    };
+
+    useEffect(() => {
+        // Check current permission status
+        checkPermissionStatus();
+
+        // Listen for visibility change (when user returns from browser popup)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                checkPermissionStatus();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         // Listen for foreground messages
         onForegroundMessage((payload) => {
             toast.success(payload.notification?.title, {
@@ -32,34 +49,62 @@ export default function NotificationPermission() {
                 position: 'top-right'
             });
         });
-    }, [user]); // ✅ Re-run when user logs in
-    
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            if (checkInterval.current) {
+                clearInterval(checkInterval.current);
+            }
+        };
+    }, [user]);
+
     const saveFcmToken = async (token) => {
         try {
             const idToken = await user.getIdToken();
             setAuthToken(idToken);
             await api.post('/users/save-fcm-token', { fcmToken: token });
-            setPermissionStatus('granted');
-            setShowPrompt(false);
-            setShowBlockedMessage(false);
+            checkPermissionStatus();
             toast.success('Notifications enabled! You will receive daily lessons.');
         } catch (error) {
             console.error('Failed to save FCM token:', error);
         }
     };
-    
+
     const enableNotifications = async () => {
+        toast.info('Please allow notifications when prompted by your browser.', {
+            duration: 5000,
+            position: 'top-center'
+        });
+
         await requestNotificationPermission(user?.uid, saveFcmToken);
+
+        setTimeout(() => {
+            checkPermissionStatus();
+        }, 1000);
+
+        if (checkInterval.current) {
+            clearInterval(checkInterval.current);
+        }
+        let attempts = 0;
+        checkInterval.current = setInterval(() => {
+            attempts++;
+            checkPermissionStatus();
+            if (attempts >= 5 || Notification.permission !== 'default') {
+                clearInterval(checkInterval.current);
+                checkInterval.current = null;
+            }
+        }, 500);
     };
-    
+
     const remindLater = () => {
         setShowPrompt(false);
+        // ✅ "Later" just hides it for now - shows again on refresh
         toast.info('You can enable notifications anytime from settings.', {
             duration: 3000,
             position: 'top-right'
         });
     };
-    
+
     const handleOpenBrowserSettings = () => {
         if (navigator.userAgent.includes('Chrome')) {
             window.open('chrome://settings/content/notifications', '_blank');
@@ -71,8 +116,8 @@ export default function NotificationPermission() {
             toast.info('Check your browser settings for notification permissions.');
         }
     };
-    
-    // ✅ Show blocked message
+
+    // Show blocked message
     if (showBlockedMessage) {
         return (
             <div className="fixed top-4 left-0 right-0 z-[9999] px-4 pointer-events-none">
@@ -103,12 +148,12 @@ export default function NotificationPermission() {
             </div>
         );
     }
-    
+
     // Show normal prompt
     if (!showPrompt || permissionStatus !== 'default') {
         return null;
     }
-    
+
     return (
         <div className="fixed top-4 left-0 right-0 z-[9999] px-4 pointer-events-none">
             <div className="max-w-md mx-auto pointer-events-auto">
