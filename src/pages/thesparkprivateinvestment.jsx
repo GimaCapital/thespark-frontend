@@ -1280,6 +1280,7 @@ export default function Investor() {
                     </div>
 
                     {/* Investment Structure */}
+                    {/* Investment Structure */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
                         <h3 className="font-semibold text-gray-900 mb-4">How It Works</h3>
                         <div className="space-y-4">
@@ -1302,6 +1303,69 @@ export default function Investor() {
                                 <div>
                                     <p className="font-medium text-gray-900">Your Investment</p>
                                     <p className="text-sm text-gray-500">Invest ₦100,000 or more. The more you invest, the more you earn.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ✅ ADD THIS SECTION HERE */}
+                    <div className="bg-gradient-to-r from-spark-50 to-amber-50 rounded-xl shadow-sm border border-spark-100 p-6 mb-8">
+                        <h3 className="font-semibold text-gray-900 mb-4">🌟 Investor Benefits</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex items-start gap-3 bg-white rounded-lg p-3 shadow-sm">
+                                <span className="text-2xl">💰</span>
+                                <div>
+                                    <p className="font-medium text-gray-900 text-sm">Referral Bonus</p>
+                                    <p className="text-xs text-gray-500">Earn ₦1,000 per referred investor</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3 bg-white rounded-lg p-3 shadow-sm">
+                                <span className="text-2xl">📊</span>
+                                <div>
+                                    <p className="font-medium text-gray-900 text-sm">Monthly Reports</p>
+                                    <p className="text-xs text-gray-500">Private performance reports</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3 bg-white rounded-lg p-3 shadow-sm">
+                                <span className="text-2xl">👑</span>
+                                <div>
+                                    <p className="font-medium text-gray-900 text-sm">VIP Status</p>
+                                    <p className="text-xs text-gray-500">Special investor badge</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3 bg-white rounded-lg p-3 shadow-sm">
+                                <span className="text-2xl">🎯</span>
+                                <div>
+                                    <p className="font-medium text-gray-900 text-sm">Early Access</p>
+                                    <p className="text-xs text-gray-500">First access to new rounds</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3 bg-white rounded-lg p-3 shadow-sm">
+                                <span className="text-2xl">📞</span>
+                                <div>
+                                    <p className="font-medium text-gray-900 text-sm">Direct Access</p>
+                                    <p className="text-xs text-gray-500">Direct contact with the team</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3 bg-white rounded-lg p-3 shadow-sm">
+                                <span className="text-2xl">🏆</span>
+                                <div>
+                                    <p className="font-medium text-gray-900 text-sm">Investor Certificate</p>
+                                    <p className="text-xs text-gray-500">Official certificate of investment</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3 bg-white rounded-lg p-3 shadow-sm">
+                                <span className="text-2xl">🔄</span>
+                                <div>
+                                    <p className="font-medium text-gray-900 text-sm">Priority Withdrawals</p>
+                                    <p className="text-xs text-gray-500">Faster withdrawal processing</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3 bg-white rounded-lg p-3 shadow-sm">
+                                <span className="text-2xl">👥</span>
+                                <div>
+                                    <p className="font-medium text-gray-900 text-sm">Private Community</p>
+                                    <p className="text-xs text-gray-500">Exclusive investor group</p>
                                 </div>
                             </div>
                         </div>
