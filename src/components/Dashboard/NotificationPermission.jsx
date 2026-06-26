@@ -12,6 +12,9 @@ export default function NotificationPermission() {
     const [showGrantedMessage, setShowGrantedMessage] = useState(false);
     const [loading, setLoading] = useState(false);
     const checkInterval = useRef(null);
+    const grantedTimeoutRef = useRef(null);
+    const toastIdRef = useRef(null);
+    const grantedShownRef = useRef(false);
 
     const checkPermissionStatus = () => {
         if ('Notification' in window) {
@@ -25,11 +28,25 @@ export default function NotificationPermission() {
             } else if (status === 'granted') {
                 setShowPrompt(false);
                 setShowBlockedMessage(false);
-                setShowGrantedMessage(true);
+                if (!grantedShownRef.current) {
+                    setShowGrantedMessage(true);
+                    grantedShownRef.current = true;
+                    
+                    if (grantedTimeoutRef.current) {
+                        clearTimeout(grantedTimeoutRef.current);
+                    }
+                    grantedTimeoutRef.current = setTimeout(() => {
+                        setShowGrantedMessage(false);
+                    }, 5000);
+                } else {
+                    setShowGrantedMessage(false);
+                }
+                setLoading(false);
             } else if (status === 'denied') {
                 setShowBlockedMessage(true);
                 setShowPrompt(false);
                 setShowGrantedMessage(false);
+                setLoading(false);
             }
         }
     };
@@ -47,8 +64,12 @@ export default function NotificationPermission() {
 
         onForegroundMessage((payload) => {
             toast.success(payload.notification?.title, {
+                id: 'foreground-notification',
                 duration: 5000,
-                position: 'bottom-right'  // ✅ Changed to bottom-right
+                position: 'top-right',
+                style: {
+                    zIndex: 99999,
+                }
             });
         });
 
@@ -57,16 +78,40 @@ export default function NotificationPermission() {
             if (checkInterval.current) {
                 clearInterval(checkInterval.current);
             }
+            if (grantedTimeoutRef.current) {
+                clearTimeout(grantedTimeoutRef.current);
+            }
+            if (toastIdRef.current) {
+                toast.dismiss(toastIdRef.current);
+            }
         };
     }, [user]);
+
+    const showToast = (type, message, options = {}) => {
+        if (toastIdRef.current) {
+            toast.dismiss(toastIdRef.current);
+        }
+        
+        const toastFn = type === 'success' ? toast.success : 
+                       type === 'error' ? toast.error : 
+                       toast;
+        
+        toastIdRef.current = toastFn(message, {
+            id: 'notification-toast',
+            duration: 3000,
+            position: 'top-right',
+            style: {
+                zIndex: 99999,
+            },
+            ...options
+        });
+    };
 
     const saveFcmToken = async (token) => {
         try {
             if (!user) {
                 console.error('❌ No user logged in');
-                toast.error('Please login first', {
-                    position: 'bottom-right'  // ✅ Changed to bottom-right
-                });
+                showToast('error', 'Please login first');
                 return;
             }
             
@@ -74,14 +119,10 @@ export default function NotificationPermission() {
             setAuthToken(idToken);
             await api.post('/users/save-fcm-token', { fcmToken: token });
             checkPermissionStatus();
-            toast.success('✅ Notifications enabled!', {
-                position: 'bottom-right'  // ✅ Changed to bottom-right
-            });
+            showToast('success', '✅ Notifications enabled successfully!');
         } catch (error) {
             console.error('Failed to save FCM token:', error);
-            toast.error('Failed to save notification settings.', {
-                position: 'bottom-right'  // ✅ Changed to bottom-right
-            });
+            showToast('error', 'Failed to enable notifications. Please try again.');
         }
     };
 
@@ -90,18 +131,20 @@ export default function NotificationPermission() {
         
         try {
             if (!user) {
-                toast.error('Please login first', {
-                    position: 'bottom-right'  // ✅ Changed to bottom-right
-                });
+                showToast('error', 'Please login first');
                 setLoading(false);
                 return;
             }
 
             if (Notification.permission === 'granted') {
-                toast.success('✅ Already enabled!', {
-                    position: 'bottom-right'  // ✅ Changed to bottom-right
-                });
-                setShowGrantedMessage(true);
+                showToast('success', '✅ Notifications already enabled!');
+                if (!grantedShownRef.current) {
+                    setShowGrantedMessage(true);
+                    grantedShownRef.current = true;
+                    setTimeout(() => {
+                        setShowGrantedMessage(false);
+                    }, 5000);
+                }
                 setShowPrompt(false);
                 setLoading(false);
                 return;
@@ -110,43 +153,50 @@ export default function NotificationPermission() {
             if (Notification.permission === 'denied') {
                 setShowBlockedMessage(true);
                 setShowPrompt(false);
-                toast.error('Notifications are blocked.', {
-                    position: 'bottom-right'  // ✅ Changed to bottom-right
-                });
+                showToast('error', 'Notifications are blocked. Enable them in browser settings.');
                 setLoading(false);
                 return;
             }
             
-            // ✅ Toast at bottom-right so it doesn't hide behind the banner
-            toast('🔔 Please allow notifications when prompted.', {
+            showToast('info', '🔔 Please allow notifications when prompted.', {
                 duration: 5000,
-                position: 'bottom-right'  // ✅ Changed from top-center to bottom-right
             });
 
             const result = await requestNotificationPermission(user?.uid, saveFcmToken);
 
             if (result) {
                 setShowPrompt(false);
-                setShowGrantedMessage(true);
-                toast.success('✅ Notifications enabled!', {
-                    position: 'bottom-right'
-                });
+                if (!grantedShownRef.current) {
+                    setShowGrantedMessage(true);
+                    grantedShownRef.current = true;
+                    setTimeout(() => {
+                        setShowGrantedMessage(false);
+                    }, 5000);
+                }
+                showToast('success', '✅ Notifications enabled successfully!');
             } else {
                 if (Notification.permission === 'denied') {
                     setShowBlockedMessage(true);
                     setShowPrompt(false);
+                } else if (Notification.permission === 'granted') {
+                    setShowPrompt(false);
+                    if (!grantedShownRef.current) {
+                        setShowGrantedMessage(true);
+                        grantedShownRef.current = true;
+                        setTimeout(() => {
+                            setShowGrantedMessage(false);
+                        }, 5000);
+                    }
+                    showToast('success', '✅ Notifications enabled successfully!');
                 } else {
-                    toast('You can enable notifications later.', {
+                    showToast('info', 'Enable notifications anytime from your profile settings.', {
                         duration: 3000,
-                        position: 'bottom-right'
                     });
                 }
             }
         } catch (error) {
             console.error('❌ Notification error:', error);
-            toast.error('Failed to enable notifications.', {
-                position: 'bottom-right'
-            });
+            showToast('error', 'Failed to enable notifications. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -154,36 +204,55 @@ export default function NotificationPermission() {
 
     const remindLater = () => {
         setShowPrompt(false);
-        toast('You can enable anytime from settings.', {
+        showToast('info', 'Enable notifications anytime from your profile settings.', {
             duration: 3000,
-            position: 'bottom-right'  // ✅ Changed to bottom-right
         });
     };
 
+    // ✅ Updated with Opera, Edge, Brave support
     const handleOpenBrowserSettings = () => {
-        if (navigator.userAgent.includes('Chrome')) {
+        const userAgent = navigator.userAgent.toLowerCase();
+        
+        // Chrome (but not Edge or Opera)
+        if (userAgent.includes('chrome') && !userAgent.includes('edg') && !userAgent.includes('opr')) {
             window.open('chrome://settings/content/notifications', '_blank');
-        } else if (navigator.userAgent.includes('Firefox')) {
+        } 
+        // Firefox
+        else if (userAgent.includes('firefox')) {
             window.open('about:preferences#privacy', '_blank');
-        } else if (navigator.userAgent.includes('Safari')) {
-            toast('Open Safari Preferences > Websites > Notifications', {
+        } 
+        // Safari (not Chrome)
+        else if (userAgent.includes('safari') && !userAgent.includes('chrome')) {
+            showToast('info', 'Open Safari Preferences > Websites > Notifications', {
                 duration: 5000,
-                position: 'bottom-right'
             });
-        } else {
-            toast('Check your browser settings.', {
+        } 
+        // Opera / Opera GX
+        else if (userAgent.includes('opr') || userAgent.includes('opera')) {
+            window.open('opera://settings/content/notifications', '_blank');
+        } 
+        // Microsoft Edge
+        else if (userAgent.includes('edg')) {
+            window.open('edge://settings/content/notifications', '_blank');
+        } 
+        // Brave Browser
+        else if (userAgent.includes('brave')) {
+            window.open('brave://settings/content/notifications', '_blank');
+        } 
+        // Unknown browser
+        else {
+            showToast('info', 'Check your browser settings for notification permissions.', {
                 duration: 5000,
-                position: 'bottom-right'
             });
         }
     };
 
-    // Show already granted message
+    // Show granted message
     if (showGrantedMessage) {
         return (
-            <div className="fixed bottom-4 left-0 right-0 z-[9999] px-4 pointer-events-none">
+            <div className="fixed top-16 left-0 right-0 z-[99999] px-4 pointer-events-none">
                 <div className="max-w-md mx-auto pointer-events-auto">
-                    <div className="bg-green-50 rounded-xl shadow-2xl p-4 border-l-4 border-green-500 animate-slide-up">
+                    <div className="bg-green-50 rounded-xl shadow-2xl p-4 border-l-4 border-green-500 animate-slide-down">
                         <div className="flex items-start gap-3">
                             <div className="text-2xl flex-shrink-0">✅</div>
                             <div className="flex-1 min-w-0">
@@ -192,6 +261,15 @@ export default function NotificationPermission() {
                                     You will receive daily lessons at 6 AM.
                                 </p>
                             </div>
+                            <button
+                                onClick={() => {
+                                    setShowGrantedMessage(false);
+                                    grantedShownRef.current = true;
+                                }}
+                                className="text-green-600 hover:text-green-800 text-sm font-medium flex-shrink-0"
+                            >
+                                ✕
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -202,7 +280,7 @@ export default function NotificationPermission() {
     // Show blocked message
     if (showBlockedMessage) {
         return (
-            <div className="fixed top-4 left-0 right-0 z-[9999] px-4 pointer-events-none">
+            <div className="fixed top-16 left-0 right-0 z-[99999] px-4 pointer-events-none">
                 <div className="max-w-md mx-auto pointer-events-auto">
                     <div className="bg-white rounded-xl shadow-2xl p-4 border-l-4 border-red-500 animate-slide-down">
                         <div className="flex items-start gap-3">
@@ -237,7 +315,7 @@ export default function NotificationPermission() {
     }
 
     return (
-        <div className="fixed top-4 left-0 right-0 z-[9999] px-4 pointer-events-none">
+        <div className="fixed top-16 left-0 right-0 z-[99999] px-4 pointer-events-none">
             <div className="max-w-md mx-auto pointer-events-auto">
                 <div className="bg-white rounded-xl shadow-2xl p-4 border-l-4 border-spark-500 animate-slide-down">
                     <div className="flex items-start gap-3">
@@ -253,18 +331,20 @@ export default function NotificationPermission() {
                                     disabled={loading}
                                     className={`px-4 py-2 text-white text-sm font-semibold rounded-xl transition-all flex-1 min-w-[100px] ${
                                         loading 
-                                            ? 'bg-gray-400 cursor-not-allowed' 
+                                            ? 'bg-gray-400 cursor-not-allowed opacity-50' 
                                             : 'bg-gradient-to-r from-spark-500 to-spark-600 hover:shadow-md'
                                     }`}
                                 >
-                                    {loading ? 'Loading...' : 'Enable 🔔'}
+                                    {loading ? '⏳ Enabling...' : 'Enable 🔔'}
                                 </button>
-                                <button
-                                    onClick={remindLater}
-                                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-all flex-1 min-w-[80px]"
-                                >
-                                    Later
-                                </button>
+                                {!loading && (
+                                    <button
+                                        onClick={remindLater}
+                                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-all flex-1 min-w-[80px]"
+                                    >
+                                        Later
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

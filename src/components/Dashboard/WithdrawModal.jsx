@@ -228,8 +228,9 @@ export default function WithdrawModal({ isOpen, onClose, currentBalance, current
             footer={null}
             width={440}
             centered
-            destroyOnClose
-            maskClosable={!loading}
+            // ✅ Fixed: Using new Ant Design v6 syntax
+            destroyOnHidden={true}
+            mask={{ closable: !loading }}
             className="withdraw-modal"
         >
             <div className="py-1">
