@@ -3,10 +3,8 @@ import toast from 'react-hot-toast';
 
 export default function ReferralCard({ referralCode }) {
     const [copied, setCopied] = useState(false);
-    
-    // Get the app URL from environment variable
-    const appUrl = import.meta.env.VITE_APP_URL || 'https://thespark.money';
-    const referralLink = `${appUrl}/register?ref=${referralCode}`;
+    // const referralLink = `${appUrl}/register?ref=${referralCode}`;
+     const referralLink = `${window.location.origin}/register?ref=${referralCode}`;
     
     // ✅ Your exact message
     const shareMessage = `🔥 Join me on TheSpark — the wealth-building platform that teaches Nigerians how to save, grow, and achieve financial freedom!
@@ -41,11 +39,11 @@ TheSpark — One spark. One fire. One wealthy Nigeria. 🇳🇬`;
     };
     
     // ✅ Reset Notification Button
-    const resetNotifications = () => {
-        localStorage.removeItem('notificationsReminded');
-        window.location.reload();
-        toast.success('Notifications reset!');
-    };
+    // const resetNotifications = () => {
+    //     localStorage.removeItem('notificationsReminded');
+    //     window.location.reload();
+    //     toast.success('Notifications reset!');
+    // };
     
     return (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">

@@ -177,7 +177,6 @@
 //         </div>
 //     );
 // }
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -398,8 +397,8 @@ export default function Profile() {
         { icon: '❓', label: 'FAQ', subtext: 'Frequently asked questions', link: '/faq', showAlways: true },
         { icon: '⭐', label: 'Premium Plans', subtext: 'Upgrade for better rates', link: '/premium', showWhen: !!userData },
         { icon: '🎓', label: 'Graduation', subtext: 'View your certificate', link: '/graduation', showWhen: !!userData && isGraduated },
-        { icon: '📊', label: 'Transaction History', subtext: 'View all your transactions', link: '/transactions', showAlways: true },
-        { icon: '📊', label: ' Manage Bank Account →', subtext: 'View your bank account details', link: '/bank-account', showAlways: true },
+        { icon: '📋', label: 'Transaction History', subtext: 'Track every deposit and withdrawal', link: '/transactions', showAlways: true },
+        { icon: '🏦', label: ' Manage Bank Account →', subtext: 'Add, update, or remove your bank details', link: '/bank-account', showAlways: true },
     ];
     
     const adminItems = [
@@ -669,19 +668,19 @@ export default function Profile() {
                 </div>
                 
                 {/* Referral Code Card */}
-            <div className="card" style={{ marginBottom: '1rem', textAlign: 'center' }}>
-    <div style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.5rem' }}>Your Referral Code</div>
-    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#F97316', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-        {userData?.referralCode || 'SPARK'}
-    </div>
-    <div style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.75rem' }}>
-        Share your code. Get ₦500 when they join!
-    </div>
-    <button 
-        onClick={() => {
-            const referralCode = userData?.referralCode || 'SPARK';
-            const link = `${window.location.origin}/register?ref=${referralCode}`;
-            const message = `🔥 Join me on TheSpark — the wealth-building platform that teaches Nigerians how to save, grow, and achieve financial freedom!
+                <div className="card" style={{ marginBottom: '1rem', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.5rem' }}>Your Referral Code</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#F97316', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                        {userData?.referralCode || 'SPARK'}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.75rem' }}>
+                        Share your code. Get ₦500 when they join!
+                    </div>
+                    <button 
+                        onClick={() => {
+                            const referralCode = userData?.referralCode || 'SPARK';
+                            const link = `${window.location.origin}/register?ref=${referralCode}`;
+                            const message = `🔥 Join me on TheSpark — the wealth-building platform that teaches Nigerians how to save, grow, and achieve financial freedom!
 
 💰 Start with as little as ₦100/day
 📈 Track your progress every 21-day cycle
@@ -692,15 +691,15 @@ Use my referral link to sign up:
 ${link}
 
 TheSpark — One spark. One fire. One wealthy Nigeria. 🇳🇬`;
-            
-            navigator.clipboard.writeText(message);
-            toast.success('Referral message copied!');
-        }} 
-        className="btn btn-primary btn-sm btn-full"
-    >
-        📋 Copy Referral Code
-    </button>
-</div>
+                            
+                            navigator.clipboard.writeText(message);
+                            toast.success('Referral message copied!');
+                        }} 
+                        className="btn btn-primary btn-sm btn-full"
+                    >
+                        📋 Copy Referral Code
+                    </button>
+                </div>
                 
                 {/* Menu Items */}
                 {visibleMenuItems.map((item, index) => (
@@ -745,6 +744,18 @@ TheSpark — One spark. One fire. One wealthy Nigeria. 🇳🇬`;
                     <span>🚪</span>
                     <span>Logout</span>
                 </div>
+
+                {/* ✅ HIDDEN PRIVATE INVESTOR LINK - Only visible to those who know where to look */}
+                <div className="right-3 z-50">
+                <Link 
+                    to="/thespark/private/investor"
+                    className="w-6 h-6 items-center justify-center rounded-full hover:bg-gray-100 transition-all hover:scale-110"
+                    style={{ opacity: 0.1 }}
+                    title="Private Access"
+                >
+                    🔐 Private Access
+                </Link>
+            </div>
             </div>
         </div>
     );

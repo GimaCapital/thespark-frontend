@@ -178,7 +178,7 @@ function AppContent() {
                 <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/how-it-works" element={<HowItWorks />} />
-                    <Route path="/investor" element={<Investor />} />
+                    <Route path="/thespark/private/investor" element={<Investor />} />
                     <Route path="/7-rules" element={<The7Rules />} />
                     <Route path="/success-stories" element={<SuccessStories />} />
                     <Route path="/faq" element={<FAQ />} />
