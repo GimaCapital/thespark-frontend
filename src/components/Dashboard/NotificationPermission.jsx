@@ -4,8 +4,10 @@ import { api, setAuthToken } from '../../services/api';
 import { requestNotificationPermission, onForegroundMessage } from '../../services/firebase';
 import toast from 'react-hot-toast';
 
-// ✅ Add this constant at the top
+// Constants for localStorage
 const TOAST_SHOWN_KEY = 'notificationToastShown';
+const BANNER_SHOWN_KEY = 'notificationBannerShown';
+const BLOCKED_SHOWN_KEY = 'notificationBlockedShown';
 
 export default function NotificationPermission() {
     const { user } = useAuth();
@@ -16,26 +18,65 @@ export default function NotificationPermission() {
     const [loading, setLoading] = useState(false);
     const checkInterval = useRef(null);
     const grantedTimeoutRef = useRef(null);
+    const blockedTimeoutRef = useRef(null); // ✅ NEW
     const toastIdRef = useRef(null);
-    const grantedShownRef = useRef(false);
     
-    // ✅ Check if toast was already shown (persists across refreshes)
     const isToastAlreadyShown = () => {
         return localStorage.getItem(TOAST_SHOWN_KEY) === 'true';
     };
 
-    // ✅ Mark toast as shown in localStorage
     const markToastAsShown = () => {
         localStorage.setItem(TOAST_SHOWN_KEY, 'true');
     };
 
-    // ✅ For existing users: If permission is already granted, set the flag
+    const isBannerAlreadyShown = () => {
+        return localStorage.getItem(BANNER_SHOWN_KEY) === 'true';
+    };
+
+    const markBannerAsShown = () => {
+        localStorage.setItem(BANNER_SHOWN_KEY, 'true');
+    };
+
+    const isBlockedAlreadyShown = () => {
+        return localStorage.getItem(BLOCKED_SHOWN_KEY) === 'true';
+    };
+
+    const markBlockedAsShown = () => {
+        localStorage.setItem(BLOCKED_SHOWN_KEY, 'true');
+    };
+
+    const dismissBlockedMessage = () => {
+        setShowBlockedMessage(false);
+        markBlockedAsShown();
+        if (blockedTimeoutRef.current) {
+            clearTimeout(blockedTimeoutRef.current);
+        }
+    };
+
     const handleExistingUsers = () => {
         if ('Notification' in window && Notification.permission === 'granted') {
-            // ✅ If user already has notifications enabled, mark toast as shown
             if (!isToastAlreadyShown()) {
                 markToastAsShown();
                 console.log('✅ Existing user detected - notification toast flagged as shown');
+            }
+            if (!isBannerAlreadyShown()) {
+                markBannerAsShown();
+                console.log('✅ Existing user detected - notification banner flagged as shown');
+            }
+        }
+        if ('Notification' in window && Notification.permission === 'denied') {
+            if (!isBlockedAlreadyShown()) {
+                setShowBlockedMessage(true);
+                markBlockedAsShown();
+                console.log('✅ Blocked message shown');
+                
+                // ✅ Auto-dismiss blocked message after 8 seconds
+                if (blockedTimeoutRef.current) {
+                    clearTimeout(blockedTimeoutRef.current);
+                }
+                blockedTimeoutRef.current = setTimeout(() => {
+                    setShowBlockedMessage(false);
+                }, 8000);
             }
         }
     };
@@ -52,14 +93,11 @@ export default function NotificationPermission() {
             } else if (status === 'granted') {
                 setShowPrompt(false);
                 setShowBlockedMessage(false);
-                
-                // ✅ For existing users, set the flag so toast doesn't show
                 handleExistingUsers();
                 
-                // ✅ Show granted message only once per browser
-                if (!grantedShownRef.current) {
+                if (!isBannerAlreadyShown()) {
                     setShowGrantedMessage(true);
-                    grantedShownRef.current = true;
+                    markBannerAsShown();
                     
                     if (grantedTimeoutRef.current) {
                         clearTimeout(grantedTimeoutRef.current);
@@ -72,9 +110,20 @@ export default function NotificationPermission() {
                 }
                 setLoading(false);
             } else if (status === 'denied') {
-                setShowBlockedMessage(true);
                 setShowPrompt(false);
                 setShowGrantedMessage(false);
+                if (!isBlockedAlreadyShown()) {
+                    setShowBlockedMessage(true);
+                    markBlockedAsShown();
+                    
+                    // ✅ Auto-dismiss blocked message after 8 seconds
+                    if (blockedTimeoutRef.current) {
+                        clearTimeout(blockedTimeoutRef.current);
+                    }
+                    blockedTimeoutRef.current = setTimeout(() => {
+                        setShowBlockedMessage(false);
+                    }, 8000);
+                }
                 setLoading(false);
             }
         }
@@ -92,12 +141,12 @@ export default function NotificationPermission() {
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         onForegroundMessage((payload) => {
-            toast.success(payload.notification?.title, {
+            toast.success(payload.notification?.title || 'New notification', {
                 id: 'foreground-notification',
                 duration: 5000,
                 position: 'top-right',
                 style: {
-                    zIndex: 99999,
+                    zIndex: 999999,
                 }
             });
         });
@@ -110,6 +159,9 @@ export default function NotificationPermission() {
             if (grantedTimeoutRef.current) {
                 clearTimeout(grantedTimeoutRef.current);
             }
+            if (blockedTimeoutRef.current) {
+                clearTimeout(blockedTimeoutRef.current);
+            }
             if (toastIdRef.current) {
                 toast.dismiss(toastIdRef.current);
             }
@@ -117,7 +169,6 @@ export default function NotificationPermission() {
     }, [user]);
 
     const showToast = (type, message, options = {}) => {
-        // ✅ Check localStorage - if already shown, skip
         if (type === 'success' && message.includes('Notifications enabled')) {
             if (isToastAlreadyShown()) {
                 console.log('✅ Toast already shown, skipping duplicate');
@@ -135,15 +186,20 @@ export default function NotificationPermission() {
         
         toastIdRef.current = toastFn(message, {
             id: 'notification-toast',
-            duration: 3000,
+            duration: 4000,
             position: 'top-right',
             style: {
-                zIndex: 99999,
+                zIndex: 999999,
+                background: type === 'success' ? '#f0fdf4' : '#fef2f2',
+                border: type === 'success' ? '1px solid #bbf7d0' : '1px solid #fecaca',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
             },
+            className: 'notification-toast',
             ...options
         });
         
-        // ✅ Mark as shown in localStorage
         if (type === 'success' && message.includes('Notifications enabled')) {
             markToastAsShown();
         }
@@ -179,14 +235,13 @@ export default function NotificationPermission() {
             }
 
             if (Notification.permission === 'granted') {
-                // ✅ For existing users, set flag here too
                 if (!isToastAlreadyShown()) {
                     markToastAsShown();
                     showToast('success', '✅ Notifications already enabled!');
                 }
-                if (!grantedShownRef.current) {
+                if (!isBannerAlreadyShown()) {
                     setShowGrantedMessage(true);
-                    grantedShownRef.current = true;
+                    markBannerAsShown();
                     setTimeout(() => {
                         setShowGrantedMessage(false);
                     }, 5000);
@@ -197,24 +252,43 @@ export default function NotificationPermission() {
             }
             
             if (Notification.permission === 'denied') {
-                setShowBlockedMessage(true);
-                setShowPrompt(false);
-                showToast('error', 'Notifications are blocked. Enable them in browser settings.');
+                if (!isBlockedAlreadyShown()) {
+                    setShowBlockedMessage(true);
+                    markBlockedAsShown();
+                    
+                    // ✅ Auto-dismiss blocked message after 8 seconds
+                    if (blockedTimeoutRef.current) {
+                        clearTimeout(blockedTimeoutRef.current);
+                    }
+                    blockedTimeoutRef.current = setTimeout(() => {
+                        setShowBlockedMessage(false);
+                    }, 8000);
+                } else {
+                    showToast('error', 'Notifications are blocked. Enable them in browser settings.');
+                }
                 setLoading(false);
                 return;
             }
             
             showToast('info', '🔔 Please allow notifications when prompted.', {
                 duration: 5000,
+                style: {
+                    zIndex: 999999,
+                    background: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '12px',
+                    padding: '16px 20px',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+                }
             });
 
             const result = await requestNotificationPermission(user?.uid, saveFcmToken);
 
             if (result) {
                 setShowPrompt(false);
-                if (!grantedShownRef.current) {
+                if (!isBannerAlreadyShown()) {
                     setShowGrantedMessage(true);
-                    grantedShownRef.current = true;
+                    markBannerAsShown();
                     setTimeout(() => {
                         setShowGrantedMessage(false);
                     }, 5000);
@@ -224,13 +298,24 @@ export default function NotificationPermission() {
                 }
             } else {
                 if (Notification.permission === 'denied') {
-                    setShowBlockedMessage(true);
+                    if (!isBlockedAlreadyShown()) {
+                        setShowBlockedMessage(true);
+                        markBlockedAsShown();
+                        
+                        // ✅ Auto-dismiss blocked message after 8 seconds
+                        if (blockedTimeoutRef.current) {
+                            clearTimeout(blockedTimeoutRef.current);
+                        }
+                        blockedTimeoutRef.current = setTimeout(() => {
+                            setShowBlockedMessage(false);
+                        }, 8000);
+                    }
                     setShowPrompt(false);
                 } else if (Notification.permission === 'granted') {
                     setShowPrompt(false);
-                    if (!grantedShownRef.current) {
+                    if (!isBannerAlreadyShown()) {
                         setShowGrantedMessage(true);
-                        grantedShownRef.current = true;
+                        markBannerAsShown();
                         setTimeout(() => {
                             setShowGrantedMessage(false);
                         }, 5000);
@@ -289,9 +374,10 @@ export default function NotificationPermission() {
         }
     };
 
+    // Show granted message (UI banner)
     if (showGrantedMessage) {
         return (
-            <div className="fixed top-16 left-0 right-0 z-[99999] px-4 pointer-events-none">
+            <div className="fixed top-16 left-0 right-0 z-[999999] px-4 pointer-events-none">
                 <div className="max-w-md mx-auto pointer-events-auto">
                     <div className="bg-green-50 rounded-xl shadow-2xl p-4 border-l-4 border-green-500 animate-slide-down">
                         <div className="flex items-start gap-3">
@@ -305,7 +391,7 @@ export default function NotificationPermission() {
                             <button
                                 onClick={() => {
                                     setShowGrantedMessage(false);
-                                    grantedShownRef.current = true;
+                                    markBannerAsShown();
                                 }}
                                 className="text-green-600 hover:text-green-800 text-sm font-medium flex-shrink-0"
                             >
@@ -318,15 +404,25 @@ export default function NotificationPermission() {
         );
     }
 
+    // ✅ Show blocked message with auto-dismiss
     if (showBlockedMessage) {
         return (
-            <div className="fixed top-16 left-0 right-0 z-[99999] px-4 pointer-events-none">
+            <div className="fixed top-16 left-0 right-0 z-[999999] px-4 pointer-events-none">
                 <div className="max-w-md mx-auto pointer-events-auto">
                     <div className="bg-white rounded-xl shadow-2xl p-4 border-l-4 border-red-500 animate-slide-down">
                         <div className="flex items-start gap-3">
                             <div className="text-2xl flex-shrink-0">🔕</div>
                             <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-gray-800 text-sm">Notifications Blocked</h4>
+                                <div className="flex items-start justify-between">
+                                    <h4 className="font-semibold text-red-800 text-sm">Notifications Blocked</h4>
+                                    <button
+                                        onClick={dismissBlockedMessage}
+                                        className="text-red-400 hover:text-red-600 text-sm font-medium flex-shrink-0 ml-2"
+                                        aria-label="Dismiss"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
                                 <p className="text-xs text-gray-500 mt-1">
                                     You blocked notifications. To enable them:
                                 </p>
@@ -335,12 +431,23 @@ export default function NotificationPermission() {
                                     <li>Find <strong>Notifications</strong> and change to <strong>Allow</strong></li>
                                     <li>Refresh the page</li>
                                 </ol>
-                                <button
-                                    onClick={handleOpenBrowserSettings}
-                                    className="mt-3 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl transition-all"
-                                >
-                                    Open Settings 🔧
-                                </button>
+                                <div className="flex gap-2 mt-3">
+                                    <button
+                                        onClick={handleOpenBrowserSettings}
+                                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl transition-all"
+                                    >
+                                        Open Settings 🔧
+                                    </button>
+                                    <button
+                                        onClick={dismissBlockedMessage}
+                                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-all"
+                                    >
+                                        Dismiss
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-2 text-center">
+                                    ⏰ This message will disappear automatically
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -354,7 +461,7 @@ export default function NotificationPermission() {
     }
 
     return (
-        <div className="fixed top-16 left-0 right-0 z-[99999] px-4 pointer-events-none">
+        <div className="fixed top-16 left-0 right-0 z-[999999] px-4 pointer-events-none">
             <div className="max-w-md mx-auto pointer-events-auto">
                 <div className="bg-white rounded-xl shadow-2xl p-4 border-l-4 border-spark-500 animate-slide-down">
                     <div className="flex items-start gap-3">
