@@ -245,13 +245,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { auth } from '../services/firebase';  // ✅ ADD THIS
-import { api } from '../services/api';        // ✅ ADD THIS
+import { auth } from '../services/firebase';
+import { api, setAuthToken } from '../services/api';  // ✅ Static import
 import HeaderMissionCard from '../components/Common/HeaderMissionCard';
 import toast from 'react-hot-toast';
 
 export default function Register() {
-    const { signInWithGoogle, sendOTP, verifyOTP, refreshUserData } = useAuth();  // ✅ ADD refreshUserData
+    const { signInWithGoogle, sendOTP, verifyOTP, refreshUserData } = useAuth();
     const [searchParams] = useSearchParams();
     
     const [method, setMethod] = useState('google');
@@ -369,7 +369,6 @@ export default function Register() {
             }
             
             // ✅ Set auth token for the API call
-            const { setAuthToken } = await import('../services/api');
             setAuthToken(token);
             
             const response = await api.post('/users/process-referral', { 

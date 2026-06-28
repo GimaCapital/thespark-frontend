@@ -16,8 +16,21 @@ export default function NotificationPermission() {
     const toastIdRef = useRef(null);
     const grantedShownRef = useRef(false);
     
-    // ✅ Track if toast has been shown for granted permission (per browser session)
-    const toastShownForGrantedRef = useRef(false);
+    // ✅ Use localStorage for persistence across page refreshes
+    const st = 'notificationToastShown';
+    
+    // ✅ Check if toast was already shown (persists across refreshes)
+    const isToastAlreadyShown = () => {
+        return localStorage.getItem(TOAST_SHOWN_KEY) === 'true';
+    };
+
+    // ✅ Mark toast as shown in localStorage
+    const markToastAsShown = () => {
+        localStorage.setItem(TOAST_SHOWN_KEY, 'true');
+    };
+
+    // ✅ Clear toast shown flag (useful for testing)
+    // localStorage.removeItem('notificationToastShown');
 
     const checkPermissionStatus = () => {
         if ('Notification' in window) {
@@ -92,12 +105,12 @@ export default function NotificationPermission() {
         };
     }, [user]);
 
-    // ✅ Show toast ONLY when permission is actually granted, not on page refresh
+    // ✅ Show toast ONLY when permission is actually granted
     const showToast = (type, message, options = {}) => {
-        // ✅ If permission is already granted, check if toast was already shown
+        // ✅ Check localStorage - if already shown, skip
         if (type === 'success' && message.includes('Notifications enabled')) {
-            if (toastShownForGrantedRef.current) {
-                console.log('✅ Toast already shown for this browser, skipping duplicate');
+            if (isToastAlreadyShown()) {
+                console.log('✅ Toast already shown, skipping duplicate');
                 return;
             }
         }
@@ -120,9 +133,9 @@ export default function NotificationPermission() {
             ...options
         });
         
-        // ✅ Mark as shown only for granted permission (once per browser)
+        // ✅ Mark as shown in localStorage
         if (type === 'success' && message.includes('Notifications enabled')) {
-            toastShownForGrantedRef.current = true;
+            markToastAsShown();
         }
     };
 
@@ -138,7 +151,6 @@ export default function NotificationPermission() {
             setAuthToken(idToken);
             await api.post('/users/save-fcm-token', { fcmToken: token });
             checkPermissionStatus();
-            // ✅ This will only show if not shown before
             showToast('success', '✅ Notifications enabled successfully!');
         } catch (error) {
             console.error('Failed to save FCM token:', error);
@@ -157,8 +169,8 @@ export default function NotificationPermission() {
             }
 
             if (Notification.permission === 'granted') {
-                // ✅ Only show toast if not shown before for this browser
-                if (!toastShownForGrantedRef.current) {
+                // ✅ Only show toast if not shown before
+                if (!isToastAlreadyShown()) {
                     showToast('success', '✅ Notifications already enabled!');
                 }
                 if (!grantedShownRef.current) {
@@ -196,8 +208,7 @@ export default function NotificationPermission() {
                         setShowGrantedMessage(false);
                     }, 5000);
                 }
-                // ✅ This will only show if not shown before
-                if (!toastShownForGrantedRef.current) {
+                if (!isToastAlreadyShown()) {
                     showToast('success', '✅ Notifications enabled successfully!');
                 }
             } else {
@@ -213,7 +224,7 @@ export default function NotificationPermission() {
                             setShowGrantedMessage(false);
                         }, 5000);
                     }
-                    if (!toastShownForGrantedRef.current) {
+                    if (!isToastAlreadyShown()) {
                         showToast('success', '✅ Notifications enabled successfully!');
                     }
                 } else {
@@ -241,33 +252,26 @@ export default function NotificationPermission() {
     const handleOpenBrowserSettings = () => {
         const userAgent = navigator.userAgent.toLowerCase();
         
-        // Chrome (but not Edge or Opera)
         if (userAgent.includes('chrome') && !userAgent.includes('edg') && !userAgent.includes('opr')) {
             window.open('chrome://settings/content/notifications', '_blank');
         } 
-        // Firefox
         else if (userAgent.includes('firefox')) {
             window.open('about:preferences#privacy', '_blank');
         } 
-        // Safari (not Chrome)
         else if (userAgent.includes('safari') && !userAgent.includes('chrome')) {
             showToast('info', 'Open Safari Preferences > Websites > Notifications', {
                 duration: 5000,
             });
         } 
-        // Opera / Opera GX
         else if (userAgent.includes('opr') || userAgent.includes('opera')) {
             window.open('opera://settings/content/notifications', '_blank');
         } 
-        // Microsoft Edge
         else if (userAgent.includes('edg')) {
             window.open('edge://settings/content/notifications', '_blank');
         } 
-        // Brave Browser
         else if (userAgent.includes('brave')) {
             window.open('brave://settings/content/notifications', '_blank');
         } 
-        // Unknown browser
         else {
             showToast('info', 'Check your browser settings for notification permissions.', {
                 duration: 5000,
