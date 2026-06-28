@@ -15,6 +15,9 @@ export default function NotificationPermission() {
     const grantedTimeoutRef = useRef(null);
     const toastIdRef = useRef(null);
     const grantedShownRef = useRef(false);
+    
+    // ✅ Track if toast has been shown for granted permission (per browser session)
+    const toastShownForGrantedRef = useRef(false);
 
     const checkPermissionStatus = () => {
         if ('Notification' in window) {
@@ -28,6 +31,8 @@ export default function NotificationPermission() {
             } else if (status === 'granted') {
                 setShowPrompt(false);
                 setShowBlockedMessage(false);
+                
+                // ✅ Show granted message only once per browser
                 if (!grantedShownRef.current) {
                     setShowGrantedMessage(true);
                     grantedShownRef.current = true;
@@ -87,7 +92,16 @@ export default function NotificationPermission() {
         };
     }, [user]);
 
+    // ✅ Show toast ONLY when permission is actually granted, not on page refresh
     const showToast = (type, message, options = {}) => {
+        // ✅ If permission is already granted, check if toast was already shown
+        if (type === 'success' && message.includes('Notifications enabled')) {
+            if (toastShownForGrantedRef.current) {
+                console.log('✅ Toast already shown for this browser, skipping duplicate');
+                return;
+            }
+        }
+        
         if (toastIdRef.current) {
             toast.dismiss(toastIdRef.current);
         }
@@ -105,6 +119,11 @@ export default function NotificationPermission() {
             },
             ...options
         });
+        
+        // ✅ Mark as shown only for granted permission (once per browser)
+        if (type === 'success' && message.includes('Notifications enabled')) {
+            toastShownForGrantedRef.current = true;
+        }
     };
 
     const saveFcmToken = async (token) => {
@@ -119,6 +138,7 @@ export default function NotificationPermission() {
             setAuthToken(idToken);
             await api.post('/users/save-fcm-token', { fcmToken: token });
             checkPermissionStatus();
+            // ✅ This will only show if not shown before
             showToast('success', '✅ Notifications enabled successfully!');
         } catch (error) {
             console.error('Failed to save FCM token:', error);
@@ -137,7 +157,10 @@ export default function NotificationPermission() {
             }
 
             if (Notification.permission === 'granted') {
-                showToast('success', '✅ Notifications already enabled!');
+                // ✅ Only show toast if not shown before for this browser
+                if (!toastShownForGrantedRef.current) {
+                    showToast('success', '✅ Notifications already enabled!');
+                }
                 if (!grantedShownRef.current) {
                     setShowGrantedMessage(true);
                     grantedShownRef.current = true;
@@ -173,7 +196,10 @@ export default function NotificationPermission() {
                         setShowGrantedMessage(false);
                     }, 5000);
                 }
-                showToast('success', '✅ Notifications enabled successfully!');
+                // ✅ This will only show if not shown before
+                if (!toastShownForGrantedRef.current) {
+                    showToast('success', '✅ Notifications enabled successfully!');
+                }
             } else {
                 if (Notification.permission === 'denied') {
                     setShowBlockedMessage(true);
@@ -187,7 +213,9 @@ export default function NotificationPermission() {
                             setShowGrantedMessage(false);
                         }, 5000);
                     }
-                    showToast('success', '✅ Notifications enabled successfully!');
+                    if (!toastShownForGrantedRef.current) {
+                        showToast('success', '✅ Notifications enabled successfully!');
+                    }
                 } else {
                     showToast('info', 'Enable notifications anytime from your profile settings.', {
                         duration: 3000,
@@ -247,7 +275,7 @@ export default function NotificationPermission() {
         }
     };
 
-    // Show granted message
+    // Show granted message (UI banner, not toast)
     if (showGrantedMessage) {
         return (
             <div className="fixed top-16 left-0 right-0 z-[99999] px-4 pointer-events-none">

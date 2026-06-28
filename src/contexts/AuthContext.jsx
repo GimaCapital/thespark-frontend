@@ -86,7 +86,7 @@
 //     //             await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
 //     //         }
             
-//     //          const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+//     //          const firstName = firebaseUser.displayName?.split(' ')[0] || 'Thespark Member';
         // toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
 //     //         return true;
 //     //     } catch (error) {
@@ -150,7 +150,7 @@
 //             await createFlutterwaveVirtualAccount(firebaseUser.uid, firebaseUser.email, firebaseUser.displayName);
 //         }
         
-//          const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+//          const firstName = firebaseUser.displayName?.split(' ')[0] || 'Thespark Member';
         // toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
 //         return true;
 //     } catch (error) {
@@ -237,7 +237,7 @@
 //     //             await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
 //     //         }
             
-//     //          const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+//     //          const firstName = firebaseUser.displayName?.split(' ')[0] || 'Thespark Member';
         // toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
 //     //         return { success: true };
 //     //     } catch (error) {
@@ -317,7 +317,7 @@
 //             await createFlutterwaveVirtualAccount(firebaseUser.uid, firebaseUser.email || fullName, fullName);
 //         }
         
-//          const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+//          const firstName = firebaseUser.displayName?.split(' ')[0] || 'Thespark Member';
         // toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
 //         return { success: true };
 //     } catch (error) {
@@ -590,7 +590,7 @@
 //         try {
 //             const result = await signInWithPopup(auth, googleProvider);
 //             const firebaseUser = result.user;
-//              const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+//              const firstName = firebaseUser.displayName?.split(' ')[0] || 'Thespark Member';
             
 //             const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
             
@@ -639,7 +639,7 @@
 //                 // Virtual account will be created when user adds BVN
 //             }
             
-//             //  const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+//             //  const firstName = firebaseUser.displayName?.split(' ')[0] || 'Thespark Member';
 //              toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
 //             return true;
 //         } catch (error) {
@@ -665,7 +665,7 @@
 //         try {
 //             const result = await confirmationResult.confirm(code);
 //             const firebaseUser = result.user;
-//             const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+//             const firstName = firebaseUser.displayName?.split(' ')[0] || 'Thespark Member';
             
 //             const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
             
@@ -731,7 +731,7 @@
 //                 await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
 //             }
             
-//             //  const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+//             //  const firstName = firebaseUser.displayName?.split(' ')[0] || 'Thespark Member';
 //              toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
 //             return { success: true };
 //         } catch (error) {
@@ -896,6 +896,457 @@
 // }
 
 
+// import React, { createContext, useState, useContext, useEffect } from 'react';
+// import { 
+//     auth, 
+//     signInWithPopup, 
+//     googleProvider,
+//     signInWithPhoneNumber,
+//     RecaptchaVerifier,
+//     signOut,
+//     onAuthStateChanged,
+//     db,
+//     doc,
+//     getDoc,
+//     setDoc,
+//     collection,
+//     query,
+//     where,
+//     getDocs,
+//     addDoc
+// } from '../services/firebase';
+// import { api, setAuthToken } from '../services/api'; 
+// import toast from 'react-hot-toast';
+
+// const AuthContext = createContext();
+
+// export function useAuth() {
+//     return useContext(AuthContext);
+// }
+
+// export function AuthProvider({ children }) {
+//     const [user, setUser] = useState(null);
+//     const [userData, setUserData] = useState(null);
+//     const [loading, setLoading] = useState(true);
+//     const [recaptcha, setRecaptcha] = useState(null);
+
+//     const setupRecaptcha = () => {
+//         if (typeof window !== 'undefined' && !recaptcha) {
+//             const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+//                 size: 'invisible',
+//                 callback: () => {}
+//             });
+//             setRecaptcha(verifier);
+//             return verifier;
+//         }
+//         return recaptcha;
+//     };
+
+//     const createFlutterwaveVirtualAccount = async (userId, userEmail, userFullName, userBvn = null) => {
+//         try {
+//             const token = await auth.currentUser.getIdToken();
+//             setAuthToken(token);
+            
+//             const response = await api.post('/flutterwave/create-account', {
+//                 userId: userId,
+//                 email: userEmail,
+//                 fullName: userFullName,
+//                 bvn: userBvn
+//             });
+            
+//             const data = response.data;
+//             if (data.success && data.hasAccount) {
+//                 console.log('✅ Flutterwave virtual account created:', data.accountNumber);
+//                 return { success: true, accountNumber: data.accountNumber, bankName: data.bankName };
+//             }
+//             return { success: false };
+//         } catch (error) {
+//             console.error('Error creating Flutterwave virtual account:', error);
+//             return { success: false };
+//         }
+//     };
+
+//     const signInWithGoogle = async (referralCode = null) => {
+//         try {
+//             const result = await signInWithPopup(auth, googleProvider);
+//             const firebaseUser = result.user;
+//             const firstName = firebaseUser.displayName?.split(' ')[0] || 'Thespark Member';
+            
+//             const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+            
+//             // ✅ Single source of truth - isNewUser
+//             const isNewUser = !userDoc.exists();
+            
+//             if (isNewUser) {
+//                 const newUser = {
+//                     fullName: firebaseUser.displayName,
+//                     email: firebaseUser.email,
+//                     phone: firebaseUser.phoneNumber || '',
+//                     photoURL: firebaseUser.photoURL || '',
+//                     joinDate: new Date(),
+//                     currentCycle: 0,
+//                     currentDay: 0,
+//                     hasStartedCycle: false,
+//                     day0MessageSent: true,
+//                     day0MessageSentAt: new Date(),
+//                     cycleStartDate: null,
+//                     totalPrincipalSaved: 0,
+//                     totalInterestEarned: 0,
+//                     currentBalance: 0,
+//                     lowestBalanceThisCycle: 0,
+//                     avgDailyBalanceThisCycle: 0,
+//                     referralCode: `SPARK${firebaseUser.uid.slice(0, 6).toUpperCase()}`,
+//                     referredBy: null,
+//                     isActive: true,
+//                     createdAt: new Date(),
+//                     role: firebaseUser.uid === import.meta.env.VITE_ADMIN_UID ? 'admin' : 'user',
+//                     avgDays1to16: 0,
+//                     days1to16Count: 0,
+//                     days1to16TotalBalance: 0,
+//                     totalSavedDays1to16: 0,
+//                     todaysDeposit: 0,
+//                     bankCode: null,
+//                     accountNumber: null,
+//                     accountName: null,
+//                     bankName: null,
+//                     flwAccountNumber: null,
+//                     flwBankName: null,
+//                     flwCustomerId: null,
+//                     bvn: null
+//                 };
+                
+//                 await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+
+//                 try {
+//                     const token = await firebaseUser.getIdToken();
+//                     setAuthToken(token); 
+                    
+//                     await api.post('/users/send-welcome-email', {  
+//                         email: firebaseUser.email,
+//                         fullName: firebaseUser.displayName || 'Thespark Member'
+//                     });
+//                     console.log('✅ Welcome email sent');
+//                 } catch (emailError) {
+//                     console.error('Failed to send welcome email:', emailError);
+//                 }
+//             }
+            
+//             // ✅ Process referral using axios (only for new users)
+//             let referralProcessed = false;
+//             if (referralCode && isNewUser) {
+//                 try {
+//                     const token = await firebaseUser.getIdToken();
+//                     setAuthToken(token);
+                    
+//                     const response = await api.post('/users/process-referral', { 
+//                         referralCode
+//                     });
+                    
+//                     const data = response.data;
+//                     if (data.success && data.bonus) {
+//                         toast.success(`🎉 You got ₦${data.bonus} referral bonus!`);
+//                         await refreshUserData();
+//                         referralProcessed = true;
+//                     } else if (data.alreadyReferred) {
+//                         console.log('User already has a referrer');
+//                         referralProcessed = true;
+//                     } else if (!data.success && data.error) {
+//                         toast.error(data.error);
+//                     }
+//                 } catch (error) {
+//                     console.error('Failed to process referral:', error);
+//                     toast.error('Failed to process referral. You can retry later.');
+//                 }
+//             }
+            
+//             // ✅ CLEAR referral code ONLY if successful or not a new user
+//             if (referralProcessed || !referralCode || !isNewUser) {
+//                 localStorage.removeItem('pendingReferralCode');
+//                 localStorage.removeItem('pendingReferralCodeTimestamp');
+//                 localStorage.removeItem('referralFailed');
+//                 sessionStorage.removeItem('pendingReferralCode');
+//                 console.log('✅ Referral code cleared');
+//             } else if (referralCode && isNewUser) {
+//                 // ❌ Referral failed, keep code for retry
+//                 localStorage.setItem('referralFailed', 'true');
+//                 console.log('⚠️ Referral failed. Code kept for retry.');
+//             }
+            
+//             toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
+//             return { success: true, referralFailed: !referralProcessed && referralCode && isNewUser };
+//         } catch (error) {
+//             console.error('Google sign in error:', error);
+//             toast.error(error.message);
+//             return { success: false, error: error.message };
+//         }
+//     };
+
+//     const sendOTP = async (phoneNumber) => {
+//         try {
+//             const verifier = setupRecaptcha();
+//             const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+//             return { success: true, confirmationResult };
+//         } catch (error) {
+//             console.error('Send OTP error:', error);
+//             toast.error(error.message);
+//             return { success: false, error: error.message };
+//         }
+//     };
+
+//     const verifyOTP = async (confirmationResult, code, fullName, referralCode) => {
+//         try {
+//             const result = await confirmationResult.confirm(code);
+//             const firebaseUser = result.user;
+//             const firstName = firebaseUser.displayName?.split(' ')[0] || 'Thespark Member';
+            
+//             const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+            
+//             // ✅ Single source of truth - isNewUser
+//             const isNewUser = !userDoc.exists();
+            
+//             if (isNewUser) {
+//                 const newUser = {
+//                     fullName: fullName,
+//                     email: firebaseUser.email || '',
+//                     phone: firebaseUser.phoneNumber,
+//                     photoURL: '',
+//                     joinDate: new Date(),
+//                     currentCycle: 0,
+//                     currentDay: 0,
+//                     hasStartedCycle: false,
+//                     day0MessageSent: true,
+//                     day0MessageSentAt: new Date(),
+//                     cycleStartDate: null,
+//                     totalPrincipalSaved: 0,
+//                     totalInterestEarned: 0,
+//                     currentBalance: 0,
+//                     lowestBalanceThisCycle: 0,
+//                     avgDailyBalanceThisCycle: 0,
+//                     referralCode: `SPARK${firebaseUser.uid.slice(0, 6).toUpperCase()}`,
+//                     referredBy: null,
+//                     isActive: true,
+//                     createdAt: new Date(),
+//                     role: firebaseUser.uid === import.meta.env.VITE_ADMIN_UID ? 'admin' : 'user',
+//                     avgDays1to16: 0,
+//                     days1to16Count: 0,
+//                     days1to16TotalBalance: 0,
+//                     totalSavedDays1to16: 0,
+//                     todaysDeposit: 0,
+//                     bankCode: null,
+//                     accountNumber: null,
+//                     accountName: null,
+//                     bankName: null,
+//                     flwAccountNumber: null,
+//                     flwBankName: null,
+//                     flwCustomerId: null,
+//                     bvn: null
+//                 };
+                
+//                 await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+//             }
+            
+//             // ✅ Process referral using axios (only for new users)
+//             let referralProcessed = false;
+//             if (referralCode && isNewUser) {
+//                 try {
+//                     const token = await firebaseUser.getIdToken();
+//                     setAuthToken(token);
+                    
+//                     const response = await api.post('/users/process-referral', {
+//                         referralCode
+//                     });
+                    
+//                     const data = response.data;
+//                     if (data.success && data.bonus) {
+//                         toast.success(`🎉 You got ₦${data.bonus} referral bonus!`);
+//                         await refreshUserData();
+//                         referralProcessed = true;
+//                     } else if (data.alreadyReferred) {
+//                         console.log('User already has a referrer');
+//                         referralProcessed = true;
+//                     } else if (!data.success && data.error) {
+//                         toast.error(data.error);
+//                     }
+//                 } catch (error) {
+//                     console.error('Failed to process referral:', error);
+//                     toast.error('Failed to process referral. You can retry later.');
+//                 }
+//             }
+            
+//             // ✅ CLEAR referral code ONLY if successful or not a new user
+//             if (referralProcessed || !referralCode || !isNewUser) {
+//                 localStorage.removeItem('pendingReferralCode');
+//                 localStorage.removeItem('pendingReferralCodeTimestamp');
+//                 localStorage.removeItem('referralFailed');
+//                 sessionStorage.removeItem('pendingReferralCode');
+//                 console.log('✅ Referral code cleared');
+//             } else if (referralCode && isNewUser) {
+//                 localStorage.setItem('referralFailed', 'true');
+//                 console.log('⚠️ Referral failed. Code kept for retry.');
+//             }
+            
+//             toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
+//             return { success: true, referralFailed: !referralProcessed && referralCode && isNewUser };
+//         } catch (error) {
+//             console.error('Verify OTP error:', error);
+//             toast.error('Invalid verification code');
+//             return { success: false };
+//         }
+//     };
+
+//     const logout = async () => {
+//         try {
+//             await signOut(auth);
+//             toast.success('Logged out');
+//         } catch (error) {
+//             console.error('Logout error:', error);
+//         }
+//     };
+
+//     const refreshUserData = async () => {
+//         if (!user) return;
+        
+//         try {
+//             const currentUser = auth.currentUser;
+//             const userDoc = await getDoc(doc(db, 'users', user.uid));
+//             const firestoreData = userDoc.exists() ? userDoc.data() : {};
+            
+//             const mergedData = {
+//                 uid: user.uid,
+//                 ...firestoreData,
+//                 fullName: firestoreData.fullName || currentUser?.displayName || '',
+//                 email: firestoreData.email || currentUser?.email || '',
+//                 phone: firestoreData.phone || currentUser?.phoneNumber || '',
+//                 photoURL: currentUser?.photoURL || firestoreData.photoURL || '',
+//                 currentCycle: firestoreData.currentCycle || 0,
+//                 currentDay: firestoreData.currentDay || 0,
+//                 hasStartedCycle: firestoreData.hasStartedCycle || false,
+//                 day0MessageSent: firestoreData.day0MessageSent || true,
+//                 day0MessageSentAt: firestoreData.day0MessageSentAt || null,
+//                 cycleStartDate: firestoreData.cycleStartDate || null,
+//                 totalPrincipalSaved: firestoreData.totalPrincipalSaved || 0,
+//                 totalInterestEarned: firestoreData.totalInterestEarned || 0,
+//                 currentBalance: firestoreData.currentBalance || 0,
+//                 lowestBalanceThisCycle: firestoreData.lowestBalanceThisCycle || 0,
+//                 avgDailyBalanceThisCycle: firestoreData.avgDailyBalanceThisCycle || 0,
+//                 referralCode: firestoreData.referralCode || `SPARK${user.uid.slice(0, 6).toUpperCase()}`,
+//                 referredBy: firestoreData.referredBy || null,
+//                 isActive: firestoreData.isActive !== undefined ? firestoreData.isActive : true,
+//                 joinDate: firestoreData.joinDate || new Date(),
+//                 createdAt: firestoreData.createdAt || new Date(),
+//                 role: firestoreData.role || (user.uid === import.meta.env.VITE_ADMIN_UID ? 'admin' : 'user'),
+//                 graduationDate: firestoreData.graduationDate || null,
+//                 premiumPlan: firestoreData.premiumPlan || 'Basic',
+//                 premiumInterestRate: firestoreData.premiumInterestRate || 5,
+//                 premiumStartDate: firestoreData.premiumStartDate || null,
+//                 premiumStatus: firestoreData.premiumStatus || 'inactive',
+//                 totalWithdrawn: firestoreData.totalWithdrawn || 0,
+//                 avgDays0to16: firestoreData.avgDays1to16 || 0,
+//                 days1to16Count: firestoreData.days1to16Count || 0,
+//                 days1to16TotalBalance: firestoreData.days1to16TotalBalance || 0,
+//                 totalSavedDays1to16: firestoreData.totalSavedDays1to16 || 0,
+//                 todaysDeposit: firestoreData.todaysDeposit || 0,
+//                 bankCode: firestoreData.bankCode || null,
+//                 accountNumber: firestoreData.accountNumber || null,
+//                 accountName: firestoreData.accountName || null,
+//                 bankName: firestoreData.bankName || null,
+//                 flwAccountNumber: firestoreData.flwAccountNumber || null,
+//                 flwBankName: firestoreData.flwBankName || null,
+//                 flwCustomerId: firestoreData.flwCustomerId || null,
+//                 bvn: firestoreData.bvn || null
+//             };
+            
+//             setUserData(mergedData);
+//         } catch (error) {
+//             console.error('Failed to refresh user data:', error);
+//         }
+//     };
+
+//     useEffect(() => {
+//         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+//             setUser(firebaseUser);
+            
+//             if (firebaseUser) {
+//                 const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+//                 const firestoreData = userDoc.exists() ? userDoc.data() : {};
+                
+//                 const mergedData = {
+//                     uid: firebaseUser.uid,
+//                     ...firestoreData,
+//                     fullName: firestoreData.fullName || firebaseUser.displayName || '',
+//                     email: firestoreData.email || firebaseUser.email || '',
+//                     phone: firestoreData.phone || firebaseUser.phoneNumber || '',
+//                     photoURL: firebaseUser.photoURL || firestoreData.photoURL || '',
+//                     currentCycle: firestoreData.currentCycle || 0,
+//                     currentDay: firestoreData.currentDay || 0,
+//                     hasStartedCycle: firestoreData.hasStartedCycle || false,
+//                     day0MessageSent: firestoreData.day0MessageSent || true,
+//                     day0MessageSentAt: firestoreData.day0MessageSentAt || null,
+//                     cycleStartDate: firestoreData.cycleStartDate || null,
+//                     totalPrincipalSaved: firestoreData.totalPrincipalSaved || 0,
+//                     totalInterestEarned: firestoreData.totalInterestEarned || 0,
+//                     currentBalance: firestoreData.currentBalance || 0,
+//                     lowestBalanceThisCycle: firestoreData.lowestBalanceThisCycle || 0,
+//                     avgDailyBalanceThisCycle: firestoreData.avgDailyBalanceThisCycle || 0,
+//                     referralCode: firestoreData.referralCode || `SPARK${firebaseUser.uid.slice(0, 6).toUpperCase()}`,
+//                     referredBy: firestoreData.referredBy || null,
+//                     isActive: firestoreData.isActive !== undefined ? firestoreData.isActive : true,
+//                     joinDate: firestoreData.joinDate || new Date(),
+//                     createdAt: firestoreData.createdAt || new Date(),
+//                     role: firestoreData.role || (firebaseUser.uid === import.meta.env.VITE_ADMIN_UID ? 'admin' : 'user'),
+//                     graduationDate: firestoreData.graduationDate || null,
+//                     premiumPlan: firestoreData.premiumPlan || 'Basic',
+//                     premiumInterestRate: firestoreData.premiumInterestRate || 5,
+//                     premiumStartDate: firestoreData.premiumStartDate || null,
+//                     premiumStatus: firestoreData.premiumStatus || 'inactive',
+//                     totalWithdrawn: firestoreData.totalWithdrawn || 0,
+//                     avgDays1to16: firestoreData.avgDays1to16 || 0,
+//                     days1to16Count: firestoreData.days1to16Count || 0,
+//                     days1to16TotalBalance: firestoreData.days1to16TotalBalance || 0,
+//                     totalSavedDays1to16: firestoreData.totalSavedDays1to16 || 0,
+//                     todaysDeposit: firestoreData.todaysDeposit || 0,
+//                     bankCode: firestoreData.bankCode || null,
+//                     accountNumber: firestoreData.accountNumber || null,
+//                     accountName: firestoreData.accountName || null,
+//                     bankName: firestoreData.bankName || null,
+//                     flwAccountNumber: firestoreData.flwAccountNumber || null,
+//                     flwBankName: firestoreData.flwBankName || null,
+//                     flwCustomerId: firestoreData.flwCustomerId || null,
+//                     bvn: firestoreData.bvn || null
+//                 };
+                
+//                 setUserData(mergedData);
+//             } else {
+//                 setUserData(null);
+//             }
+            
+//             setLoading(false);
+//         });
+        
+//         return () => unsubscribe();
+//     }, []);
+
+//     const value = {
+//         user,
+//         userData,
+//         loading,
+//         signInWithGoogle,
+//         sendOTP,
+//         verifyOTP,
+//         logout,
+//         refreshUserData, 
+//         isAdmin: userData?.role === 'admin'
+//     };
+    
+//     return (
+//         <AuthContext.Provider value={value}>
+//             {children}
+//             <div id="recaptcha-container"></div>
+//         </AuthContext.Provider>
+//     );
+// }
+
+
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { 
@@ -916,6 +1367,8 @@ import {
     getDocs,
     addDoc
 } from '../services/firebase';
+import { api, setAuthToken } from '../services/api'; 
+import { setupNewUser } from '../utils/userUtils';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -945,21 +1398,16 @@ export function AuthProvider({ children }) {
     const createFlutterwaveVirtualAccount = async (userId, userEmail, userFullName, userBvn = null) => {
         try {
             const token = await auth.currentUser.getIdToken();
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/flutterwave/create-account`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    userId: userId,
-                    email: userEmail,
-                    fullName: userFullName,
-                    bvn: userBvn
-                })
+            setAuthToken(token);
+            
+            const response = await api.post('/flutterwave/create-account', {
+                userId: userId,
+                email: userEmail,
+                fullName: userFullName,
+                bvn: userBvn
             });
             
-            const data = await response.json();
+            const data = response.data;
             if (data.success && data.hasAccount) {
                 console.log('✅ Flutterwave virtual account created:', data.accountNumber);
                 return { success: true, accountNumber: data.accountNumber, bankName: data.bankName };
@@ -975,104 +1423,59 @@ export function AuthProvider({ children }) {
         try {
             const result = await signInWithPopup(auth, googleProvider);
             const firebaseUser = result.user;
-            const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+            const firstName = firebaseUser.displayName?.split(' ')[0] || 'Thespark Member';
             
-            const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-            
-            if (!userDoc.exists()) {
-                const newUser = {
-                    fullName: firebaseUser.displayName,
-                    email: firebaseUser.email,
-                    phone: firebaseUser.phoneNumber || '',
-                    photoURL: firebaseUser.photoURL || '',
-                    joinDate: new Date(),
-                    currentCycle: 0,
-                    currentDay: 0,
-                    hasStartedCycle: false,
-                    day0MessageSent: true,
-                    day0MessageSentAt: new Date(),
-                    cycleStartDate: null,
-                    totalPrincipalSaved: 0,
-                    totalInterestEarned: 0,
-                    currentBalance: 0,
-                    lowestBalanceThisCycle: 0,
-                    avgDailyBalanceThisCycle: 0,
-                    referralCode: `SPARK${firebaseUser.uid.slice(0, 6).toUpperCase()}`,
-                    referredBy: null,
-                    isActive: true,
-                    createdAt: new Date(),
-                    role: firebaseUser.uid === import.meta.env.VITE_ADMIN_UID ? 'admin' : 'user',
-                    avgDays1to16: 0,
-                    days1to16Count: 0,
-                    days1to16TotalBalance: 0,
-                    totalSavedDays1to16: 0,
-                    todaysDeposit: 0,
-                    bankCode: null,
-                    accountNumber: null,
-                    accountName: null,
-                    bankName: null,
-                    flwAccountNumber: null,
-                    flwBankName: null,
-                    flwCustomerId: null,
-                    bvn: null
-                };
-                
-                await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
-
-                    // ✅ Send welcome email directly here
-                try {
-                    const token = await firebaseUser.getIdToken();
-                    await fetch(`${import.meta.env.VITE_API_URL}/users/send-welcome-email`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            email: firebaseUser.email,
-                            fullName: firebaseUser.displayName || 'Saver'
-                        })
-                    });
-                    console.log('✅ Welcome email sent');
-                } catch (emailError) {
-                    console.error('Failed to send welcome email:', emailError);
-                }
-            }
-                
-            
-            // ✅ Only call backend - server handles ALL database operations
+            // ✅ Store referral code in localStorage if provided
             if (referralCode) {
-                try {
-                    const token = await firebaseUser.getIdToken();
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/users/process-referral`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ referralCode })
-                    });
-                    
-                    const data = await response.json();
-                    if (data.success && data.bonus) {
-                        toast.success(`🎉 You got ₦${data.bonus} referral bonus!`);
-                        await refreshUserData();
-                    } else if (data.alreadyReferred) {
-                        console.log('User already has a referrer');
-                    } else if (!data.success && data.error) {
-                        toast.error(data.error);
-                    }
-                } catch (error) {
-                    console.error('Failed to process referral:', error);
-                }
+                localStorage.setItem('pendingReferralCode', referralCode);
+                localStorage.setItem('pendingReferralCodeTimestamp', Date.now().toString());
+                console.log('✅ Referral code stored in localStorage:', referralCode);
             }
+            
+            // ✅ Use setupNewUser (handles everything)
+            const setupResult = await setupNewUser(firebaseUser.uid, {
+                fullName: firebaseUser.displayName || 'Thespark Member',
+                email: firebaseUser.email || '',
+                phone: firebaseUser.phoneNumber || '',
+                photoURL: firebaseUser.photoURL || ''
+            });
+            
+            if (!setupResult.success) {
+                throw new Error(setupResult.error);
+            }
+            
+            console.log('✅ User setup complete:', {
+                isNewUser: setupResult.isNewUser,
+                referral: setupResult.referral,
+                email: setupResult.email
+            });
+            
+            // ✅ Show referral bonus toast if successful
+            if (setupResult.referral?.success && setupResult.referral?.bonus) {
+                toast.success(`🎉 You got ₦${setupResult.referral.bonus} referral bonus!`);
+            } else if (setupResult.referral?.alreadyReferred) {
+                console.log('User already has a referrer');
+            } else if (setupResult.referral && !setupResult.referral.success) {
+                console.warn('Referral failed, code kept for retry');
+            }
+            
+            // ✅ Welcome email status
+            if (setupResult.email?.success) {
+                console.log('✅ Welcome email sent');
+            }
+            
+            // ✅ Refresh user data
+            await refreshUserData();
             
             toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
-            return true;
+            return { 
+                success: true, 
+                referralFailed: setupResult.referral && !setupResult.referral.success 
+            };
         } catch (error) {
             console.error('Google sign in error:', error);
             toast.error(error.message);
-            return false;
+            return { success: false, error: error.message };
         }
     };
 
@@ -1092,77 +1495,33 @@ export function AuthProvider({ children }) {
         try {
             const result = await confirmationResult.confirm(code);
             const firebaseUser = result.user;
-            const firstName = firebaseUser.displayName?.split(' ')[0] || 'Saver';
+            const firstName = firebaseUser.displayName?.split(' ')[0] || 'Thespark Member';
             
-            const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-            
-            if (!userDoc.exists()) {
-                const newUser = {
-                    fullName: fullName,
-                    email: firebaseUser.email || '',
-                    phone: firebaseUser.phoneNumber,
-                    photoURL: '',
-                    joinDate: new Date(),
-                    currentCycle: 0,
-                    currentDay: 0,
-                    hasStartedCycle: false,
-                    day0MessageSent: true,
-                    day0MessageSentAt: new Date(),
-                    cycleStartDate: null,
-                    totalPrincipalSaved: 0,
-                    totalInterestEarned: 0,
-                    currentBalance: 0,
-                    lowestBalanceThisCycle: 0,
-                    avgDailyBalanceThisCycle: 0,
-                    referralCode: `SPARK${firebaseUser.uid.slice(0, 6).toUpperCase()}`,
-                    referredBy: null,
-                    isActive: true,
-                    createdAt: new Date(),
-                    role: firebaseUser.uid === import.meta.env.VITE_ADMIN_UID ? 'admin' : 'user',
-                    avgDays1to16: 0,
-                    days1to16Count: 0,
-                    days1to16TotalBalance: 0,
-                    totalSavedDays1to16: 0,
-                    todaysDeposit: 0,
-                    bankCode: null,
-                    accountNumber: null,
-                    accountName: null,
-                    bankName: null,
-                    flwAccountNumber: null,
-                    flwBankName: null,
-                    flwCustomerId: null,
-                    bvn: null
-                };
-                
-                await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
-            }
-            
-            // ✅ Only call backend - server handles ALL database operations
+            // ✅ Store referral code in localStorage if provided
             if (referralCode) {
-                try {
-                    const token = await firebaseUser.getIdToken();
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/users/process-referral`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ referralCode })
-                    });
-                    
-                    const data = await response.json();
-                    if (data.success && data.bonus) {
-                        toast.success(`🎉 You got ₦${data.bonus} referral bonus!`);
-                        await refreshUserData();
-                    } else if (data.alreadyReferred) {
-                        console.log('User already has a referrer');
-                    } else if (!data.success && data.error) {
-                        toast.error(data.error);
-                    }
-                } catch (error) {
-                    console.error('Failed to process referral:', error);
-                }
+                localStorage.setItem('pendingReferralCode', referralCode);
+                localStorage.setItem('pendingReferralCodeTimestamp', Date.now().toString());
+                console.log('✅ Referral code stored in localStorage:', referralCode);
             }
+            
+            // ✅ Use setupNewUser (handles everything)
+            const setupResult = await setupNewUser(firebaseUser.uid, {
+                fullName: fullName || 'Thespark Member',
+                email: firebaseUser.email || '',
+                phone: firebaseUser.phoneNumber || '',
+                photoURL: ''
+            });
+            
+            if (!setupResult.success) {
+                throw new Error(setupResult.error);
+            }
+            
+            // ✅ Show referral bonus toast if successful
+            if (setupResult.referral?.success && setupResult.referral?.bonus) {
+                toast.success(`🎉 You got ₦${setupResult.referral.bonus} referral bonus!`);
+            }
+            
+            await refreshUserData();
             
             toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
             return { success: true };

@@ -242,52 +242,174 @@
 //         </div>
 //     );
 // }
-
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { auth } from '../services/firebase';  // ✅ ADD THIS
+import { api } from '../services/api';        // ✅ ADD THIS
 import HeaderMissionCard from '../components/Common/HeaderMissionCard';
 import toast from 'react-hot-toast';
 
 export default function Register() {
-    const { signInWithGoogle, sendOTP, verifyOTP } = useAuth();
+    const { signInWithGoogle, sendOTP, verifyOTP, refreshUserData } = useAuth();  // ✅ ADD refreshUserData
     const [searchParams] = useSearchParams();
     
-    const [method, setMethod] = useState('google');  // Default to Google
+    const [method, setMethod] = useState('google');
     const [phone, setPhone] = useState('');
     const [code, setCode] = useState('');
     const [fullName, setFullName] = useState('');
     const [referralCode, setReferralCode] = useState('');
     const [confirmationResult, setConfirmationResult] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [referralFailed, setReferralFailed] = useState(false);
 
+    // ============================================================
+    // ✅ REFERRAL CODE HANDLING WITH PERSISTENCE
+    // ============================================================
     useEffect(() => {
-        const ref = searchParams.get('ref');
+        const REFERRAL_STORAGE_KEY = 'pendingReferralCode';
+        const REFERRAL_TIMESTAMP_KEY = 'pendingReferralCodeTimestamp';
+        const REFERRAL_EXPIRY_HOURS = 24;
+        const EXPIRY_MS = REFERRAL_EXPIRY_HOURS * 60 * 60 * 1000;
+
+        // ✅ Check URL first
+        let ref = searchParams.get('ref');
+
         if (ref) {
+            // ✅ User clicked referral link - Store it
             setReferralCode(ref);
+            localStorage.setItem(REFERRAL_STORAGE_KEY, ref);
+            localStorage.setItem(REFERRAL_TIMESTAMP_KEY, Date.now().toString());
             console.log('✅ Referral code loaded from URL:', ref);
+        } else {
+            // ✅ Check localStorage for existing code
+            const storedRef = localStorage.getItem(REFERRAL_STORAGE_KEY);
+            const storedTimestamp = localStorage.getItem(REFERRAL_TIMESTAMP_KEY);
+
+            if (storedRef && storedTimestamp) {
+                const age = Date.now() - parseInt(storedTimestamp);
+                
+                if (age < EXPIRY_MS) {
+                    // ✅ Code is still valid (less than 24 hours old)
+                    setReferralCode(storedRef);
+                    console.log('✅ Referral code loaded from storage:', storedRef);
+                    console.log(`⏰ Code age: ${Math.floor(age / (60 * 60 * 1000))} hours`);
+                } else {
+                    // ❌ Code expired - auto-delete
+                    localStorage.removeItem(REFERRAL_STORAGE_KEY);
+                    localStorage.removeItem(REFERRAL_TIMESTAMP_KEY);
+                    console.log('⏰ Referral code expired and removed');
+                }
+            }
+        }
+
+        // ✅ Check if referral failed previously
+        const failed = localStorage.getItem('referralFailed');
+        if (failed === 'true') {
+            setReferralFailed(true);
         }
     }, [searchParams]);
 
     const handleGoogleSignIn = async () => {
+        // ✅ Double-check storage before signup
+        let codeToUse = referralCode;
+        if (!codeToUse) {
+            const storedRef = localStorage.getItem('pendingReferralCode');
+            if (storedRef) {
+                codeToUse = storedRef;
+                setReferralCode(storedRef);
+                console.log('✅ Referral code retrieved from storage:', storedRef);
+            }
+        }
+
         setLoading(true);
-        await signInWithGoogle(referralCode);
-        setLoading(false);
+        
+        try {
+            // ✅ Pass the referral code to signInWithGoogle
+            const result = await signInWithGoogle(codeToUse);
+            
+            // ✅ Check if referral processing failed
+            if (result && result.referralFailed) {
+                setReferralFailed(true);
+                localStorage.setItem('referralFailed', 'true');
+            } else {
+                setReferralFailed(false);
+                localStorage.removeItem('referralFailed');
+            }
+        } catch (error) {
+            console.error('Signup failed, keeping referral code for retry:', error);
+            // ✅ KEEP the code if signup fails
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ✅ Retry referral function
+    const retryReferral = async () => {
+        if (!referralCode) {
+            toast.error('No referral code found');
+            return;
+        }
+        
+        setLoading(true);
+        try {
+            // ✅ Get the current user from auth
+            const currentUser = auth.currentUser;
+            if (!currentUser) {
+                toast.error('Please sign in first');
+                setLoading(false);
+                return;
+            }
+            
+            const token = await currentUser.getIdToken();
+            if (!token) {
+                toast.error('Please sign in first');
+                setLoading(false);
+                return;
+            }
+            
+            // ✅ Set auth token for the API call
+            const { setAuthToken } = await import('../services/api');
+            setAuthToken(token);
+            
+            const response = await api.post('/users/process-referral', { 
+                referralCode 
+            });
+            
+            const data = response.data;
+            if (data.success && data.bonus) {
+                toast.success(`🎉 You got ₦${data.bonus} referral bonus!`);
+                setReferralFailed(false);
+                localStorage.removeItem('referralFailed');
+                localStorage.removeItem('pendingReferralCode');
+                localStorage.removeItem('pendingReferralCodeTimestamp');
+                // Refresh user data
+                await refreshUserData();
+            } else if (data.alreadyReferred) {
+                toast.info('You already have a referrer');
+                setReferralFailed(false);
+                localStorage.removeItem('referralFailed');
+            } else if (!data.success && data.error) {
+                toast.error(data.error);
+            }
+        } catch (error) {
+            console.error('Failed to retry referral:', error);
+            toast.error('Failed to process referral. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSendOTP = async () => {
-        // Show coming soon message
         toast.error('📱 Phone number registration is coming soon! Please use Google to sign up.');
         return;
     };
 
     const handleVerifyOTP = async () => {
-        // Show coming soon message
         toast.error('📱 Phone number registration is coming soon! Please use Google to sign up.');
         return;
     };
 
-    // ✅ Handle phone button click - show coming soon
     const handlePhoneClick = () => {
         toast('📱 Phone number registration is coming soon! Please use Google to sign up.', {
             duration: 4000,
@@ -296,15 +418,30 @@ export default function Register() {
         });
     };
 
+    // ✅ Get referral expiry info
+    const getReferralStatus = () => {
+        if (!referralCode) return null;
+        
+        const timestamp = localStorage.getItem('pendingReferralCodeTimestamp');
+        if (timestamp) {
+            const age = Date.now() - parseInt(timestamp);
+            const hoursRemaining = Math.max(0, 24 - Math.floor(age / (60 * 60 * 1000)));
+            return (
+                <div className="text-xs text-gray-400 mt-1">
+                    ⏰ Code expires in {hoursRemaining} hours
+                </div>
+            );
+        }
+        return null;
+    };
+
     return (
         <div className="bg-gradient-to-br from-spark-50 via-white to-spark-50 min-h-screen">
             <HeaderMissionCard />
             
             <div className="w-full px-4 sm:px-8 lg:px-16 xl:px-24 py-8 sm:py-12">
-                
                 <div className="py-12">
                     <div className="max-w-5xl mx-auto px-4">
-                        
                         <div className="absolute left-10 text-4xl opacity-10 animate-bounce hidden lg:block">📝</div>
                         <div className="absolute right-10 text-4xl opacity-10 animate-pulse hidden lg:block">✨</div>
 
@@ -314,7 +451,6 @@ export default function Register() {
 
                             <div className="relative bg-white rounded-2xl shadow-xl overflow-hidden z-10">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-
                                     <div className="relative overflow-hidden min-h-[550px]">
                                         <img
                                             src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&h=600&fit=crop"
@@ -348,13 +484,40 @@ export default function Register() {
                                             </h2>
                                             <p className="text-gray-500 text-sm mb-6">Create your account and start building consistent wealth habits. Join thousands of Nigerians on the path to financial freedom.</p>
                                             
+                                            {/* ✅ Enhanced Referral Code Display */}
                                             {referralCode && (
-                                                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
-                                                    🎁 Referral code: <strong>{referralCode}</strong> - You get ₦50 bonus instantly!
+                                                <div className={`mb-4 p-3 rounded-xl border ${
+                                                    referralFailed 
+                                                        ? 'bg-amber-50 border-amber-200' 
+                                                        : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+                                                }`}>
+                                                    <div className={`text-sm ${
+                                                        referralFailed ? 'text-amber-700' : 'text-green-700'
+                                                    }`}>
+                                                        🎁 Referral code: <strong className={referralFailed ? 'text-amber-800' : 'text-green-800'}>{referralCode}</strong>
+                                                        <span className="block text-xs mt-1">
+                                                            {referralFailed ? (
+                                                                <span className="text-amber-600">
+                                                                    ⚠️ Referral processing failed. 
+                                                                    <button 
+                                                                        onClick={retryReferral}
+                                                                        disabled={loading}
+                                                                        className="ml-2 text-spark-600 font-semibold hover:underline"
+                                                                    >
+                                                                        Retry
+                                                                    </button>
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-green-600">
+                                                                    ✅ You get <strong>₦50</strong> bonus instantly!
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        {!referralFailed && getReferralStatus()}
+                                                    </div>
                                                 </div>
                                             )}
                                             
-                                            {/* Method Selection - Book Style Tabs */}
                                             <div className="flex gap-3 mb-6">
                                                 <button
                                                     onClick={() => setMethod('google')}
@@ -384,14 +547,12 @@ export default function Register() {
                                                         <span className="text-lg">📱</span>
                                                         <span>Phone</span>
                                                     </div>
-                                                    {/* ✅ Coming Soon Badge */}
                                                     <span className="absolute -top-2 -right-2 bg-spark-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse">
                                                         SOON
                                                     </span>
                                                 </button>
                                             </div>
 
-                                            {/* Google Sign Up - ALWAYS VISIBLE */}
                                             <button
                                                 onClick={handleGoogleSignIn}
                                                 disabled={loading}
@@ -408,7 +569,6 @@ export default function Register() {
                                                 {loading ? 'Loading...' : 'Sign up with Google'}
                                             </button>
 
-                                            {/* Phone Sign Up - DISABLED with Coming Soon message */}
                                             <div className="mt-4 text-center">
                                                 <p className="text-xs text-gray-400">
                                                     📱 Phone number registration is coming soon! 

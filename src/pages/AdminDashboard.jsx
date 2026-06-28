@@ -762,6 +762,8 @@ import { formatDate, getFullDate } from '../utils/dateUtils';
 import NotificationBell from '../components/NotificationBell';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import EmailTracking from '../components/Admin/EmailTracking';
+
 
 export default function AdminDashboard() {
     const { user } = useAuth();
@@ -1000,6 +1002,71 @@ export default function AdminDashboard() {
         }
     };
 
+
+    // Add these functions in AdminDashboard.jsx - inside the component
+
+// Send single welcome email
+// ============ EMAIL FUNCTIONS ============
+
+// ✅ Send single welcome email
+const sendSingleWelcomeEmail = async (userId) => {
+    if (!userId) {
+        toast.error('No user selected');
+        return;
+    }
+    
+    if (!window.confirm('Send welcome email to this user?')) {
+        return;
+    }
+    
+    setLoading(true);
+    try {
+        const idToken = await user.getIdToken();
+        setAuthToken(idToken);
+        
+        const response = await api.post('/users/resend-welcome-email', { userId });
+        
+        if (response.data.success) {
+            toast.success('✅ Welcome email sent successfully!');
+            loadAdminData(); // Refresh user list
+        } else {
+            toast.error(response.data.message || 'Failed to send email');
+        }
+    } catch (error) {
+        console.error('Error sending email:', error);
+        toast.error(error.response?.data?.error || 'Failed to send email');
+    } finally {
+        setLoading(false);
+    }
+};
+
+// ✅ Send bulk welcome emails
+const sendBulkWelcomeEmails = async () => {
+    if (!window.confirm('Send welcome email to ALL customers who haven\'t received one?')) {
+        return;
+    }
+    
+    setLoading(true);
+    try {
+        const idToken = await user.getIdToken();
+        setAuthToken(idToken);
+        
+        const response = await api.post('/users/send-bulk-welcome-emails');
+        
+        if (response.data.success) {
+            toast.success(`✅ ${response.data.sentCount} welcome emails sent! ${response.data.failedCount || 0} failed.`);
+            loadAdminData(); // Refresh user list
+        } else {
+            toast.error(response.data.message || 'Failed to send bulk emails');
+        }
+    } catch (error) {
+        console.error('Error sending bulk emails:', error);
+        toast.error(error.response?.data?.error || 'Failed to send bulk emails');
+    } finally {
+        setLoading(false);
+    }
+};
+
     // ============ WITHDRAWAL FUNCTIONS ============
     const approveWithdrawal = async (requestId) => {
         setProcessingWithdrawal(requestId);
@@ -1226,8 +1293,6 @@ export default function AdminDashboard() {
         u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.phone?.includes(searchTerm)
     );
-
-    // ============ SEND INVESTOR EMAIL ============
 // ============ SEND INVESTOR EMAIL ============
 const sendInvestorEmail = async (interest) => {
     if (!interest.email) {
@@ -1294,40 +1359,42 @@ const sendInvestorEmail = async (interest) => {
                 </div>
                 
                 {/* Navigation Tabs */}
+
                 <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-200">
-                    {[
-                        { id: 'stats', label: 'Overview', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-                        { id: 'withdrawals', label: 'Withdrawals', count: pendingWithdrawals.filter(w => w.status === 'pending').length, icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z' },
-                        { id: 'users', label: 'Customers', count: users.length, icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
-                        { id: 'stories', label: 'Stories', count: pendingStories.length, icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z' },
-                        { id: 'flagged', label: 'Flagged', count: flaggedDeposits.filter(f => f.status === 'review_needed' || !f.status).length, icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
-                        { id: 'investment', label: 'Investment', count: investmentInterests.filter(i => i.status === 'new' || !i.status).length, icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' }
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-t-xl transition-all ${
+                {[
+                    { id: 'stats', label: 'Overview', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+                    { id: 'withdrawals', label: 'Withdrawals', count: pendingWithdrawals.filter(w => w.status === 'pending').length, icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z' },
+                    { id: 'users', label: 'Customers', count: users.length, icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
+                    { id: 'stories', label: 'Stories', count: pendingStories.length, icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z' },
+                    { id: 'flagged', label: 'Flagged', count: flaggedDeposits.filter(f => f.status === 'review_needed' || !f.status).length, icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
+                    { id: 'investment', label: 'Investment', count: investmentInterests.filter(i => i.status === 'new' || !i.status).length, icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+                    { id: 'email-tracking', label: 'Email Tracking', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' }
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-t-xl transition-all ${
+                            activeTab === tab.id 
+                                ? 'bg-white text-spark-500 border-b-2 border-spark-500' 
+                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                        }`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+                        </svg>
+                        {tab.label}
+                        {tab.count > 0 && (
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${
                                 activeTab === tab.id 
-                                    ? 'bg-white text-spark-500 border-b-2 border-spark-500' 
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                            }`}
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
-                            </svg>
-                            {tab.label}
-                            {tab.count > 0 && (
-                                <span className={`px-2 py-0.5 rounded-full text-xs ${
-                                    activeTab === tab.id 
-                                        ? 'bg-spark-50 text-spark-600' 
-                                        : 'bg-gray-200 text-gray-700'
-                                }`}>
-                                    {tab.count}
-                                </span>
-                            )}
-                        </button>
-                    ))}
-                </div>
+                                    ? 'bg-spark-50 text-spark-600' 
+                                    : 'bg-gray-200 text-gray-700'
+                            }`}>
+                                {tab.count}
+                            </span>
+                        )}
+                    </button>
+                ))}
+            </div>
                 
                 {/* ============ STATS / OVERVIEW TAB ============ */}
                 {activeTab === 'stats' && stats && (
@@ -1567,86 +1634,80 @@ const sendInvestorEmail = async (interest) => {
                 )}
                 
                 {/* ============ USERS / CUSTOMERS TAB ============ */}
-                {activeTab === 'users' && (
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-900">Customer Management</h2>
-                                <p className="text-sm text-gray-500 mt-1">View and manage customer accounts</p>
-                            </div>
-                            <div className="relative">
-                                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                                <input
-                                    type="text"
-                                    placeholder="Search customers..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl w-80 focus:ring-2 focus:ring-spark-500 focus:border-transparent"
-                                />
-                            </div>
-                        </div>
-                        
-                        {filteredUsers.length === 0 ? (
-                            <div className="bg-white rounded-2xl p-12 text-center">
-                                <p className="text-gray-500">No customers found</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 gap-4">
-                                {filteredUsers.map(u => {
-                                    const isAdmin = isUserAdmin(u.id);
-                                    return (
-                                        <div key={u.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex items-start gap-4">
-                                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg bg-gradient-to-r from-spark-500 to-spark-700">
-                                                        {u.fullName?.charAt(0) || u.email?.charAt(0) || 'U'}
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="font-semibold text-gray-900">{u.fullName}</p>
-                                                            {isAdmin && (
-                                                                <span className="px-2 py-0.5 rounded-lg text-xs bg-spark-50 text-spark-600">Admin</span>
-                                                            )}
-                                                        </div>
-                                                        <p className="text-sm text-gray-500 mt-0.5">{u.email || u.phone}</p>
-                                                        <p className="text-xs text-gray-400 mt-1">User ID: {u.id}</p>
-                                                        <div className="flex items-center gap-4 mt-3">
-                                                            <span className="text-xs text-gray-500">Balance: ₦{u.currentBalance?.toLocaleString()}</span>
-                                                            <span className="text-xs text-gray-500">Cycle {u.currentCycle} • Day {u.currentDay}</span>
-                                                        </div>
-                                                        {u.bankName && (
-                                                            <p className="text-xs text-gray-400 mt-2">Bank: {u.bankName} ({u.accountNumber})</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    {isAdmin ? (
-                                                        <button
-                                                            onClick={() => removeAdmin(u.id, u.fullName)}
-                                                            disabled={u.id === user?.uid}
-                                                            className="px-4 py-2 border border-red-200 text-red-600 text-sm font-medium rounded-xl hover:bg-red-50 transition-all disabled:opacity-50"
-                                                        >
-                                                            Remove Admin
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            onClick={() => makeAdmin(u.id, u.fullName)}
-                                                            className="px-4 py-2 text-white text-sm font-medium rounded-xl transition-all bg-spark-500 hover:bg-spark-600"
-                                                        >
-                                                            Make Admin
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                )}
+              
+
+{activeTab === 'users' && (
+    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">👥 Customers</h3>
+            <button
+                onClick={() => {
+                    if (window.confirm('Send welcome email to ALL customers who haven\'t received one?')) {
+                        sendBulkWelcomeEmails();
+                    }
+                }}
+                className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white rounded-lg text-sm font-medium transition"
+            >
+                📧 Send to All
+            </button>
+        </div>
+        
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                    <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Welcome Email</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                    {users.length === 0 ? (
+                        <tr>
+                            <td colSpan="5" className="px-4 py-6 text-center text-gray-500">
+                                No users found
+                            </td>
+                        </tr>
+                    ) : (
+                        users.map((user) => (
+                            <tr key={user.id || user.userId} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-gray-900">{user.fullName || 'N/A'}</td>
+                                <td className="px-4 py-3 text-gray-600">{user.email}</td>
+                                <td className="px-4 py-3 text-gray-500 text-xs">
+                                    {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        user.welcomeEmailSent 
+                                            ? 'bg-green-100 text-green-700' 
+                                            : 'bg-red-100 text-red-700'
+                                    }`}>
+                                        {user.welcomeEmailSent ? '✅ Sent' : '❌ Not Sent'}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <button
+                                        onClick={() => sendSingleWelcomeEmail(user.id || user.userId)}
+                                        disabled={user.welcomeEmailSent}
+                                        className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                                            user.welcomeEmailSent 
+                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                                : 'bg-spark-500 hover:bg-spark-600 text-white'
+                                        }`}
+                                    >
+                                        {user.welcomeEmailSent ? 'Sent' : 'Send Email'}
+                                    </button>
+                                </td>
+                            </tr>
+                        ))
+                    )}
+                </tbody>
+            </table>
+        </div>
+    </div>
+)}
                 
                 {/* ============ STORIES TAB ============ */}
                 {activeTab === 'stories' && (
@@ -2470,6 +2531,11 @@ const sendInvestorEmail = async (interest) => {
         )}
     </div>
 )}
+
+ {activeTab === 'email-tracking' && (
+        // ✅ Email Tracking Component
+        <EmailTracking />
+    )}
 
                 {/* ============ MODALS ============ */}
                 

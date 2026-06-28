@@ -245,7 +245,6 @@
 //         </div>
 //     );
 // }
-
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -268,7 +267,17 @@ export default function Login() {
         const ref = searchParams.get('ref');
         if (ref) {
             setReferralCode(ref);
+            // ✅ Store in localStorage for persistence
+            localStorage.setItem('pendingReferralCode', ref);
+            localStorage.setItem('pendingReferralCodeTimestamp', Date.now().toString());
             console.log('✅ Referral code loaded from URL:', ref);
+        } else {
+            // ✅ Check localStorage for existing code
+            const storedRef = localStorage.getItem('pendingReferralCode');
+            if (storedRef) {
+                setReferralCode(storedRef);
+                console.log('✅ Referral code loaded from storage:', storedRef);
+            }
         }
     }, [searchParams]);
 
@@ -301,10 +310,8 @@ export default function Login() {
             <HeaderMissionCard />
             
             <div className="w-full px-4 sm:px-8 lg:px-16 xl:px-24 py-8 sm:py-12">
-                
                 <div className="py-12">
                     <div className="max-w-5xl mx-auto px-4">
-                        
                         <div className="absolute left-10 text-4xl opacity-10 animate-bounce hidden lg:block">🔑</div>
                         <div className="absolute right-10 text-4xl opacity-10 animate-pulse hidden lg:block">📖</div>
 
@@ -314,7 +321,6 @@ export default function Login() {
 
                             <div className="relative bg-white rounded-2xl shadow-xl overflow-hidden z-10">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-
                                     <div className="relative overflow-hidden min-h-[500px]">
                                         <img
                                             src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=600&h=600&fit=crop"
@@ -388,7 +394,6 @@ export default function Login() {
                                                 </button>
                                             </div>
 
-                                            {/* Google Sign In - ALWAYS VISIBLE */}
                                             <button
                                                 onClick={handleGoogleSignIn}
                                                 disabled={loading}
@@ -405,7 +410,6 @@ export default function Login() {
                                                 {loading ? 'Loading...' : 'Continue with Google'}
                                             </button>
 
-                                            {/* Phone Sign In - DISABLED with Coming Soon message */}
                                             <div className="mt-4 text-center">
                                                 <p className="text-xs text-gray-400">
                                                     📱 Phone number login is coming soon! 

@@ -103,13 +103,13 @@
 //         </div>
 //     );
 // }
-
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { api, setAuthToken } from '../services/api';
 import { auth } from '../services/firebase';
+import { setupNewUser } from '../utils/userUtils';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -205,23 +205,50 @@ export default function BvnCollection() {
         setLoading(true);
         
         try {
-            // 1. Save BVN and Phone to Firebase
+            // ✅ 1. Ensure user document exists with referral & email
+            const displayName = user?.displayName || user?.fullName || 'Thespark Member';
+            const userEmail = user?.email || '';
+            
+            const setupResult = await setupNewUser(user.uid, {
+                fullName: displayName,
+                email: userEmail,
+                phone: phone
+            });
+            
+            if (!setupResult.success) {
+                throw new Error(setupResult.error);
+            }
+            
+            console.log('✅ User setup complete:', {
+                isNewUser: setupResult.isNewUser,
+                referral: setupResult.referral,
+                email: setupResult.email
+            });
+            
+            // ✅ Show referral bonus toast if successful
+            if (setupResult.referral?.success && setupResult.referral?.bonus) {
+                toast.success(`🎉 You got ₦${setupResult.referral.bonus} referral bonus!`);
+            }
+            
+            // ✅ 2. Save BVN and Phone to Firebase
             await updateDoc(doc(db, 'users', user.uid), {
                 bvn: bvn,
-                phone: phone
+                phone: phone,
+                bvnUpdatedAt: new Date().toISOString(),
+                phoneUpdatedAt: new Date().toISOString()
             });
             
             await refreshUserData();
             toast.success('BVN and Phone saved successfully!');
             
-            // 2. Create virtual account with phone number
+            // ✅ 3. Create virtual account with phone number
             console.log('🔄 Creating virtual account automatically...');
             const idToken = await auth.currentUser.getIdToken();
             setAuthToken(idToken);
             
             const response = await api.post('/flutterwave/create-account', {
-                email: user.email,
-                fullName: user.displayName || user.fullName,
+                email: userEmail,
+                fullName: displayName,
                 bvn: bvn,
                 phone: phone
             });
@@ -235,6 +262,8 @@ export default function BvnCollection() {
                 const errorMsg = response.data.error || 'Please contact support';
                 setError(`Virtual account creation failed: ${errorMsg}`);
                 toast.error(`Virtual account creation failed: ${errorMsg}`);
+                // Still allow user to continue
+                setTimeout(() => navigate('/dashboard'), 3000);
             }
             
         } catch (error) {
