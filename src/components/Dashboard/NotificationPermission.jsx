@@ -4,6 +4,9 @@ import { api, setAuthToken } from '../../services/api';
 import { requestNotificationPermission, onForegroundMessage } from '../../services/firebase';
 import toast from 'react-hot-toast';
 
+// ✅ Add this constant at the top
+const TOAST_SHOWN_KEY = 'notificationToastShown';
+
 export default function NotificationPermission() {
     const { user } = useAuth();
     const [permissionStatus, setPermissionStatus] = useState('default');
@@ -16,9 +19,6 @@ export default function NotificationPermission() {
     const toastIdRef = useRef(null);
     const grantedShownRef = useRef(false);
     
-    // ✅ Use localStorage for persistence across page refreshes
-    const st = 'notificationToastShown';
-    
     // ✅ Check if toast was already shown (persists across refreshes)
     const isToastAlreadyShown = () => {
         return localStorage.getItem(TOAST_SHOWN_KEY) === 'true';
@@ -29,8 +29,16 @@ export default function NotificationPermission() {
         localStorage.setItem(TOAST_SHOWN_KEY, 'true');
     };
 
-    // ✅ Clear toast shown flag (useful for testing)
-    // localStorage.removeItem('notificationToastShown');
+    // ✅ For existing users: If permission is already granted, set the flag
+    const handleExistingUsers = () => {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            // ✅ If user already has notifications enabled, mark toast as shown
+            if (!isToastAlreadyShown()) {
+                markToastAsShown();
+                console.log('✅ Existing user detected - notification toast flagged as shown');
+            }
+        }
+    };
 
     const checkPermissionStatus = () => {
         if ('Notification' in window) {
@@ -44,6 +52,9 @@ export default function NotificationPermission() {
             } else if (status === 'granted') {
                 setShowPrompt(false);
                 setShowBlockedMessage(false);
+                
+                // ✅ For existing users, set the flag so toast doesn't show
+                handleExistingUsers();
                 
                 // ✅ Show granted message only once per browser
                 if (!grantedShownRef.current) {
@@ -105,7 +116,6 @@ export default function NotificationPermission() {
         };
     }, [user]);
 
-    // ✅ Show toast ONLY when permission is actually granted
     const showToast = (type, message, options = {}) => {
         // ✅ Check localStorage - if already shown, skip
         if (type === 'success' && message.includes('Notifications enabled')) {
@@ -169,8 +179,9 @@ export default function NotificationPermission() {
             }
 
             if (Notification.permission === 'granted') {
-                // ✅ Only show toast if not shown before
+                // ✅ For existing users, set flag here too
                 if (!isToastAlreadyShown()) {
+                    markToastAsShown();
                     showToast('success', '✅ Notifications already enabled!');
                 }
                 if (!grantedShownRef.current) {
@@ -248,7 +259,6 @@ export default function NotificationPermission() {
         });
     };
 
-    // ✅ Updated with Opera, Edge, Brave support
     const handleOpenBrowserSettings = () => {
         const userAgent = navigator.userAgent.toLowerCase();
         
@@ -279,7 +289,6 @@ export default function NotificationPermission() {
         }
     };
 
-    // Show granted message (UI banner, not toast)
     if (showGrantedMessage) {
         return (
             <div className="fixed top-16 left-0 right-0 z-[99999] px-4 pointer-events-none">
@@ -309,7 +318,6 @@ export default function NotificationPermission() {
         );
     }
 
-    // Show blocked message
     if (showBlockedMessage) {
         return (
             <div className="fixed top-16 left-0 right-0 z-[99999] px-4 pointer-events-none">
@@ -341,7 +349,6 @@ export default function NotificationPermission() {
         );
     }
 
-    // Show normal prompt
     if (!showPrompt || permissionStatus !== 'default') {
         return null;
     }
