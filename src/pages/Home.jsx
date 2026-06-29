@@ -253,62 +253,75 @@ export default function Home() {
 
                 {/* ===== HERO SECTION - FULL BLEED IMAGE WITH ROTATING BACKGROUND ===== */}
                 {/* ===== HERO SECTION - FULL BLEED IMAGE WITH ROTATING BACKGROUND ===== */}
-                <div className="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
-                    {/* Rotating Background Images */}
-                    <div className="absolute inset-0 z-0">
-                        {images.map((image, index) => (
-                            <div
-                                key={index}
-                                className={`absolute inset-0 transition-opacity duration-1000 ${currentImageIndex === index ? 'opacity-100' : 'opacity-0'}`}
-                            >
-                                <img
-                                    src={image}
-                                    alt={`Hero Background ${index + 1}`}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                        console.log(`Image ${index} failed to load`);
-                                        e.target.src = "https://picsum.photos/id/20/800/600"; // Fallback
-                                    }}
-                                />
-                            </div>
-                        ))}
+              <div className="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
+    {/* Rotating Background Images */}
+    <div className="absolute inset-0 z-0">
+        {images.map((image, index) => (
+            <div
+                key={index}
+                className={`absolute inset-0 transition-opacity duration-1000 ${currentImageIndex === index ? 'opacity-100' : 'opacity-0'}`}
+            >
+                <img
+                    src={image}
+                    alt={`Hero Background ${index + 1}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                        console.log(`Image ${index} failed to load`);
+                        e.target.src = "https://picsum.photos/id/20/800/600"; // Fallback
+                    }}
+                />
+            </div>
+        ))}
 
-                        {/* Dark Overlay for text readability */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/80"></div>
-                    </div>
+        {/* Dark Overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/80"></div>
+    </div>
 
-                    {/* Hero Content */}
-                    <div className="relative z-10 text-center px-4 max-w-5xl mx-auto">
-                        <div className="inline-block mb-6">
-                            <div className="text-8xl sm:text-9xl animate-pulse drop-shadow-2xl">🔥</div>
-                        </div>
-                        <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-4 tracking-tight">
-                            TheSpark
-                        </h1>
-                        <p className="text-xl sm:text-2xl md:text-3xl text-white/90 mb-4 font-light tracking-wide">
-                            wealth-building platform
-                        </p>
-                        <div className="w-24 h-0.5 bg-spark-500 mx-auto rounded-full mb-6"></div>
-                        <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">
-                            {typedSpark}
-                            {showCursor && <span className="inline-block w-1 h-8 bg-white ml-1 animate-pulse"></span>}
-                        </p>
-                        <p className="text-base sm:text-lg md:text-xl text-white/80 mb-6">
-                            One spark. One fire. One wealthy Nigeria.
-                        </p>
-                        <p className="text-xs sm:text-sm text-white/60 max-w-md mx-auto mb-8">
-                            Teaching timeless wealth principles to reduce poverty in Nigeria
-                        </p>
-                        {!user ? (
-                            <Link to="/register" className="inline-block bg-gradient-to-r from-spark-500 to-spark-600 text-white px-8 sm:px-10 md:px-12 py-3 sm:py-4 rounded-full font-bold text-sm sm:text-base md:text-lg shadow-2xl hover:shadow-xl transition-all hover:scale-105">
-                                Join the Revolution 🚀
-                            </Link>
-                        ) : (
-                            <Link to="/dashboard" className="inline-block bg-gradient-to-r from-spark-500 to-spark-600 text-white px-8 sm:px-10 md:px-12 py-3 sm:py-4 rounded-full font-bold text-sm sm:text-base md:text-lg shadow-2xl hover:shadow-xl transition-all hover:scale-105">
-                                Continue Your Journey 🔥
-                            </Link>
-                        )}
-                    </div>
+    {/* Hero Content */}
+    <div className="relative z-10 text-center px-4 max-w-5xl mx-auto">
+        {/* Full Logo with Text */}
+        <div className="inline-block mb-6">
+            {/* <div className="flex items-center justify-center gap-3"> */}
+                <img 
+                    src="/icons/thespark-logo-512x512.png" 
+                    //  src="/icons/thespark-logo-full-flame-512x512.png" 
+                    alt="TheSpark" 
+                    className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto drop-shadow-2xl"
+                />
+                {/* <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-spark-500 to-spark-700 bg-clip-text text-transparent">
+                    TheSpark
+                // </span> */}
+            {/* </div> */}
+        </div>
+        
+        <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-4 tracking-tight">
+            TheSpark
+        </h1>
+        <p className="text-xl sm:text-2xl md:text-3xl text-white/90 mb-4 font-light tracking-wide">
+            wealth-building platform
+        </p>
+        <div className="w-24 h-0.5 bg-spark-500 mx-auto rounded-full mb-6"></div>
+        <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">
+            {typedSpark}
+            {showCursor && <span className="inline-block w-1 h-8 bg-white ml-1 animate-pulse"></span>}
+        </p>
+        <p className="text-base sm:text-lg md:text-xl text-white/80 mb-6">
+            One spark. One fire. One wealthy Nigeria.
+        </p>
+        <p className="text-xs sm:text-sm text-white/60 max-w-md mx-auto mb-8">
+            Teaching timeless wealth principles to reduce poverty in Nigeria
+        </p>
+        {!user ? (
+            <Link to="/register" className="inline-block bg-gradient-to-r from-spark-500 to-spark-600 text-white px-8 sm:px-10 md:px-12 py-3 sm:py-4 rounded-full font-bold text-sm sm:text-base md:text-lg shadow-2xl hover:shadow-xl transition-all hover:scale-105">
+                Join the Revolution 🚀
+            </Link>
+        ) : (
+            <Link to="/dashboard" className="inline-block bg-gradient-to-r from-spark-500 to-spark-600 text-white px-8 sm:px-10 md:px-12 py-3 sm:py-4 rounded-full font-bold text-sm sm:text-base md:text-lg shadow-2xl hover:shadow-xl transition-all hover:scale-105">
+                Continue Your Journey 🔥
+            </Link>
+        )}
+    </div>
+{/* </div> */}
 
                     {/* Image Indicator Dots - Shows ALL images */}
                     <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
@@ -353,7 +366,13 @@ export default function Home() {
                         {/* TheSpark - Product */}
                         <div className="text-center p-3 rounded-xl transition-all duration-300 hover:bg-white/50 group">
                             <div className="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-spark-500 to-orange-500 rounded-full flex items-center justify-center group-hover:scale-110 transition shadow-sm">
-                                <span className="text-2xl">🔥</span>
+                                {/* <span className="text-2xl">🔥</span> */}
+                                 <img 
+                                src="/icons/thespark-logo-512x512.png" 
+                                //  src="/icons/thespark-logo-full-flame-512x512.png" 
+                                alt="TheSpark" 
+                                className="text-2xl"
+                            />
                             </div>
                             <p className="font-bold text-gray-800 text-sm group-hover:text-spark-600 transition">TheSpark</p>
                             <p className="text-xs text-gray-500">Wealth-Building Platform</p>
@@ -785,7 +804,7 @@ export default function Home() {
     </div>
 )} */} 
 
- <StatModal 
+           <StatModal 
                 stat={selectedStat}
                 isOpen={!!selectedStat}
                 onClose={() => setSelectedStat(null)}
@@ -1591,7 +1610,19 @@ export default function Home() {
                         <div className="absolute inset-0 bg-black/70"></div>
                     </div>
                     <div className="relative z-10 text-center px-4 max-w-3xl mx-auto">
-                        <div className="text-7xl mb-4 animate-pulse">🔥</div>
+                        <div className="inline-block mb-6">
+                            {/* <div className="flex items-center justify-center gap-3"> */}
+                                <img 
+                                    src="/icons/thespark-logo-512x512.png" 
+                                    //  src="/icons/thespark-logo-full-flame-512x512.png" 
+                                    alt="TheSpark" 
+                                    className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto drop-shadow-2xl"
+                                />
+                                {/* <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-spark-500 to-spark-700 bg-clip-text text-transparent">
+                                    TheSpark
+                                </span> */}
+                            </div>
+                        {/* </div> */}
                         <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Ready to Start Your Journey?</h2>
                         <p className="text-base sm:text-lg text-white/80 mb-8">Join thousands of Nigerians building better financial habits</p>
 

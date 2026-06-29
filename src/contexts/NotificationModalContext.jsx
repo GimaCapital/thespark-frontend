@@ -177,7 +177,7 @@
 //     document.head.appendChild(styleSheet);
 // }
 
-
+// src/contexts/NotificationModalContext.jsx
 import React, { createContext, useContext, useState } from 'react';
 
 const NotificationModalContext = createContext();
@@ -186,68 +186,163 @@ export function useNotificationModal() {
     return useContext(NotificationModalContext);
 }
 
-export function NotificationModalProvider({ children }) {
-    const [selectedNotification, setSelectedNotification] = useState(null);
-
-    const openNotificationModal = (notification) => {
-        setSelectedNotification(notification);
-    };
-
-    const closeNotificationModal = () => {
-        setSelectedNotification(null);
-    };
-
-    return (
-        <NotificationModalContext.Provider value={{ openNotificationModal, closeNotificationModal, selectedNotification }}>
-            {children}
-            {selectedNotification && (
-                <NotificationModal 
-                    notification={selectedNotification} 
-                    onClose={closeNotificationModal} 
-                />
-            )}
-        </NotificationModalContext.Provider>
-    );
-}
-
 // Modal component
 function NotificationModal({ notification, onClose }) {
     const formatDate = (timestamp) => {
         if (!timestamp) return 'Just now';
         try {
             const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-            return date.toLocaleString();
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         } catch (e) {
             return 'Unknown date';
         }
     };
 
-    // ✅ UPDATED: Added withdrawal support
+    // ✅ COMPLETE: All notification types supported
     const getIcon = (type) => {
-        if (type === 'deposit_approved') return '✅';
-        if (type === 'deposit_rejected') return '❌';
-        if (type === 'deposit_reversed') return '🔄';
-        // 👇 ADDED: Withdrawal types
-        if (type === 'withdrawal_approved') return '💳';
-        if (type === 'withdrawal_rejected') return '🚫';
-        if (type === 'withdrawal_failed') return '⚠️';
-        if (type === 'withdrawal_processing') return '⏳';
-        if (type === 'withdrawal_completed') return '✅';
-        return '🔔';
+        const icons = {
+            // Deposit types
+            'deposit_approved': '✅',
+            'deposit_rejected': '❌',
+            'deposit_reversed': '🔄',
+            // Withdrawal types
+            'withdrawal_approved': '💳',
+            'withdrawal_rejected': '🚫',
+            'withdrawal_failed': '⚠️',
+            'withdrawal_processing': '⏳',
+            'withdrawal_completed': '✅',
+            // Product types
+            'product_approved': '✅',
+            'product_rejected': '❌',
+            'product_submitted': '📦',
+            'product_updated': '🔄',
+            // Order types
+            'order_placed': '📦',
+            'order_processing': '⚙️',
+            'order_dispatched': '🚚',
+            'order_out_for_delivery': '🚚',
+            'order_delivered': '✅',
+            'order_cancelled': '❌',
+            'new_order': '🛒',
+            // Investment types
+            'investment_interest': '📈',
+            'investment_confirmation': '✅',
+            // Generic
+            'email_sent': '📧',
+            'codes_generated': '🔑'
+        };
+        return icons[type] || '🔔';
     };
 
-    // ✅ UPDATED: Added withdrawal support
     const getIconColor = (type) => {
-        if (type === 'deposit_approved') return 'bg-green-100 text-green-600';
-        if (type === 'deposit_rejected') return 'bg-red-100 text-red-600';
-        if (type === 'deposit_reversed') return 'bg-orange-100 text-orange-600';
-        // 👇 ADDED: Withdrawal types
-        if (type === 'withdrawal_approved') return 'bg-blue-100 text-blue-600';
-        if (type === 'withdrawal_rejected') return 'bg-red-100 text-red-600';
-        if (type === 'withdrawal_failed') return 'bg-red-100 text-red-600';
-        if (type === 'withdrawal_processing') return 'bg-yellow-100 text-yellow-600';
-        if (type === 'withdrawal_completed') return 'bg-green-100 text-green-600';
-        return 'bg-gray-100 text-gray-600';
+        const colors = {
+            // Deposit types
+            'deposit_approved': 'bg-green-100 text-green-600',
+            'deposit_rejected': 'bg-red-100 text-red-600',
+            'deposit_reversed': 'bg-orange-100 text-orange-600',
+            // Withdrawal types
+            'withdrawal_approved': 'bg-blue-100 text-blue-600',
+            'withdrawal_rejected': 'bg-red-100 text-red-600',
+            'withdrawal_failed': 'bg-red-100 text-red-600',
+            'withdrawal_processing': 'bg-yellow-100 text-yellow-600',
+            'withdrawal_completed': 'bg-green-100 text-green-600',
+            // Product types
+            'product_approved': 'bg-green-100 text-green-600',
+            'product_rejected': 'bg-red-100 text-red-600',
+            'product_submitted': 'bg-yellow-100 text-yellow-600',
+            'product_updated': 'bg-blue-100 text-blue-600',
+            // Order types
+            'order_placed': 'bg-blue-100 text-blue-600',
+            'order_processing': 'bg-yellow-100 text-yellow-600',
+            'order_dispatched': 'bg-purple-100 text-purple-600',
+            'order_out_for_delivery': 'bg-indigo-100 text-indigo-600',
+            'order_delivered': 'bg-green-100 text-green-600',
+            'order_cancelled': 'bg-red-100 text-red-600',
+            'new_order': 'bg-spark-100 text-spark-600',
+            // Investment types
+            'investment_interest': 'bg-purple-100 text-purple-600',
+            'investment_confirmation': 'bg-green-100 text-green-600',
+            // Generic
+            'email_sent': 'bg-blue-100 text-blue-600',
+            'codes_generated': 'bg-spark-100 text-spark-600'
+        };
+        return colors[type] || 'bg-gray-100 text-gray-600';
+    };
+
+    const getStatusText = (type) => {
+        const statuses = {
+            // Deposit types
+            'deposit_approved': 'Approved',
+            'deposit_rejected': 'Rejected',
+            'deposit_reversed': 'Reversed',
+            // Withdrawal types
+            'withdrawal_approved': 'Approved',
+            'withdrawal_rejected': 'Rejected',
+            'withdrawal_failed': 'Failed',
+            'withdrawal_processing': 'Processing',
+            'withdrawal_completed': 'Completed',
+            // Product types
+            'product_approved': 'Approved',
+            'product_rejected': 'Rejected',
+            'product_submitted': 'Pending',
+            'product_updated': 'Updated',
+            // Order types
+            'order_placed': 'Placed',
+            'order_processing': 'Processing',
+            'order_dispatched': 'Dispatched',
+            'order_out_for_delivery': 'Out for Delivery',
+            'order_delivered': 'Delivered',
+            'order_cancelled': 'Cancelled',
+            'new_order': 'New',
+            // Investment types
+            'investment_interest': 'New',
+            'investment_confirmation': 'Confirmed',
+            // Generic
+            'email_sent': 'Sent',
+            'codes_generated': 'Generated'
+        };
+        return statuses[type] || 'Unknown';
+    };
+
+    const getStatusColor = (type) => {
+        const colors = {
+            // Deposit types
+            'deposit_approved': 'bg-green-100 text-green-700',
+            'deposit_rejected': 'bg-red-100 text-red-700',
+            'deposit_reversed': 'bg-orange-100 text-orange-700',
+            // Withdrawal types
+            'withdrawal_approved': 'bg-blue-100 text-blue-700',
+            'withdrawal_rejected': 'bg-red-100 text-red-700',
+            'withdrawal_failed': 'bg-red-100 text-red-700',
+            'withdrawal_processing': 'bg-yellow-100 text-yellow-700',
+            'withdrawal_completed': 'bg-green-100 text-green-700',
+            // Product types
+            'product_approved': 'bg-green-100 text-green-700',
+            'product_rejected': 'bg-red-100 text-red-700',
+            'product_submitted': 'bg-yellow-100 text-yellow-700',
+            'product_updated': 'bg-blue-100 text-blue-700',
+            // Order types
+            'order_placed': 'bg-blue-100 text-blue-700',
+            'order_processing': 'bg-yellow-100 text-yellow-700',
+            'order_dispatched': 'bg-purple-100 text-purple-700',
+            'order_out_for_delivery': 'bg-indigo-100 text-indigo-700',
+            'order_delivered': 'bg-green-100 text-green-700',
+            'order_cancelled': 'bg-red-100 text-red-700',
+            'new_order': 'bg-spark-100 text-spark-700',
+            // Investment types
+            'investment_interest': 'bg-purple-100 text-purple-700',
+            'investment_confirmation': 'bg-green-100 text-green-700',
+            // Generic
+            'email_sent': 'bg-blue-100 text-blue-700',
+            'codes_generated': 'bg-spark-100 text-spark-700'
+        };
+        return colors[type] || 'bg-gray-100 text-gray-700';
     };
 
     // Prevent body scroll when modal is open
@@ -298,41 +393,39 @@ function NotificationModal({ notification, onClose }) {
                     
                     {/* Additional Details */}
                     <div className="space-y-3">
+                        {/* Status */}
                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
                             <span className="text-xs text-gray-500">Status</span>
-                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                // ✅ UPDATED: Added withdrawal support
-                                notification.type === 'deposit_approved' ? 'bg-green-100 text-green-700' :
-                                notification.type === 'deposit_rejected' ? 'bg-red-100 text-red-700' :
-                                notification.type === 'deposit_reversed' ? 'bg-orange-100 text-orange-700' :
-                                // 👇 ADDED: Withdrawal types
-                                notification.type === 'withdrawal_approved' ? 'bg-blue-100 text-blue-700' :
-                                notification.type === 'withdrawal_rejected' ? 'bg-red-100 text-red-700' :
-                                notification.type === 'withdrawal_failed' ? 'bg-red-100 text-red-700' :
-                                notification.type === 'withdrawal_processing' ? 'bg-yellow-100 text-yellow-700' :
-                                notification.type === 'withdrawal_completed' ? 'bg-green-100 text-green-700' :
-                                'bg-gray-100 text-gray-700'
-                            }`}>
-                                {notification.type === 'deposit_approved' ? 'Approved' :
-                                 notification.type === 'deposit_rejected' ? 'Rejected' :
-                                 notification.type === 'deposit_reversed' ? 'Reversed' :
-                                 // 👇 ADDED: Withdrawal types
-                                 notification.type === 'withdrawal_approved' ? 'Approved' :
-                                 notification.type === 'withdrawal_rejected' ? 'Rejected' :
-                                 notification.type === 'withdrawal_failed' ? 'Failed' :
-                                 notification.type === 'withdrawal_processing' ? 'Processing' :
-                                 notification.type === 'withdrawal_completed' ? 'Completed' :
-                                 'Unknown'}
+                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(notification.type)}`}>
+                                {getStatusText(notification.type)}
                             </span>
                         </div>
                         
-                        {notification.amount && (
+                        {/* Amount - if present */}
+                        {notification.amount !== undefined && notification.amount !== null && (
                             <div className="flex justify-between items-center py-2 border-b border-gray-100">
                                 <span className="text-xs text-gray-500">Amount</span>
                                 <span className="text-sm font-semibold text-spark-500">₦{notification.amount.toLocaleString()}</span>
                             </div>
                         )}
                         
+                        {/* Product Name - if present */}
+                        {notification.data?.productName && (
+                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-xs text-gray-500">Product</span>
+                                <span className="text-sm font-medium text-gray-900">{notification.data.productName}</span>
+                            </div>
+                        )}
+                        
+                        {/* Order ID - if present */}
+                        {notification.data?.orderId && (
+                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-xs text-gray-500">Order ID</span>
+                                <span className="text-xs font-mono text-gray-600">{notification.data.orderId}</span>
+                            </div>
+                        )}
+                        
+                        {/* Admin Note - if present */}
                         {notification.resolveNote && (
                             <div className="bg-spark-50 rounded-xl p-3 mt-2">
                                 <p className="text-xs font-semibold text-spark-600 mb-1">📝 Admin Note</p>
@@ -340,6 +433,7 @@ function NotificationModal({ notification, onClose }) {
                             </div>
                         )}
                         
+                        {/* Transaction Reference - if present */}
                         {notification.flwReference && (
                             <div className="bg-gray-50 rounded-xl p-3">
                                 <p className="text-xs font-semibold text-gray-500 mb-1">Transaction Reference</p>
@@ -347,6 +441,7 @@ function NotificationModal({ notification, onClose }) {
                             </div>
                         )}
                         
+                        {/* Timestamp */}
                         <div className="flex justify-between items-center pt-2">
                             <span className="text-xs text-gray-400">Received</span>
                             <span className="text-xs text-gray-500">{formatDate(notification.createdAt)}</span>
@@ -366,7 +461,31 @@ function NotificationModal({ notification, onClose }) {
     );
 }
 
-// Add this to your global CSS or index.css
+export function NotificationModalProvider({ children }) {
+    const [selectedNotification, setSelectedNotification] = useState(null);
+
+    const openNotificationModal = (notification) => {
+        setSelectedNotification(notification);
+    };
+
+    const closeNotificationModal = () => {
+        setSelectedNotification(null);
+    };
+
+    return (
+        <NotificationModalContext.Provider value={{ openNotificationModal, closeNotificationModal, selectedNotification }}>
+            {children}
+            {selectedNotification && (
+                <NotificationModal 
+                    notification={selectedNotification} 
+                    onClose={closeNotificationModal} 
+                />
+            )}
+        </NotificationModalContext.Provider>
+    );
+}
+
+// Add styles to document
 const styles = `
     @keyframes fadeInUp {
         from {
@@ -380,7 +499,6 @@ const styles = `
     }
 `;
 
-// Add styles to document
 if (typeof document !== 'undefined') {
     const styleSheet = document.createElement("style");
     styleSheet.textContent = styles;

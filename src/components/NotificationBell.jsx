@@ -159,7 +159,7 @@
 // }
 
 
-
+// src/components/NotificationBell.jsx
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/firebase';
 import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
@@ -221,39 +221,87 @@ export default function NotificationBell() {
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
-    // ✅ UPDATED: Added withdrawal support
+    // ✅ COMPLETE: All notification types supported
     const getIcon = (type) => {
-        if (type === 'deposit_approved') return '✅';
-        if (type === 'deposit_rejected') return '❌';
-        if (type === 'deposit_reversed') return '🔄';
-        // 👇 ADDED: Withdrawal types
-        if (type === 'withdrawal_approved') return '💳';
-        if (type === 'withdrawal_rejected') return '🚫';
-        if (type === 'withdrawal_failed') return '⚠️';
-        if (type === 'withdrawal_processing') return '⏳';
-        if (type === 'withdrawal_completed') return '✅';
-        return '🔔';
+        const icons = {
+            // Deposit types
+            'deposit_approved': '✅',
+            'deposit_rejected': '❌',
+            'deposit_reversed': '🔄',
+            // Withdrawal types
+            'withdrawal_approved': '💳',
+            'withdrawal_rejected': '🚫',
+            'withdrawal_failed': '⚠️',
+            'withdrawal_processing': '⏳',
+            'withdrawal_completed': '✅',
+            // Product types
+            'product_approved': '✅',
+            'product_rejected': '❌',
+            'product_submitted': '📦',
+            'product_updated': '🔄',
+            // Order types
+            'order_placed': '📦',
+            'order_processing': '⚙️',
+            'order_dispatched': '🚚',
+            'order_out_for_delivery': '🚚',
+            'order_delivered': '✅',
+            'order_cancelled': '❌',
+            'new_order': '🛒',
+            // Investment types
+            'investment_interest': '📈',
+            'investment_confirmation': '✅',
+            // Generic
+            'email_sent': '📧',
+            'codes_generated': '🔑'
+        };
+        return icons[type] || '🔔';
     };
 
-    // ✅ UPDATED: Added withdrawal support
     const getIconColor = (type) => {
-        if (type === 'deposit_approved') return 'bg-green-100 text-green-600';
-        if (type === 'deposit_rejected') return 'bg-red-100 text-red-600';
-        if (type === 'deposit_reversed') return 'bg-orange-100 text-orange-600';
-        // 👇 ADDED: Withdrawal types
-        if (type === 'withdrawal_approved') return 'bg-blue-100 text-blue-600';
-        if (type === 'withdrawal_rejected') return 'bg-red-100 text-red-600';
-        if (type === 'withdrawal_failed') return 'bg-red-100 text-red-600';
-        if (type === 'withdrawal_processing') return 'bg-yellow-100 text-yellow-600';
-        if (type === 'withdrawal_completed') return 'bg-green-100 text-green-600';
-        return 'bg-gray-100 text-gray-600';
+        const colors = {
+            // Deposit types
+            'deposit_approved': 'bg-green-100 text-green-600',
+            'deposit_rejected': 'bg-red-100 text-red-600',
+            'deposit_reversed': 'bg-orange-100 text-orange-600',
+            // Withdrawal types
+            'withdrawal_approved': 'bg-blue-100 text-blue-600',
+            'withdrawal_rejected': 'bg-red-100 text-red-600',
+            'withdrawal_failed': 'bg-red-100 text-red-600',
+            'withdrawal_processing': 'bg-yellow-100 text-yellow-600',
+            'withdrawal_completed': 'bg-green-100 text-green-600',
+            // Product types
+            'product_approved': 'bg-green-100 text-green-600',
+            'product_rejected': 'bg-red-100 text-red-600',
+            'product_submitted': 'bg-yellow-100 text-yellow-600',
+            'product_updated': 'bg-blue-100 text-blue-600',
+            // Order types
+            'order_placed': 'bg-blue-100 text-blue-600',
+            'order_processing': 'bg-yellow-100 text-yellow-600',
+            'order_dispatched': 'bg-purple-100 text-purple-600',
+            'order_out_for_delivery': 'bg-indigo-100 text-indigo-600',
+            'order_delivered': 'bg-green-100 text-green-600',
+            'order_cancelled': 'bg-red-100 text-red-600',
+            'new_order': 'bg-spark-100 text-spark-600',
+            // Investment types
+            'investment_interest': 'bg-purple-100 text-purple-600',
+            'investment_confirmation': 'bg-green-100 text-green-600',
+            // Generic
+            'email_sent': 'bg-blue-100 text-blue-600',
+            'codes_generated': 'bg-spark-100 text-spark-600'
+        };
+        return colors[type] || 'bg-gray-100 text-gray-600';
     };
 
     const formatDate = (timestamp) => {
         if (!timestamp) return 'Just now';
         try {
             const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-            return date.toLocaleString();
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         } catch (e) {
             return 'Unknown date';
         }

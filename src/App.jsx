@@ -107,7 +107,6 @@
 // }
 
 // export default App;
-
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -140,6 +139,10 @@ import Terms from './pages/Terms';
 import BvnCollection from './components/BvnCollection';
 import BankAccountPage from './pages/BankAccountPage';
 import Investor from './pages/thesparkprivateinvestment';
+import Marketplace from './pages/Marketplace';
+import Orders from './pages/Marketplace/Orders';
+import SellProduct from './pages/Marketplace/Sell';  // ✅ Import SellProduct
+import LogoDesigner from './pages/LogoDesigner';
 
 // BVN Protection Route Component
 function BvnProtectedRoute({ children }) {
@@ -176,6 +179,7 @@ function AppContent() {
         <NotificationModalProvider>
             <Layout>
                 <Routes>
+                    {/* Public Routes */}
                     <Route path="/" element={<Home />} />
                     <Route path="/how-it-works" element={<HowItWorks />} />
                     <Route path="/thespark/private/investor" element={<Investor />} />
@@ -186,8 +190,26 @@ function AppContent() {
                     <Route path="/referral" element={<Referral />} />
                     <Route path="/privacy" element={<Privacy />} />
                     <Route path="/terms" element={<Terms />} />
-                    <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
-                    <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
+                    
+                    {/* Marketplace Routes */}
+                    <Route path="/marketplace" element={<Marketplace />} />
+                    <Route path="/marketplace/sell" element={
+                        <PrivateRoute>
+                            <BvnProtectedRoute>
+                                <SellProduct />
+                            </BvnProtectedRoute>
+                        </PrivateRoute>
+                    } />
+                    
+                    {/* Protected Routes */}
+                    <Route path="/orders" element={
+                        <PrivateRoute>
+                            <BvnProtectedRoute>
+                                <Orders />
+                            </BvnProtectedRoute>
+                        </PrivateRoute>
+                    } />
+                    
                     <Route path="/dashboard" element={
                         <PrivateRoute>
                             <BvnProtectedRoute>
@@ -195,7 +217,7 @@ function AppContent() {
                             </BvnProtectedRoute>
                         </PrivateRoute>
                     } />
-                
+                    
                     <Route path="/graduation" element={
                         <PrivateRoute>
                             <BvnProtectedRoute>
@@ -203,6 +225,7 @@ function AppContent() {
                             </BvnProtectedRoute>
                         </PrivateRoute>
                     } />
+                    
                     <Route path="/premium" element={
                         <PrivateRoute>
                             <BvnProtectedRoute>
@@ -210,6 +233,7 @@ function AppContent() {
                             </BvnProtectedRoute>
                         </PrivateRoute>
                     } />
+                    
                     <Route path="/profile" element={
                         <PrivateRoute>
                             <BvnProtectedRoute>
@@ -217,6 +241,7 @@ function AppContent() {
                             </BvnProtectedRoute>
                         </PrivateRoute>
                     } />
+                    
                     <Route path="/transactions" element={
                         <PrivateRoute>
                             <BvnProtectedRoute>
@@ -224,28 +249,45 @@ function AppContent() {
                             </BvnProtectedRoute>
                         </PrivateRoute>
                     } />
-                    {/* Admin routes - no BVN required */}
-                    <Route path="/admin" element={
-                        <AdminRoute>
-                            <AdminDashboard />
-                        </AdminRoute>
-                    } />
-                    <Route path="/hybrid-lending" element={
-                        <AdminRoute>
-                            <HybridLending />
-                        </AdminRoute>
-                    } />
-                    <Route path="/admin-management" element={
-                        <AdminRoute>
-                            <AdminManagement />
-                        </AdminRoute>
-                    } />
-                     <Route path="/bank-account" element={
+                    
+                    <Route path="/bank-account" element={
                         <PrivateRoute>
                             <BvnProtectedRoute>
                                 <BankAccountPage />
                             </BvnProtectedRoute>
                         </PrivateRoute>
+                    } />
+
+                        {/* ✅ Logo Designer Route - Protected & BVN Verified */}
+                    <Route path="/logo-designer" element={
+                        <PrivateRoute>
+                            <BvnProtectedRoute>
+                                <LogoDesigner />
+                            </BvnProtectedRoute>
+                        </PrivateRoute>
+                    } />
+                    
+                    {/* Auth Routes */}
+                    <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+                    <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
+                    
+                    {/* Admin Routes */}
+                    <Route path="/admin" element={
+                        <AdminRoute>
+                            <AdminDashboard />
+                        </AdminRoute>
+                    } />
+                    
+                    <Route path="/hybrid-lending" element={
+                        <AdminRoute>
+                            <HybridLending />
+                        </AdminRoute>
+                    } />
+                    
+                    <Route path="/admin-management" element={
+                        <AdminRoute>
+                            <AdminManagement />
+                        </AdminRoute>
                     } />
                 </Routes>
                 <Toaster position="top-center" />

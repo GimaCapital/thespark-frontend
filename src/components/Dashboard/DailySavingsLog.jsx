@@ -752,7 +752,7 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
 
     return (
         <>
-            <div className="p-4">
+            <div className="p-4 daily-savings-section">
                 <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                     <h3 className="text-lg font-semibold text-gray-900">💰 Daily Savings</h3>
                     <span className="text-xs text-gray-500">

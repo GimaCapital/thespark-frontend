@@ -474,8 +474,6 @@
 //     );
 // }
 
-
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -488,6 +486,7 @@ export default function Layout({ children }) {
     const [scrolled, setScrolled] = useState(false);
     const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
     const [isLegalDropdownOpen, setIsLegalDropdownOpen] = useState(false);
+    const [isMarketDropdownOpen, setIsMarketDropdownOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     
@@ -498,16 +497,19 @@ export default function Layout({ children }) {
         window.scrollTo(0, 0);
     };
     
-    // Close dropdown when clicking outside
+    // Close dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (isLegalDropdownOpen && !event.target.closest('.legal-dropdown')) {
                 setIsLegalDropdownOpen(false);
             }
+            if (isMarketDropdownOpen && !event.target.closest('.market-dropdown')) {
+                setIsMarketDropdownOpen(false);
+            }
         };
         document.addEventListener('click', handleClickOutside);
         return () => document.removeEventListener('click', handleClickOutside);
-    }, [isLegalDropdownOpen]);
+    }, [isLegalDropdownOpen, isMarketDropdownOpen]);
     
     // Handle window resize
     useEffect(() => {
@@ -543,6 +545,7 @@ export default function Layout({ children }) {
     useEffect(() => {
         setIsMobileMenuOpen(false);
         setIsLegalDropdownOpen(false);
+        setIsMarketDropdownOpen(false);
     }, [location.pathname]);
     
     const handleLogout = async () => {
@@ -560,7 +563,7 @@ export default function Layout({ children }) {
         { path: '/', icon: '🏠', label: 'Home', showAlways: true },
         { path: '/dashboard', icon: '📊', label: 'Dashboard', showWhen: !!user },
         { path: '/how-it-works', icon: '📚', label: 'Learn', showAlways: true },
-        { path: '/premium', icon: '⭐', label: 'Premium', showWhen: !!user },
+        { path: '/marketplace', icon: '🛒', label: 'Market', showAlways: true },
         { path: '/profile', icon: '👤', label: 'Profile', showAlways: true },
     ];
     
@@ -572,10 +575,12 @@ export default function Layout({ children }) {
     // ============ HAMBURGER MENU PAGES ============
     const menuPages = [
         { path: '/about', label: '📖 About Us', section: 'Main', showAlways: true },
+        { path: '/how-it-works', label: '📚 How It Works', section: 'Main', showAlways: true },
         { path: '/7-rules', label: '📚 7 Rules of Wealth', section: 'Main', showAlways: true },
         { path: '/success-stories', label: '🌟 Success Stories', section: 'Main', showAlways: true },
         { path: '/faq', label: '❓ FAQ', section: 'Main', showAlways: true },
         { path: '/graduation', label: '🎓 Graduation', section: 'Account', showWhen: !!user && isGraduated },
+        { path: '/orders', label: '📦 My Orders', section: 'Account', showWhen: !!user },
         { path: '/privacy', label: '🔒 Privacy Policy', section: 'Legal', showAlways: true },
         { path: '/terms', label: '📜 Terms of Service', section: 'Legal', showAlways: true },
         { path: '/admin', label: '⚙️ Admin Dashboard', section: 'Admin', showWhen: !!isAdmin },
@@ -593,6 +598,7 @@ export default function Layout({ children }) {
     const adminMenuPages = visibleMenuPages.filter(p => p.section === 'Admin');
     
     const isActive = (path) => location.pathname === path;
+    const isMarketActive = isActive('/marketplace') || isActive('/orders');
     
     // Animation styles with active live background
     const animationStyles = `
@@ -669,9 +675,30 @@ export default function Layout({ children }) {
             animation: bounce 1s ease-in-out infinite;
         }
         
-        .logo-fire {
-            animation: bounce 2s ease-in-out infinite, pulse 3s ease-in-out infinite;
-            display: inline-block;
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logo-image {
+            height: 32px;
+            width: auto;
+            transition: all 0.3s ease;
+        }
+        
+        .logo-image:hover {
+            transform: scale(1.05);
+        }
+        
+        .logo-image-mobile {
+            height: 24px;
+            width: auto;
+            transition: all 0.3s ease;
+        }
+        
+        .logo-image-mobile:hover {
+            transform: scale(1.05);
         }
         
         .logo-text {
@@ -684,21 +711,20 @@ export default function Layout({ children }) {
             letter-spacing: 1px;
         }
         
-        .logo-container:hover .logo-fire {
-            animation: spin 0.5s ease-in-out, bounce 2s ease-in-out infinite;
+        .logo-container:hover .logo-image {
+            animation: spin 0.5s ease-in-out;
         }
         
         @keyframes fireFlicker {
             0% { transform: scale(1); opacity: 1; }
-            25% { transform: scale(1.1); opacity: 0.9; }
+            25% { transform: scale(1.05); opacity: 0.9; }
             50% { transform: scale(1); opacity: 1; }
-            75% { transform: scale(1.05); opacity: 0.95; }
+            75% { transform: scale(1.02); opacity: 0.95; }
             100% { transform: scale(1); opacity: 1; }
         }
         
-        .mobile-logo-fire {
-            animation: fireFlicker 1.5s ease-in-out infinite;
-            display: inline-block;
+        .logo-image-mobile {
+            animation: fireFlicker 2s ease-in-out infinite;
         }
         
         /* Legal Dropdown Styles */
@@ -749,6 +775,53 @@ export default function Layout({ children }) {
         .dropdown-arrow.rotated {
             transform: rotate(180deg);
         }
+        
+        /* Market Dropdown Styles */
+        .market-dropdown {
+            position: relative;
+        }
+        
+        .market-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+            min-width: 200px;
+            overflow: hidden;
+            z-index: 50;
+            margin-top: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .market-dropdown-item {
+            display: block;
+            padding: 10px 16px;
+            color: #374151;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        
+        .market-dropdown-item:hover {
+            background-color: #fef3f2;
+            color: #ea580c;
+        }
+        
+        .market-dropdown-item-active {
+            background-color: #fef3f2;
+            color: #ea580c;
+            font-weight: 500;
+            border-left: 3px solid #ea580c;
+            animation: activePulse 2s ease-in-out infinite;
+        }
+        
+        .market-dropdown-divider {
+            height: 1px;
+            background-color: #e5e7eb;
+            margin: 4px 12px;
+        }
     `;
     
     // ============ DESKTOP TOP NAVBAR ============
@@ -779,17 +852,22 @@ export default function Layout({ children }) {
                 <nav className={`navbar ${scrolled ? 'navbar-scrolled' : 'navbar-default'}`}>
                     <div className="nav-container">
                         <div className="nav-flex">
-                            {/* Animated Logo */}
+                            {/* Animated Logo with Full Image */}
                             <Link 
                                 to="/" 
-                                className="logo-container flex items-center gap-2 group" 
+                                className="logo-container group" 
                                 onClick={() => {
                                     setIsMobileMenuOpen(false);
                                     scrollToTop();
                                 }}
                             >
-                                <span className="logo-fire text-2xl transition-all duration-300 group-hover:scale-110">🔥</span>
-                                <span className="logo logo-text text-xl font-bold bg-gradient-to-r from-spark-500 to-spark-700 bg-clip-text text-transparent">
+                                <img 
+                                    src="/icons/thespark-logo-full-flame-512x512.png" 
+                                    
+                                    alt="TheSpark" 
+                                    className="logo-image"
+                                />
+                                <span className="logo-text text-xl font-bold bg-gradient-to-r from-spark-500 to-spark-700 bg-clip-text text-transparent">
                                     TheSpark
                                 </span>
                             </Link>
@@ -805,6 +883,54 @@ export default function Layout({ children }) {
                                         {link.label}
                                     </Link>
                                 ))}
+                                
+                                {/* Market Dropdown - Marketplace & Orders */}
+                                <div className="market-dropdown relative inline-block">
+                                    <button
+                                        onClick={() => setIsMarketDropdownOpen(!isMarketDropdownOpen)}
+                                        className={`nav-link inline-flex items-center gap-1 ${isMarketActive ? 'nav-link-active' : ''}`}
+                                    >
+                                        Market
+                                        <svg 
+                                            className={`dropdown-arrow w-3 h-3 ${isMarketDropdownOpen ? 'rotated' : ''}`}
+                                            fill="none" 
+                                            stroke="currentColor" 
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                    
+                                    {isMarketDropdownOpen && (
+                                        <div className="market-dropdown-menu">
+                                            <Link 
+                                                to="/marketplace" 
+                                                className={`market-dropdown-item ${isActive('/marketplace') ? 'market-dropdown-item-active' : ''}`}
+                                                onClick={() => {
+                                                    setIsMarketDropdownOpen(false);
+                                                    scrollToTop();
+                                                }}
+                                            >
+                                                🛒 Marketplace
+                                            </Link>
+                                            {user && (
+                                                <>
+                                                    <div className="market-dropdown-divider"></div>
+                                                    <Link 
+                                                        to="/orders" 
+                                                        className={`market-dropdown-item ${isActive('/orders') ? 'market-dropdown-item-active' : ''}`}
+                                                        onClick={() => {
+                                                            setIsMarketDropdownOpen(false);
+                                                            scrollToTop();
+                                                        }}
+                                                    >
+                                                        📦 My Orders
+                                                    </Link>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                                 
                                 {/* Legal Dropdown - Privacy & Terms */}
                                 <div className="legal-dropdown relative inline-block">
@@ -864,7 +990,7 @@ export default function Layout({ children }) {
                                         <button onClick={handleLogout} className="nav-link-danger">
                                             Logout
                                         </button>
-                                        {/* Notification Bell - MOVED HERE to the right side */}
+                                        {/* Notification Bell */}
                                         <NotificationBell />
                                     </div>
                                 ) : (
@@ -917,9 +1043,30 @@ export default function Layout({ children }) {
                                         {link.label}
                                     </Link>
                                 ))}
+                                <Link
+                                    to="/marketplace"
+                                    onClick={() => {
+                                        setIsMobileMenuOpen(false);
+                                        scrollToTop();
+                                    }}
+                                    className={`mobile-menu-link ${isActive('/marketplace') ? 'mobile-menu-link-active' : ''}`}
+                                >
+                                    🛒 Marketplace
+                                </Link>
+                                {user && (
+                                    <Link
+                                        to="/orders"
+                                        onClick={() => {
+                                            setIsMobileMenuOpen(false);
+                                            scrollToTop();
+                                        }}
+                                        className={`mobile-menu-link ${isActive('/orders') ? 'mobile-menu-link-active' : ''}`}
+                                    >
+                                        📦 My Orders
+                                    </Link>
+                                )}
                             </div>
                             
-                            {/* Legal Section in Mobile Menu */}
                             <div className="mobile-menu-section">
                                 <p className="mobile-menu-title">Legal</p>
                                 <Link
@@ -1017,7 +1164,7 @@ export default function Layout({ children }) {
                     <span className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
                 </button>
                 
-                {/* Animated Logo - Centered */}
+                {/* Animated Logo with Full Image - Centered */}
                 <Link 
                     to="/" 
                     className="flex items-center gap-1 absolute left-1/2 transform -translate-x-1/2 group" 
@@ -1026,10 +1173,15 @@ export default function Layout({ children }) {
                         scrollToTop();
                     }}
                 >
-                    <span className="mobile-logo-fire text-xl transition-all duration-300 group-hover:scale-110">🔥</span>
-                    <span className="logo text-lg font-bold bg-gradient-to-r from-spark-500 to-spark-700 bg-clip-text text-transparent">
+                    <img 
+                        src="/icons/thespark-logo-full-flame-512x512.png" 
+                        alt="TheSpark" 
+                        className="logo-image-mobile"
+                    />
+                    <span className="logo-text text-lg font-bold bg-gradient-to-r from-spark-500 to-spark-700 bg-clip-text text-transparent">
                         TheSpark
                     </span>
+                    
                 </Link>
                 
                 {/* Notification Bell for Mobile */}
@@ -1064,7 +1216,11 @@ export default function Layout({ children }) {
                             ) : (
                                 <div className="px-6 pb-4 border-b border-gray-100">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <span className="text-2xl animate-pulse">🔥</span>
+                                        <img 
+                                            src="/icons/thespark-logo-192x192.png" 
+                                            alt="TheSpark" 
+                                            className="h-8 w-auto"
+                                        />
                                         <p className="text-gray-700 font-semibold">TheSpark</p>
                                     </div>
                                     <p className="text-gray-500 text-sm mb-3">Welcome to TheSpark</p>

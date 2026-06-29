@@ -4,8 +4,6 @@ import { api, setAuthToken } from '../services/api';
 import { auth } from '../services/firebase';
 import toast from 'react-hot-toast';
 import FlutterwaveVirtualAccount from '../components/Dashboard/FlutterwaveVirtualAccount';
-// import BvnStatusCard from '../components/BvnStatusCard';
-// ✅ For .jsx file, include the extension
 import BvnStatusCard from '../components/BvnStatusCard.jsx';
 
 const getBankIcon = (bankName) => {
