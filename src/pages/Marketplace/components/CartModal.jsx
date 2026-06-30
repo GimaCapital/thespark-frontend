@@ -1,5 +1,5 @@
 // src/pages/Marketplace/components/CartModal.jsx
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function CartModal({ 
     cart, 
@@ -8,7 +8,7 @@ export default function CartModal({
     onRemove, 
     onCheckout, 
     balance,
-    isProcessing // ✅ NEW prop
+    isProcessing
 }) {
     const formatPrice = (price) => {
         return '₦' + price.toLocaleString();
@@ -22,6 +22,22 @@ export default function CartModal({
         return cart.reduce((total, item) => 
             total + ((item.originalPrice - item.discountPrice) * item.quantity), 0
         );
+    };
+
+    // Category emojis as fallback
+    const categoryEmojis = {
+        'rice': '🍚',
+        'garri': '🌽',
+        'beans': '🫘',
+        'oil': '🫒',
+        'yam': '🍠',
+        'grains': '🌾',
+        'oils': '🫒',
+        'others': '📦'
+    };
+
+    const getFallbackImage = (item) => {
+        return item.emoji || categoryEmojis[item.category] || '📦';
     };
 
     return (
@@ -51,7 +67,29 @@ export default function CartModal({
                         <div className="flex-1 overflow-y-auto p-6">
                             {cart.map(item => (
                                 <div key={item.id} className="flex items-center gap-4 py-3 border-b border-gray-100">
-                                    <span className="text-3xl">{item.image}</span>
+                                    {/* ✅ FIXED: Show actual image or fallback */}
+                                    <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
+                                        {item.image && item.image !== '📦' ? (
+                                            <img 
+                                                src={item.image} 
+                                                alt={item.name}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    e.target.onerror = null;
+                                                    e.target.style.display = 'none';
+                                                    e.target.parentElement.innerHTML = `
+                                                        <div class="w-full h-full flex items-center justify-center text-2xl bg-gray-100">
+                                                            ${getFallbackImage(item)}
+                                                        </div>
+                                                    `;
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-2xl bg-gray-100">
+                                                {getFallbackImage(item)}
+                                            </div>
+                                        )}
+                                    </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-medium text-gray-900 text-sm">{item.name}</p>
                                         <p className="text-sm text-spark-600">{formatPrice(item.discountPrice)}</p>
@@ -90,7 +128,6 @@ export default function CartModal({
                                 <span className="text-gray-500">You Save</span>
                                 <span className="text-green-600 font-semibold">{formatPrice(getTotalSavings())}</span>
                             </div>
-                            {/* ✅ UPDATED: Button with processing state */}
                             <button
                                 onClick={onCheckout}
                                 disabled={isProcessing}

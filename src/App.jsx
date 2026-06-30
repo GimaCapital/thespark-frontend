@@ -143,6 +143,7 @@ import Marketplace from './pages/Marketplace';
 import Orders from './pages/Marketplace/Orders';
 import SellProduct from './pages/Marketplace/Sell';  // ✅ Import SellProduct
 import LogoDesigner from './pages/LogoDesigner';
+import AdminStockPhone from './components/Admin/AdminStockPhone';
 
 // BVN Protection Route Component
 function BvnProtectedRoute({ children }) {
@@ -266,6 +267,17 @@ function AppContent() {
                             </BvnProtectedRoute>
                         </PrivateRoute>
                     } />
+
+                    <Route 
+                        path="/AdminStockPhone" 
+                        element={
+                            <PrivateRoute>
+                                 <BvnProtectedRoute>
+                                   <AdminStockPhone />
+                                </BvnProtectedRoute>
+                          </PrivateRoute>
+                        } 
+                    />
                     
                     {/* Auth Routes */}
                     <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />

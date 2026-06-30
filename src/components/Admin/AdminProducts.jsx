@@ -173,83 +173,107 @@ export default function AdminProducts() {
             </div>
 
             {/* Pending Products Tab */}
-            {activeTab === 'products' && (
-                <div>
-                    {productsLoading ? (
-                        <div className="bg-white rounded-2xl p-12 text-center">
-                            <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-spark-500 mx-auto"></div>
-                            <p className="text-gray-500 mt-4">Loading products...</p>
-                        </div>
-                    ) : pendingProducts.length === 0 ? (
-                        <div className="bg-white rounded-2xl p-12 text-center">
-                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span className="text-3xl">📦</span>
-                            </div>
-                            <h3 className="text-lg font-medium text-gray-900 mb-1">No Pending Products</h3>
-                            <p className="text-gray-500">All products have been reviewed</p>
-                        </div>
-                    ) : (
-                        pendingProducts.map(product => (
-                            <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all mb-4">
-                                <div className="p-6">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-4xl">{product.image || '📦'}</span>
-                                            <div>
-                                                <h3 className="font-semibold text-gray-900">{product.name}</h3>
-                                                <p className="text-sm text-gray-500">By {product.sellerName || 'Unknown'}</p>
-                                                <p className="text-xs text-gray-400">{product.sellerEmail}</p>
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-1">
-                                                    ⏳ Pending
-                                                </span>
-                                            </div>
+            {/* Pending Products Tab */}
+{activeTab === 'products' && (
+    <div>
+        {productsLoading ? (
+            <div className="bg-white rounded-2xl p-12 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-spark-500 mx-auto"></div>
+                <p className="text-gray-500 mt-4">Loading products...</p>
+            </div>
+        ) : pendingProducts.length === 0 ? (
+            <div className="bg-white rounded-2xl p-12 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-3xl">📦</span>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-1">No Pending Products</h3>
+                <p className="text-gray-500">All products have been reviewed</p>
+            </div>
+        ) : (
+            pendingProducts.map(product => (
+                <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all mb-4">
+                    <div className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                {/* ✅ FIXED: Show actual product image */}
+                                <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                                    {product.image ? (
+                                        <img 
+                                            src={product.image} 
+                                            alt={product.name}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = '';
+                                                e.target.className = 'hidden';
+                                                e.target.parentElement.innerHTML = `
+                                                    <div class="w-full h-full flex items-center justify-center text-3xl bg-gray-100">
+                                                        📦
+                                                    </div>
+                                                `;
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-3xl bg-gray-100">
+                                            📦
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleApproveProduct(product.id)}
-                                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-all"
-                                            >
-                                                ✅ Approve
-                                            </button>
-                                            <button
-                                                onClick={() => handleRejectProduct(product.id)}
-                                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all"
-                                            >
-                                                ❌ Reject
-                                            </button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div className="bg-gray-50 rounded-xl p-3">
-                                            <p className="text-xs text-gray-500">Original Price</p>
-                                            <p className="text-lg font-bold text-gray-900 line-through">{formatPrice(product.originalPrice)}</p>
-                                        </div>
-                                        <div className="bg-spark-50 rounded-xl p-3 border border-spark-200">
-                                            <p className="text-xs text-gray-500">Discount Price</p>
-                                            <p className="text-lg font-bold text-spark-600">{formatPrice(product.discountPrice)}</p>
-                                        </div>
-                                        <div className="bg-gray-50 rounded-xl p-3">
-                                            <p className="text-xs text-gray-500">Discount</p>
-                                            <p className="text-lg font-bold text-green-600">{product.discount}% OFF</p>
-                                        </div>
-                                        <div className="bg-gray-50 rounded-xl p-3">
-                                            <p className="text-xs text-gray-500">Stock</p>
-                                            <p className="text-lg font-bold text-gray-900">{product.stock || 0}</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="mt-3 p-3 bg-gray-50 rounded-xl">
-                                        <p className="text-xs text-gray-500">Description</p>
-                                        <p className="text-sm text-gray-700">{product.description}</p>
-                                        <p className="text-xs text-gray-400 mt-1">Unit: {product.unit}</p>
-                                    </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-gray-900">{product.name}</h3>
+                                    <p className="text-sm text-gray-500">By {product.sellerName || 'Unknown'}</p>
+                                    <p className="text-xs text-gray-400">{product.sellerEmail}</p>
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-1">
+                                        ⏳ Pending
+                                    </span>
                                 </div>
                             </div>
-                        ))
-                    )}
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => handleApproveProduct(product.id)}
+                                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-all"
+                                >
+                                    ✅ Approve
+                                </button>
+                                <button
+                                    onClick={() => handleRejectProduct(product.id)}
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all"
+                                >
+                                    ❌ Reject
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="bg-gray-50 rounded-xl p-3">
+                                <p className="text-xs text-gray-500">Original Price</p>
+                                <p className="text-lg font-bold text-gray-900 line-through">{formatPrice(product.originalPrice)}</p>
+                            </div>
+                            <div className="bg-spark-50 rounded-xl p-3 border border-spark-200">
+                                <p className="text-xs text-gray-500">Discount Price</p>
+                                <p className="text-lg font-bold text-spark-600">{formatPrice(product.discountPrice)}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-xl p-3">
+                                <p className="text-xs text-gray-500">Discount</p>
+                                <p className="text-lg font-bold text-green-600">{product.discount}% OFF</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-xl p-3">
+                                <p className="text-xs text-gray-500">Stock</p>
+                                <p className="text-lg font-bold text-gray-900">{product.stock || 0}</p>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-3 p-3 bg-gray-50 rounded-xl">
+                            <p className="text-xs text-gray-500">Description</p>
+                            <p className="text-sm text-gray-700">{product.description}</p>
+                            <p className="text-xs text-gray-400 mt-1">Unit: {product.unit}</p>
+                        </div>
+                    </div>
                 </div>
-            )}
+            ))
+        )}
+    </div>
+)}
 
             {/* Orders Tab */}
             {activeTab === 'orders' && (

@@ -764,6 +764,8 @@ import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import EmailTracking from '../components/Admin/EmailTracking';
 import AdminProducts from '../components/Admin/AdminProducts';
+import AdminStockPhone from '../components/Admin/AdminStockPhone';
+
 
 
 export default function AdminDashboard() {
@@ -1370,7 +1372,8 @@ const sendInvestorEmail = async (interest) => {
                     { id: 'flagged', label: 'Flagged', count: flaggedDeposits.filter(f => f.status === 'review_needed' || !f.status).length, icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
                     { id: 'investment', label: 'Investment', count: investmentInterests.filter(i => i.status === 'new' || !i.status).length, icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
                     { id: 'email-tracking', label: 'Email Tracking', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
-                    { id: 'marketplace', label: 'Marketplace', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' }
+                    { id: 'marketplace', label: 'Marketplace', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+                    { id: 'admin-stock-photos', label: '🖼️ Stock Photos',  icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' }
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -2542,6 +2545,13 @@ const sendInvestorEmail = async (interest) => {
         // ✅ Email Tracking Component
         <EmailTracking />
     )}
+
+     {activeTab === 'admin-stock-photos' && (
+        // ✅ Email Tracking Component
+        <AdminStockPhone />
+    )}
+
+    
 
                 {/* ============ MODALS ============ */}
                 
