@@ -20,7 +20,7 @@ export default defineConfig({
             manifest: {
                 name: 'TheSpark',
                 short_name: 'TheSpark',
-                description: 'Save daily. Earn 5%. Rise together.',
+                description: 'Save daily. Rise together.',
                 theme_color: '#F97316',
                 background_color: '#FFFFFF',
                 display: 'standalone',

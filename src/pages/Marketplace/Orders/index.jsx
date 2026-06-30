@@ -90,15 +90,11 @@ export default function Orders() {
                 )}
             </div>
 
-            {showDetails && (
-                <OrderDetailsModal
-                    order={selectedOrder}
-                    onClose={() => {
-                        setShowDetails(false);
-                        setSelectedOrder(null);
-                    }}
-                />
-            )}
+           <OrderDetailsModal 
+                order={selectedOrder} 
+                open={!!selectedOrder} 
+                onClose={() => setSelectedOrder(null)} 
+            />
         </div>
     );
 }
