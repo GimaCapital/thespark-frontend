@@ -25,6 +25,34 @@ export default function Marketplace() {
     const [deliveryAddress, setDeliveryAddress] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
+    // ✅ Load cart from localStorage on mount
+    useEffect(() => {
+        const savedCart = localStorage.getItem('thespark_cart');
+        if (savedCart) {
+            try {
+                setCart(JSON.parse(savedCart));
+            } catch (e) {
+                setCart([]);
+            }
+        }
+    }, []);
+
+    // ✅ Listen for cart updates from other pages
+    useEffect(() => {
+        const handleCartUpdate = () => {
+            const savedCart = localStorage.getItem('thespark_cart');
+            if (savedCart) {
+                try {
+                    setCart(JSON.parse(savedCart));
+                } catch (e) {
+                    setCart([]);
+                }
+            }
+        };
+        window.addEventListener('cartUpdated', handleCartUpdate);
+        return () => window.removeEventListener('cartUpdated', handleCartUpdate);
+    }, []);
+
     useEffect(() => {
         loadData();
     }, []);
@@ -32,11 +60,9 @@ export default function Marketplace() {
     const loadData = async () => {
         setLoading(true);
         try {
-            // Load products first (public)
             const productsData = await getProducts();
             setProducts(productsData);
             
-            // Only load user data if authenticated
             if (user) {
                 await loadUserBalance();
                 if (userData?.deliveryAddress) {
@@ -66,7 +92,6 @@ export default function Marketplace() {
         }
     };
 
-    // Get unique categories from products
     const categories = ['all', ...new Set(products.map(p => p.category))];
 
     const filteredProducts = products.filter(product => {
@@ -76,7 +101,6 @@ export default function Marketplace() {
         return matchesCategory && matchesSearch;
     });
 
-    // Check if user is authenticated before cart actions
     const requireAuth = () => {
         if (!user) {
             toast.error(
@@ -114,29 +138,41 @@ export default function Marketplace() {
         return true;
     };
 
+    // ✅ Save cart to localStorage whenever it changes
+    useEffect(() => {
+        if (cart.length > 0) {
+            localStorage.setItem('thespark_cart', JSON.stringify(cart));
+        } else {
+            localStorage.removeItem('thespark_cart');
+        }
+    }, [cart]);
+
     const addToCart = (product) => {
         if (!requireAuth()) return;
 
         const existingItem = cart.find(item => item.id === product.id);
         if (existingItem) {
             if (existingItem.quantity < product.stock) {
-                setCart(cart.map(item =>
+                const updatedCart = cart.map(item =>
                     item.id === product.id
                         ? { ...item, quantity: item.quantity + 1 }
                         : item
-                ));
+                );
+                setCart(updatedCart);
                 toast.success(`Added another ${product.name} to cart`);
             } else {
                 toast.error('Not enough stock available');
             }
         } else {
-            setCart([...cart, { ...product, quantity: 1 }]);
+            const newCart = [...cart, { ...product, quantity: 1 }];
+            setCart(newCart);
             toast.success(`${product.name} added to cart`);
         }
     };
 
     const removeFromCart = (productId) => {
-        setCart(cart.filter(item => item.id !== productId));
+        const updatedCart = cart.filter(item => item.id !== productId);
+        setCart(updatedCart);
         toast.info('Item removed from cart');
     };
 
@@ -150,11 +186,12 @@ export default function Marketplace() {
             toast.error('Not enough stock');
             return;
         }
-        setCart(cart.map(item =>
+        const updatedCart = cart.map(item =>
             item.id === productId
                 ? { ...item, quantity: newQuantity }
                 : item
-        ));
+        );
+        setCart(updatedCart);
     };
 
     const getTotalPrice = () => {
@@ -191,6 +228,7 @@ export default function Marketplace() {
             
             if (result.success) {
                 setCart([]);
+                localStorage.removeItem('thespark_cart');
                 setShowCart(false);
                 await loadUserBalance();
                 
@@ -259,7 +297,6 @@ export default function Marketplace() {
     return (
         <div className="bg-gray-50 min-h-screen">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                {/* Guest Banner - Brand Colors, Centered, No Button */}
                 {!user && (
                     <div className="rounded-2xl p-6 mb-6 text-center">
                         <div className="max-w-2xl mx-auto">
@@ -269,7 +306,6 @@ export default function Marketplace() {
                     </div>
                 )}
 
-                {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">🛒 TheSpark Food Market</h1>
@@ -298,14 +334,13 @@ export default function Marketplace() {
                             <span className="text-sm font-medium text-gray-700 hidden sm:inline">Cart</span>
                             {cart.length > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-spark-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                    {cart.reduce((total, item) => total + item.quantity, 0)}
+                                 {cart.length} 
                                 </span>
                             )}
                         </button>
                     </div>
                 </div>
 
-                {/* Category Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                     {categories.filter(c => c !== 'all').slice(0, 4).map(cat => {
                         const count = products.filter(p => p.category === cat).length;
@@ -326,7 +361,6 @@ export default function Marketplace() {
                     })}
                 </div>
 
-                {/* Filters */}
                 <div className="flex flex-col sm:flex-row gap-4 mb-6">
                     <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
                     <CategoryFilter 
@@ -336,15 +370,9 @@ export default function Marketplace() {
                     />
                 </div>
 
-                {/* Product Grid */}
-                <ProductGrid 
-                    products={filteredProducts} 
-                    onAddToCart={addToCart} 
-                    isAuthenticated={!!user}
-                />
+                <ProductGrid products={filteredProducts} />
             </div>
 
-            {/* Cart Modal */}
             {showCart && user && (
                 <CartModal
                     cart={cart}

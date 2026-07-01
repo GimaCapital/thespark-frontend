@@ -1,4 +1,4 @@
-// src/pages/Marketplace/Orders/components/OrderDetailsModal.jsx
+// // src/pages/Marketplace/Orders/components/OrderDetailsModal.jsx
 import React from 'react';
 import { Modal, Tag, Timeline, Divider, Button, Space, Descriptions } from 'antd';
 import { 
@@ -73,7 +73,8 @@ export default function OrderDetailsModal({ order, open, onClose }) {
         const icon = stageIcons[track.stage] || '📌';
         
         return {
-            dot: (
+            // ✅ FIXED: Changed 'dot' to 'icon'
+            icon: (
                 <div className={`
                     w-10 h-10 rounded-full flex items-center justify-center text-xl transition-all duration-300
                     ${isCompleted ? ' text-white' : ''}
@@ -85,7 +86,8 @@ export default function OrderDetailsModal({ order, open, onClose }) {
                 </div>
             ),
             color: isCompleted ? 'green' : isCurrent ? 'orange' : 'gray',
-            children: (
+            // ✅ FIXED: Changed 'children' to 'content'
+            content: (
                 <div className="pb-2">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -202,7 +204,7 @@ export default function OrderDetailsModal({ order, open, onClose }) {
 
             {/* Tracking Timeline */}
             <Divider 
-                orientation="left" 
+                titlePlacement="left" 
                 className="text-sm font-semibold border-spark-200"
             >
                 <Space>
@@ -225,7 +227,7 @@ export default function OrderDetailsModal({ order, open, onClose }) {
 
             {/* Items List */}
             <Divider 
-                orientation="left" 
+                titlePlacement="left" 
                 className="text-sm font-semibold border-spark-200"
             >
                 <Space>

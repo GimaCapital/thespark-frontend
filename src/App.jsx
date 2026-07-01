@@ -141,7 +141,9 @@ import BankAccountPage from './pages/BankAccountPage';
 import Investor from './pages/thesparkprivateinvestment';
 import Marketplace from './pages/Marketplace';
 import Orders from './pages/Marketplace/Orders';
-import SellProduct from './pages/Marketplace/Sell';  // ✅ Import SellProduct
+import SellProduct from './pages/Marketplace/Sell';  
+// import ProductDetail from './pages/Marketplace/ProductDetail'; 
+import ProductDetail from './pages/Marketplace/ProductDetail/index';
 import LogoDesigner from './pages/LogoDesigner';
 import AdminStockPhone from './components/Admin/AdminStockPhone';
 
@@ -194,6 +196,7 @@ function AppContent() {
                     
                     {/* Marketplace Routes */}
                     <Route path="/marketplace" element={<Marketplace />} />
+                    <Route path="/marketplace/product/:productId" element={<ProductDetail />} /> 
                     <Route path="/marketplace/sell" element={
                         <PrivateRoute>
                             <BvnProtectedRoute>
