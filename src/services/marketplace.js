@@ -136,7 +136,7 @@ export const deleteProduct = async (productId) => {
 // ============ ORDERS (All require authentication) ============
 
 // Create an order (checkout) - REQUIRES AUTH
-export const createOrder = async (items, total, deliveryAddress) => {
+export const createOrder = async (items, total, deliveryAddress, addressId) => {
     try {
         const user = auth.currentUser;
         if (!user) throw new Error('You must be logged in to place an order');
@@ -145,7 +145,8 @@ export const createOrder = async (items, total, deliveryAddress) => {
         const response = await api.post('/marketplace/orders', {
             items,
             total,
-            deliveryAddress
+            deliveryAddress,
+            addressId
         });
         return response.data;
     } catch (error) {

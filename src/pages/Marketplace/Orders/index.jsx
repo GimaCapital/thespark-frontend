@@ -114,6 +114,7 @@ export default function Orders() {
             {/* Rating Modal */}
             {showRatingModal && selectedOrderForRating && (
                 <RatingModal
+                 open={showRatingModal} 
                     order={selectedOrderForRating}
                     onClose={() => {
                         setShowRatingModal(false);

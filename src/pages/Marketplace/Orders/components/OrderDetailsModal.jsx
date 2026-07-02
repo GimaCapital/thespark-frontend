@@ -1,10 +1,11 @@
-// // src/pages/Marketplace/Orders/components/OrderDetailsModal.jsx
+// src/pages/Marketplace/Orders/components/OrderDetailsModal.jsx
 import React from 'react';
 import { Modal, Tag, Timeline, Divider, Button, Space, Descriptions } from 'antd';
 import { 
     CheckCircleOutlined, 
     ShoppingOutlined,
     TruckOutlined,
+    EnvironmentOutlined   // Added for address icon
 } from '@ant-design/icons';
 
 const statusConfig = {
@@ -54,6 +55,10 @@ export default function OrderDetailsModal({ order, open, onClose }) {
     };
 
     const status = statusConfig[order.status] || statusConfig['pending'];
+    
+    const getProductImage = (item) => {
+        return item.image || item.productImage || item.product_image || null;
+    };
 
     // Find the current stage index (last completed or first incomplete)
     const getCurrentStageIndex = () => {
@@ -73,7 +78,6 @@ export default function OrderDetailsModal({ order, open, onClose }) {
         const icon = stageIcons[track.stage] || '📌';
         
         return {
-            // ✅ FIXED: Changed 'dot' to 'icon'
             icon: (
                 <div className={`
                     w-10 h-10 rounded-full flex items-center justify-center text-xl transition-all duration-300
@@ -86,7 +90,6 @@ export default function OrderDetailsModal({ order, open, onClose }) {
                 </div>
             ),
             color: isCompleted ? 'green' : isCurrent ? 'orange' : 'gray',
-            // ✅ FIXED: Changed 'children' to 'content'
             content: (
                 <div className="pb-2">
                     <div className="flex items-center justify-between">
@@ -197,8 +200,13 @@ export default function OrderDetailsModal({ order, open, onClose }) {
                         </span>
                     </Descriptions.Item>
                 )}
+                            
+
+                 {/* Short Delivery Address */}
                 <Descriptions.Item label="Delivery Address">
-                    <span className="text-gray-700">{order.deliveryAddress || 'Not provided'}</span>
+                    <span className="text-gray-700 line-clamp-2">
+                        {order.deliveryAddress || 'Not provided'}
+                    </span>
                 </Descriptions.Item>
             </Descriptions>
 
@@ -225,31 +233,106 @@ export default function OrderDetailsModal({ order, open, onClose }) {
                 />
             </div>
 
-            {/* Items List */}
-            <Divider 
-                titlePlacement="left" 
-                className="text-sm font-semibold border-spark-200"
+             {/* ✅ Address Section inside Divider */}
+<Divider 
+    titlePlacement="left" 
+    className="text-sm font-semibold border-spark-200"
+>
+    <Space>
+        <EnvironmentOutlined className="text-spark-600" />
+        <span className="text-spark-900">Delivery Address</span>
+    </Space>
+</Divider>
+
+<div className="bg-gradient-to-r from-blue-50 to-blue-100/50 p-2 rounded-lg border border-blue-200 mb-4">
+    <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+            <p className="text-sm text-gray-800 font-medium leading-snug">
+                {order.deliveryAddress || 'Not provided'}
+            </p>
+            {(order.deliveryPhone || order.deliveryContact) && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-600 mt-0.5">
+                    {order.deliveryPhone && (
+                        <span className="text-blue-600">📞 {order.deliveryPhone}</span>
+                    )}
+                    {order.deliveryContact && (
+                        <span>👤 {order.deliveryContact}</span>
+                    )}
+                    {order.deliveryCity && order.deliveryState && (
+                        <span>📍 {order.deliveryCity}, {order.deliveryState}</span>
+                    )}
+                </div>
+            )}
+            {!order.deliveryPhone && !order.deliveryContact && (
+                <p className="text-xs text-amber-600 mt-0.5">ℹ️ No contact info</p>
+            )}
+        </div>
+        <span className="text-xs font-normal text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+            {order.status === 'delivered' ? '✅ Delivered' : '📦 Shipping'}
+        </span>
+    </div>
+</div>
+
+{/* Items List */}
+<Divider 
+    titlePlacement="left" 
+    className="text-sm font-semibold border-spark-200"
+>
+    <Space>
+        <ShoppingOutlined className="text-spark-600" />
+        <span className="text-spark-900">Items</span>
+    </Space>
+</Divider>
+
+<div className="space-y-3">
+    {order.items?.map((item, index) => {
+        const imageUrl = getProductImage(item);
+        
+        return (
+            <div 
+                key={index} 
+                className="flex items-center gap-4 py-3 px-4 border-b border-gray-100"
             >
-                <Space>
-                    <ShoppingOutlined className="text-spark-600" />
-                    <span className="text-spark-900">Items</span>
-                </Space>
-            </Divider>
-            <div className="space-y-2">
-                {order.items?.map((item, index) => (
-                    <div 
-                        key={index} 
-                        className="flex justify-between items-center py-3 px-4 bg-spark-100 rounded-lg hover:bg-spark-200 transition group"
-                    >
-                        <span className="text-sm text-gray-700 group-hover:text-gray-900">
-                            {item.quantity}× {item.name}
-                        </span>
-                        <span className="text-sm font-medium text-spark-800">
-                            {formatPrice(item.price * item.quantity)}
-                        </span>
-                    </div>
-                ))}
+                {/* Product Image */}
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    {imageUrl ? (
+                        <img 
+                            src={imageUrl} 
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = `
+                                    <div class="w-full h-full flex items-center justify-center text-2xl bg-gray-100">
+                                        📦
+                                    </div>
+                                `;
+                            }}
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-2xl bg-gray-100">
+                            📦
+                        </div>
+                    )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-gray-800 block">
+                        {item.name}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                        Quantity: {item.quantity} {item.unit || 'unit'}
+                    </span>
+                </div>
+                
+                <span className="text-sm font-bold text-spark-700 whitespace-nowrap">
+                    {formatPrice(item.price * item.quantity)}
+                </span>
             </div>
+        );
+    })}
+</div>
         </Modal>
     );
 }

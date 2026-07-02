@@ -39,7 +39,8 @@ export default function ProductDetail() {
     const [cart, setCart] = useState([]);
     const [showCart, setShowCart] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [deliveryAddress, setDeliveryAddress] = useState(''); // ✅ Added
+    const [deliveryAddress, setDeliveryAddress] = useState(''); 
+    const [selectedAddress, setSelectedAddress] = useState(null);
 
     // Load delivery address from user data
     useEffect(() => {
@@ -290,6 +291,12 @@ export default function ProductDetail() {
         setShowCart(true);
     };
 
+    const handleAddressSelect = (address) => {
+        setSelectedAddress(address);
+        const fullAddress = `${address.street}, ${address.city}, ${address.state}`;
+        setDeliveryAddress(fullAddress);
+    };
+
     const checkout = async () => {
         if (!user) {
             toast.error('Please login to checkout');
@@ -316,7 +323,7 @@ export default function ProductDetail() {
         setIsProcessing(true);
 
         try {
-            const result = await createOrder(cart, total, deliveryAddress);
+            const result = await createOrder(cart, total, deliveryAddress, selectedAddress?.id);
             
             if (result.success) {
                 setCart([]);
@@ -781,6 +788,10 @@ export default function ProductDetail() {
                     onCheckout={checkout}
                     balance={balance}
                     isProcessing={isProcessing}
+                    deliveryAddress={deliveryAddress}
+                    setDeliveryAddress={setDeliveryAddress}
+                    selectedAddress={selectedAddress}
+                    onAddressSelect={handleAddressSelect}
                 />
             )}
         </div>

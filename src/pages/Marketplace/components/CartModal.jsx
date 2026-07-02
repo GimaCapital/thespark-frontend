@@ -1,14 +1,19 @@
 // src/pages/Marketplace/components/CartModal.jsx
-import React, { useState } from 'react';
+import React from 'react';
+import AddressSelector from '../../../components/Checkout/AddressSelector';
 
-export default function CartModal({ 
-    cart, 
-    onClose, 
-    onUpdateQuantity, 
-    onRemove, 
-    onCheckout, 
+export default function CartModal({
+    cart,
+    onClose,
+    onUpdateQuantity,
+    onRemove,
+    onCheckout,
     balance,
-    isProcessing
+    isProcessing,
+    deliveryAddress,
+    setDeliveryAddress,
+    selectedAddress,
+    onAddressSelect
 }) {
     const formatPrice = (price) => {
         return '₦' + price.toLocaleString();
@@ -19,7 +24,7 @@ export default function CartModal({
     };
 
     const getTotalSavings = () => {
-        return cart.reduce((total, item) => 
+        return cart.reduce((total, item) =>
             total + ((item.originalPrice - item.discountPrice) * item.quantity), 0
         );
     };
@@ -43,6 +48,7 @@ export default function CartModal({
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+                {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
                     <h3 className="text-xl font-bold text-gray-900">🛒 Your Cart</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -65,13 +71,27 @@ export default function CartModal({
                 ) : (
                     <>
                         <div className="flex-1 overflow-y-auto p-6">
+                            {/* ✅ Delivery Address Selector */}
+                            <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                    📍 Delivery Address
+                                </h4>
+                                <AddressSelector
+                                    selectedAddress={selectedAddress}
+                                    onAddressSelect={onAddressSelect}
+                                    deliveryAddress={deliveryAddress}
+                                    setDeliveryAddress={setDeliveryAddress}
+                                />
+                            </div>
+
+                            {/* Cart Items */}
                             {cart.map(item => (
                                 <div key={item.id} className="flex items-center gap-4 py-3 border-b border-gray-100">
-                                    {/* ✅ FIXED: Show actual image or fallback */}
+                                    {/* Image with fallback */}
                                     <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
                                         {item.image && item.image !== '📦' ? (
-                                            <img 
-                                                src={item.image} 
+                                            <img
+                                                src={item.image}
                                                 alt={item.name}
                                                 className="w-full h-full object-cover"
                                                 onError={(e) => {
@@ -90,11 +110,13 @@ export default function CartModal({
                                             </div>
                                         )}
                                     </div>
+
                                     <div className="flex-1 min-w-0">
                                         <p className="font-medium text-gray-900 text-sm">{item.name}</p>
                                         <p className="text-sm text-spark-600">{formatPrice(item.discountPrice)}</p>
                                         <p className="text-xs text-gray-400">{item.unit}</p>
                                     </div>
+
                                     <div className="flex items-center gap-2">
                                         <button
                                             onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
@@ -110,6 +132,7 @@ export default function CartModal({
                                             +
                                         </button>
                                     </div>
+
                                     <button
                                         onClick={() => onRemove(item.id)}
                                         className="text-red-500 hover:text-red-700"
@@ -119,6 +142,8 @@ export default function CartModal({
                                 </div>
                             ))}
                         </div>
+
+                        {/* Footer with totals and checkout */}
                         <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
                             <div className="flex justify-between mb-2">
                                 <span className="text-gray-500">Total</span>
@@ -128,18 +153,26 @@ export default function CartModal({
                                 <span className="text-gray-500">You Save</span>
                                 <span className="text-green-600 font-semibold">{formatPrice(getTotalSavings())}</span>
                             </div>
+
                             <button
                                 onClick={onCheckout}
-                                disabled={isProcessing}
+                                disabled={isProcessing || !deliveryAddress}
                                 className={`w-full py-3 rounded-xl font-semibold text-white transition ${
-                                    isProcessing 
-                                        ? 'bg-gray-400 cursor-not-allowed' 
+                                    isProcessing || !deliveryAddress
+                                        ? 'bg-gray-400 cursor-not-allowed'
                                         : 'bg-gradient-to-r from-spark-400 to-spark-600 hover:from-spark-500 hover:to-spark-700'
                                 }`}
                             >
                                 {isProcessing ? '⏳ Processing...' : '💳 Checkout'}
                             </button>
-                            <p className="text-xs text-gray-400 text-center mt-2">
+
+                            {!deliveryAddress && (
+                                <p className="text-xs text-red-500 text-center mt-2">
+                                    ⚠️ Please select or add a delivery address
+                                </p>
+                            )}
+
+                            <p className="text-xs text-gray-400 text-center mt-3">
                                 Balance: {formatPrice(balance)}
                             </p>
                             <p className="text-[10px] text-gray-400 text-center mt-1">
