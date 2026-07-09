@@ -245,37 +245,34 @@
 
 
 
-
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../services/firebase';
-import { api, setAuthToken } from '../services/api';  // ✅ Static import
+import { api, setAuthToken } from '../services/api';
 import HeaderMissionCard from '../components/Common/HeaderMissionCard';
 import toast from 'react-hot-toast';
 
 export default function Register() {
-    const { signInWithGoogle, sendOTP, verifyOTP, refreshUserData } = useAuth();
+    const { signInWithGoogle, refreshUserData, user } = useAuth();
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     
     const [method, setMethod] = useState('google');
-    const [phone, setPhone] = useState('');
-    const [code, setCode] = useState('');
-    const [fullName, setFullName] = useState('');
     const [referralCode, setReferralCode] = useState('');
-    const [confirmationResult, setConfirmationResult] = useState(null);
     const [loading, setLoading] = useState(false);
     const [referralFailed, setReferralFailed] = useState(false);
+    const [referralProcessing, setReferralProcessing] = useState(false);
+
+    const REFERRAL_STORAGE_KEY = 'pendingReferralCode';
+    const REFERRAL_TIMESTAMP_KEY = 'pendingReferralCodeTimestamp';
+    const REFERRAL_EXPIRY_HOURS = 24;
+    const EXPIRY_MS = REFERRAL_EXPIRY_HOURS * 60 * 60 * 1000;
 
     // ============================================================
     // ✅ REFERRAL CODE HANDLING WITH PERSISTENCE
     // ============================================================
     useEffect(() => {
-        const REFERRAL_STORAGE_KEY = 'pendingReferralCode';
-        const REFERRAL_TIMESTAMP_KEY = 'pendingReferralCodeTimestamp';
-        const REFERRAL_EXPIRY_HOURS = 24;
-        const EXPIRY_MS = REFERRAL_EXPIRY_HOURS * 60 * 60 * 1000;
-
         // ✅ Check URL first
         let ref = searchParams.get('ref');
 
@@ -294,10 +291,9 @@ export default function Register() {
                 const age = Date.now() - parseInt(storedTimestamp);
                 
                 if (age < EXPIRY_MS) {
-                    // ✅ Code is still valid (less than 24 hours old)
+                    // ✅ Code is still valid
                     setReferralCode(storedRef);
                     console.log('✅ Referral code loaded from storage:', storedRef);
-                    console.log(`⏰ Code age: ${Math.floor(age / (60 * 60 * 1000))} hours`);
                 } else {
                     // ❌ Code expired - auto-delete
                     localStorage.removeItem(REFERRAL_STORAGE_KEY);
@@ -314,11 +310,19 @@ export default function Register() {
         }
     }, [searchParams]);
 
+    // ✅ Auto-retry referral when user logs in
+    useEffect(() => {
+        if (user && referralFailed && referralCode) {
+            console.log('🔄 User logged in, auto-retrying referral...');
+            retryReferral();
+        }
+    }, [user]);
+
     const handleGoogleSignIn = async () => {
-        // ✅ Double-check storage before signup
+        // ✅ Get the referral code from state or storage
         let codeToUse = referralCode;
         if (!codeToUse) {
-            const storedRef = localStorage.getItem('pendingReferralCode');
+            const storedRef = localStorage.getItem(REFERRAL_STORAGE_KEY);
             if (storedRef) {
                 codeToUse = storedRef;
                 setReferralCode(storedRef);
@@ -336,13 +340,22 @@ export default function Register() {
             if (result && result.referralFailed) {
                 setReferralFailed(true);
                 localStorage.setItem('referralFailed', 'true');
-            } else {
+                toast.error('Referral processing failed. Will retry automatically.');
+            } else if (result && result.referralSuccess) {
+                toast.success(`🎉 You got ₦${result.bonusAmount || 50} referral bonus!`);
                 setReferralFailed(false);
+                localStorage.removeItem(REFERRAL_STORAGE_KEY);
+                localStorage.removeItem(REFERRAL_TIMESTAMP_KEY);
                 localStorage.removeItem('referralFailed');
+                // Redirect to dashboard after successful signup
+                navigate('/dashboard');
+            } else if (result && result.success) {
+                // ✅ Signup successful, but no referral
+                navigate('/dashboard');
             }
         } catch (error) {
             console.error('Signup failed, keeping referral code for retry:', error);
-            // ✅ KEEP the code if signup fails
+            toast.error('Signup failed. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -350,32 +363,32 @@ export default function Register() {
 
     // ✅ Retry referral function
     const retryReferral = async () => {
+        // ✅ Check if user is logged in
+        if (!user) {
+            console.log('⏳ User not logged in yet, waiting...');
+            return;
+        }
+        
         if (!referralCode) {
             toast.error('No referral code found');
             return;
         }
         
-        setLoading(true);
+        if (referralProcessing) return;
+        
+        setReferralProcessing(true);
         try {
-            // ✅ Get the current user from auth
             const currentUser = auth.currentUser;
             if (!currentUser) {
                 toast.error('Please sign in first');
-                setLoading(false);
+                setReferralProcessing(false);
                 return;
             }
             
             const token = await currentUser.getIdToken();
-            if (!token) {
-                toast.error('Please sign in first');
-                setLoading(false);
-                return;
-            }
-            
-            // ✅ Set auth token for the API call
             setAuthToken(token);
             
-            const response = await api.post('/users/process-referral', { 
+            const response = await api.post('/users/retry-referral', { 
                 referralCode 
             });
             
@@ -383,34 +396,27 @@ export default function Register() {
             if (data.success && data.bonus) {
                 toast.success(`🎉 You got ₦${data.bonus} referral bonus!`);
                 setReferralFailed(false);
+                localStorage.removeItem(REFERRAL_STORAGE_KEY);
+                localStorage.removeItem(REFERRAL_TIMESTAMP_KEY);
                 localStorage.removeItem('referralFailed');
-                localStorage.removeItem('pendingReferralCode');
-                localStorage.removeItem('pendingReferralCodeTimestamp');
-                // Refresh user data
                 await refreshUserData();
+                navigate('/dashboard');
             } else if (data.alreadyReferred) {
                 toast.info('You already have a referrer');
                 setReferralFailed(false);
+                localStorage.removeItem(REFERRAL_STORAGE_KEY);
+                localStorage.removeItem(REFERRAL_TIMESTAMP_KEY);
                 localStorage.removeItem('referralFailed');
-            } else if (!data.success && data.error) {
-                toast.error(data.error);
+                navigate('/dashboard');
+            } else {
+                toast.error(data.error || 'Failed to process referral');
             }
         } catch (error) {
             console.error('Failed to retry referral:', error);
             toast.error('Failed to process referral. Please try again.');
         } finally {
-            setLoading(false);
+            setReferralProcessing(false);
         }
-    };
-
-    const handleSendOTP = async () => {
-        toast.error('📱 Phone number registration is coming soon! Please use Google to sign up.');
-        return;
-    };
-
-    const handleVerifyOTP = async () => {
-        toast.error('📱 Phone number registration is coming soon! Please use Google to sign up.');
-        return;
     };
 
     const handlePhoneClick = () => {
@@ -421,11 +427,10 @@ export default function Register() {
         });
     };
 
-    // ✅ Get referral expiry info
     const getReferralStatus = () => {
         if (!referralCode) return null;
         
-        const timestamp = localStorage.getItem('pendingReferralCodeTimestamp');
+        const timestamp = localStorage.getItem(REFERRAL_TIMESTAMP_KEY);
         if (timestamp) {
             const age = Date.now() - parseInt(timestamp);
             const hoursRemaining = Math.max(0, 24 - Math.floor(age / (60 * 60 * 1000)));
@@ -445,9 +450,6 @@ export default function Register() {
             <div className="w-full px-4 sm:px-8 lg:px-16 xl:px-24 py-8 sm:py-12">
                 <div className="py-12">
                     <div className="max-w-5xl mx-auto px-4">
-                        <div className="absolute left-10 text-4xl opacity-10 animate-bounce hidden lg:block">📝</div>
-                        <div className="absolute right-10 text-4xl opacity-10 animate-pulse hidden lg:block">✨</div>
-
                         <div className="relative max-w-5xl mx-auto">
                             <div className="absolute inset-0 bg-amber-50 rounded-2xl shadow-2xl transform rotate-1"></div>
                             <div className="absolute inset-0 bg-white rounded-2xl shadow-2xl transform -rotate-1"></div>
@@ -468,12 +470,9 @@ export default function Register() {
                                             </p>
                                             <p className="text-white/60 text-xs mt-2">— Join TheSpark community —</p>
                                         </div>
-                                        <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-white/20 to-transparent rounded-bl-2xl"></div>
                                     </div>
 
                                     <div className="p-8 md:p-10 relative">
-                                        <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-spark-100 to-transparent rounded-bl-2xl"></div>
-
                                         <div className="relative">
                                             <div className="text-5xl mb-4">📖</div>
                                             <div className="flex items-center gap-2 mb-4">
@@ -485,9 +484,9 @@ export default function Register() {
                                             <h2 className="text-3xl font-bold text-gray-900 mb-2 leading-tight">
                                                 Join <span className="text-spark-600">TheSpark</span> Today
                                             </h2>
-                                            <p className="text-gray-500 text-sm mb-6">Create your account and start building consistent wealth habits. Join thousands of Nigerians on the path to financial freedom.</p>
+                                            <p className="text-gray-500 text-sm mb-6">Create your account and start building consistent wealth habits.</p>
                                             
-                                            {/* ✅ Enhanced Referral Code Display */}
+                                            {/* ✅ Referral Code Display with Retry */}
                                             {referralCode && (
                                                 <div className={`mb-4 p-3 rounded-xl border ${
                                                     referralFailed 
@@ -501,14 +500,20 @@ export default function Register() {
                                                         <span className="block text-xs mt-1">
                                                             {referralFailed ? (
                                                                 <span className="text-amber-600">
-                                                                    ⚠️ Referral processing failed. 
-                                                                    <button 
-                                                                        onClick={retryReferral}
-                                                                        disabled={loading}
-                                                                        className="ml-2 text-spark-600 font-semibold hover:underline"
-                                                                    >
-                                                                        Retry
-                                                                    </button>
+                                                                    ⚠️ Referral processing failed.
+                                                                    {user ? (
+                                                                        <button 
+                                                                            onClick={retryReferral}
+                                                                            disabled={referralProcessing}
+                                                                            className="ml-2 text-spark-600 font-semibold hover:underline"
+                                                                        >
+                                                                            {referralProcessing ? 'Processing...' : 'Retry'}
+                                                                        </button>
+                                                                    ) : (
+                                                                        <span className="ml-2 text-gray-500">
+                                                                            Will retry after sign in
+                                                                        </span>
+                                                                    )}
                                                                 </span>
                                                             ) : (
                                                                 <span className="text-green-600">
@@ -588,18 +593,10 @@ export default function Register() {
                                                     </Link>
                                                 </p>
                                             </div>
-
-                                            <div className="absolute bottom-0 right-0 w-12 h-12 bg-gradient-to-tl from-gray-100 to-transparent rounded-tl-lg"></div>
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-amber-300 via-amber-400 to-amber-300 hidden md:block"></div>
                             </div>
-                        </div>
-
-                        <div className="text-center mt-6 text-sm text-gray-400 font-serif italic">
-                            <span className="inline-block mr-2">◀</span> Start your wealth-building journey today <span className="inline-block ml-2">▶</span>
                         </div>
                     </div>
                 </div>

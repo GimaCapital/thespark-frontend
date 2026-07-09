@@ -12,22 +12,26 @@
         {
             "src": "/icons/thespark-logo-192x192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "/icons/thespark-logo-256x256.png",
             "sizes": "256x256",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "/icons/thespark-logo-512x512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "/icons/thespark-logo-1024x1024.png",
             "sizes": "1024x1024",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         }
     ],
     "screenshots": [

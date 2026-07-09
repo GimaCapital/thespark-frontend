@@ -765,6 +765,7 @@ import { Link } from 'react-router-dom';
 import EmailTracking from '../components/Admin/EmailTracking';
 import AdminProducts from '../components/Admin/AdminProducts';
 import AdminStockPhone from '../components/Admin/AdminStockPhone';
+import AgentDashboard from '../components/Admin/AgentDashboard';
 
 
 
@@ -1373,7 +1374,8 @@ const sendInvestorEmail = async (interest) => {
                     { id: 'investment', label: 'Investment', count: investmentInterests.filter(i => i.status === 'new' || !i.status).length, icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
                     { id: 'email-tracking', label: 'Email Tracking', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
                     { id: 'marketplace', label: 'Marketplace', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
-                    { id: 'admin-stock-photos', label: '🖼️ Stock Photos',  icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' }
+                    { id: 'admin-stock-photos', label: '🖼️ Stock Photos',  icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
+                    { id: 'agent', label: '👤 Agent Support', icon: 'M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z' }                               
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -2550,6 +2552,10 @@ const sendInvestorEmail = async (interest) => {
         // ✅ Email Tracking Component
         <AdminStockPhone />
     )}
+
+     {activeTab === 'agent' && (
+                <AgentDashboard />
+            )}
 
     
 

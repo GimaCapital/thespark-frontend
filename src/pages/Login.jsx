@@ -245,56 +245,141 @@
 //         </div>
 //     );
 // }
+
+
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { auth } from '../services/firebase';
+import { api, setAuthToken } from '../services/api';
 import HeaderMissionCard from '../components/Common/HeaderMissionCard';
 import toast from 'react-hot-toast';
 
 export default function Login() {
-    const { signInWithGoogle, sendOTP, verifyOTP } = useAuth();
+    const { signInWithGoogle, refreshUserData, user } = useAuth();
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     
     const [method, setMethod] = useState('google');
-    const [phone, setPhone] = useState('');
-    const [code, setCode] = useState('');
-    const [fullName, setFullName] = useState('');
     const [referralCode, setReferralCode] = useState('');
-    const [confirmationResult, setConfirmationResult] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [referralFailed, setReferralFailed] = useState(false);
+    const [referralProcessing, setReferralProcessing] = useState(false);
+
+    const REFERRAL_STORAGE_KEY = 'pendingReferralCode';
+    const REFERRAL_TIMESTAMP_KEY = 'pendingReferralCodeTimestamp';
 
     useEffect(() => {
         const ref = searchParams.get('ref');
         if (ref) {
             setReferralCode(ref);
-            // ✅ Store in localStorage for persistence
-            localStorage.setItem('pendingReferralCode', ref);
-            localStorage.setItem('pendingReferralCodeTimestamp', Date.now().toString());
+            localStorage.setItem(REFERRAL_STORAGE_KEY, ref);
+            localStorage.setItem(REFERRAL_TIMESTAMP_KEY, Date.now().toString());
             console.log('✅ Referral code loaded from URL:', ref);
         } else {
-            // ✅ Check localStorage for existing code
-            const storedRef = localStorage.getItem('pendingReferralCode');
+            const storedRef = localStorage.getItem(REFERRAL_STORAGE_KEY);
             if (storedRef) {
                 setReferralCode(storedRef);
                 console.log('✅ Referral code loaded from storage:', storedRef);
             }
         }
+        
+        // ✅ Check if referral failed
+        const failed = localStorage.getItem('referralFailed');
+        if (failed === 'true') {
+            setReferralFailed(true);
+        }
     }, [searchParams]);
+
+    // ✅ Auto-retry referral when user logs in
+    useEffect(() => {
+        if (user && referralFailed && referralCode) {
+            console.log('🔄 User logged in, auto-retrying referral...');
+            retryReferral();
+        }
+    }, [user]);
 
     const handleGoogleSignIn = async () => {
         setLoading(true);
-        await signInWithGoogle(referralCode);
-        setLoading(false);
+        try {
+            const result = await signInWithGoogle(referralCode);
+            if (result && result.referralFailed) {
+                setReferralFailed(true);
+                localStorage.setItem('referralFailed', 'true');
+                toast.error('Referral processing failed. Will retry automatically.');
+            } else if (result && result.referralSuccess) {
+                setReferralFailed(false);
+                localStorage.removeItem(REFERRAL_STORAGE_KEY);
+                localStorage.removeItem(REFERRAL_TIMESTAMP_KEY);
+                localStorage.removeItem('referralFailed');
+                toast.success(`🎉 You got ₦${result.bonusAmount || 50} referral bonus!`);
+                navigate('/dashboard');
+            } else if (result && result.success) {
+                navigate('/dashboard');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleSendOTP = async () => {
-        toast.error('📱 Phone number login is coming soon! Please use Google to sign in.');
-        return;
-    };
-
-    const handleVerifyOTP = async () => {
-        toast.error('📱 Phone number login is coming soon! Please use Google to sign in.');
-        return;
+    // ✅ Retry referral function
+    const retryReferral = async () => {
+        // ✅ Check if user is logged in
+        if (!user) {
+            console.log('⏳ User not logged in yet, waiting...');
+            return;
+        }
+        
+        if (!referralCode) {
+            toast.error('No referral code found');
+            return;
+        }
+        
+        if (referralProcessing) return;
+        
+        setReferralProcessing(true);
+        try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) {
+                toast.error('Please login first');
+                setReferralProcessing(false);
+                return;
+            }
+            
+            const token = await currentUser.getIdToken();
+            setAuthToken(token);
+            
+            const response = await api.post('/users/retry-referral', { 
+                referralCode 
+            });
+            
+            const data = response.data;
+            if (data.success && data.bonus) {
+                toast.success(`🎉 You got ₦${data.bonus} referral bonus!`);
+                setReferralFailed(false);
+                localStorage.removeItem(REFERRAL_STORAGE_KEY);
+                localStorage.removeItem(REFERRAL_TIMESTAMP_KEY);
+                localStorage.removeItem('referralFailed');
+                await refreshUserData();
+                navigate('/dashboard');
+            } else if (data.alreadyReferred) {
+                toast.info('You already have a referrer');
+                setReferralFailed(false);
+                localStorage.removeItem(REFERRAL_STORAGE_KEY);
+                localStorage.removeItem(REFERRAL_TIMESTAMP_KEY);
+                localStorage.removeItem('referralFailed');
+                navigate('/dashboard');
+            } else {
+                toast.error(data.error || 'Failed to process referral');
+            }
+        } catch (error) {
+            console.error('Failed to retry referral:', error);
+            toast.error('Failed to process referral. Please try again.');
+        } finally {
+            setReferralProcessing(false);
+        }
     };
 
     const handlePhoneClick = () => {
@@ -312,9 +397,6 @@ export default function Login() {
             <div className="w-full px-4 sm:px-8 lg:px-16 xl:px-24 py-8 sm:py-12">
                 <div className="py-12">
                     <div className="max-w-5xl mx-auto px-4">
-                        <div className="absolute left-10 text-4xl opacity-10 animate-bounce hidden lg:block">🔑</div>
-                        <div className="absolute right-10 text-4xl opacity-10 animate-pulse hidden lg:block">📖</div>
-
                         <div className="relative max-w-5xl mx-auto">
                             <div className="absolute inset-0 bg-amber-50 rounded-2xl shadow-2xl transform rotate-1"></div>
                             <div className="absolute inset-0 bg-white rounded-2xl shadow-2xl transform -rotate-1"></div>
@@ -334,12 +416,9 @@ export default function Login() {
                                             </p>
                                             <p className="text-white/60 text-xs mt-2">— Continue where you left off —</p>
                                         </div>
-                                        <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-white/20 to-transparent rounded-bl-2xl"></div>
                                     </div>
 
                                     <div className="p-8 md:p-10 relative">
-                                        <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-spark-100 to-transparent rounded-bl-2xl"></div>
-
                                         <div className="relative">
                                             <div className="text-5xl mb-4">👋</div>
                                             <div className="flex items-center gap-2 mb-4">
@@ -353,9 +432,42 @@ export default function Login() {
                                             </h2>
                                             <p className="text-gray-500 text-sm mb-6">Access your dashboard and continue building wealth.</p>
                                             
+                                            {/* ✅ Referral Code Display with Retry */}
                                             {referralCode && (
-                                                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
-                                                    🎁 Referral code: <strong>{referralCode}</strong> - Share this code with friends!
+                                                <div className={`mb-4 p-3 rounded-xl border ${
+                                                    referralFailed 
+                                                        ? 'bg-amber-50 border-amber-200' 
+                                                        : 'bg-green-50 border-green-200'
+                                                }`}>
+                                                    <div className={`text-sm ${
+                                                        referralFailed ? 'text-amber-700' : 'text-green-700'
+                                                    }`}>
+                                                        🎁 Referral code: <strong className={referralFailed ? 'text-amber-800' : 'text-green-800'}>{referralCode}</strong>
+                                                        <span className="block text-xs mt-1">
+                                                            {referralFailed ? (
+                                                                <span className="text-amber-600">
+                                                                    ⚠️ Referral processing failed.
+                                                                    {user ? (
+                                                                        <button 
+                                                                            onClick={retryReferral}
+                                                                            disabled={referralProcessing}
+                                                                            className="ml-2 text-spark-600 font-semibold hover:underline"
+                                                                        >
+                                                                            {referralProcessing ? 'Processing...' : 'Retry'}
+                                                                        </button>
+                                                                    ) : (
+                                                                        <span className="ml-2 text-gray-500">
+                                                                            Will retry after sign in
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-green-600">
+                                                                    ✅ You get <strong>₦50</strong> bonus instantly!
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             )}
 
@@ -426,18 +538,10 @@ export default function Login() {
                                                     </Link>
                                                 </p>
                                             </div>
-
-                                            <div className="absolute bottom-0 right-0 w-12 h-12 bg-gradient-to-tl from-gray-100 to-transparent rounded-tl-lg"></div>
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-amber-300 via-amber-400 to-amber-300 hidden md:block"></div>
                             </div>
-                        </div>
-
-                        <div className="text-center mt-6 text-sm text-gray-400 font-serif italic">
-                            <span className="inline-block mr-2">◀</span> Secure login to continue your journey <span className="inline-block ml-2">▶</span>
                         </div>
                     </div>
                 </div>

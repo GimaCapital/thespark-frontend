@@ -106,7 +106,6 @@
 //     );
 // }
 
-// export default App;
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -142,10 +141,14 @@ import Investor from './pages/thesparkprivateinvestment';
 import Marketplace from './pages/Marketplace';
 import Orders from './pages/Marketplace/Orders';
 import SellProduct from './pages/Marketplace/Sell';  
-// import ProductDetail from './pages/Marketplace/ProductDetail'; 
 import ProductDetail from './pages/Marketplace/ProductDetail/index';
 import LogoDesigner from './pages/LogoDesigner';
 import AdminStockPhone from './components/Admin/AdminStockPhone';
+
+// AI Chat Components
+import { AISupportProvider } from './contexts/AISupportContext';
+import AIFloatingButton from './components/Chat/AIFloatingButton';
+import AIChatPanel from './components/Chat/AIChatPanel';
 
 // BVN Protection Route Component
 function BvnProtectedRoute({ children }) {
@@ -262,7 +265,7 @@ function AppContent() {
                         </PrivateRoute>
                     } />
 
-                        {/* ✅ Logo Designer Route - Protected & BVN Verified */}
+                    {/* ✅ Logo Designer Route - Protected & BVN Verified */}
                     <Route path="/logo-designer" element={
                         <PrivateRoute>
                             <BvnProtectedRoute>
@@ -308,15 +311,22 @@ function AppContent() {
                 <Toaster position="top-center" />
                 <NotificationPermission />
                 <PWAInstall />
+                
+                {/* ✅ AI Chat Components - Always visible */}
+                <AIChatPanel />
+                <AIFloatingButton />
             </Layout>
         </NotificationModalProvider>
     );
 }
 
+
 function App() {
     return (
         <AuthProvider>
-            <AppContent />
+            <AISupportProvider>
+               <AppContent />
+            </AISupportProvider>
         </AuthProvider>
     );
 }

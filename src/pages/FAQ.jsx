@@ -265,6 +265,11 @@ const faqs = [
     },
     {
         category: "referral",
+        question: "How much do I earn per referral?",
+       answer: "You earn ₦500 when your referred friend completes their first cycle."
+    },
+    {
+        category: "referral",
         question: "🏆 What is the referral reward?",
         answer: "You earn recognition rewards for every friend who joins using your referral code and completes their first cycle."
     },

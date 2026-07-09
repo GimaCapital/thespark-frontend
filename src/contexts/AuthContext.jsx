@@ -1450,13 +1450,29 @@ export function AuthProvider({ children }) {
                 email: setupResult.email
             });
             
-            // ✅ Show referral bonus toast if successful
+            // ✅ Determine referral status
+            let referralFailed = false;
+            let referralSuccess = false;
+            let bonusAmount = 0;
+            
             if (setupResult.referral?.success && setupResult.referral?.bonus) {
-                toast.success(`🎉 You got ₦${setupResult.referral.bonus} referral bonus!`);
+                referralSuccess = true;
+                bonusAmount = setupResult.referral.bonus;
+                toast.success(`🎉 You got ₦${bonusAmount} referral bonus!`);
+                // ✅ Clear referral data on success
+                localStorage.removeItem('pendingReferralCode');
+                localStorage.removeItem('pendingReferralCodeTimestamp');
+                localStorage.removeItem('referralFailed');
             } else if (setupResult.referral?.alreadyReferred) {
                 console.log('User already has a referrer');
+                localStorage.removeItem('pendingReferralCode');
+                localStorage.removeItem('pendingReferralCodeTimestamp');
+                localStorage.removeItem('referralFailed');
             } else if (setupResult.referral && !setupResult.referral.success) {
+                referralFailed = true;
                 console.warn('Referral failed, code kept for retry');
+                // ✅ Keep the code for retry
+                localStorage.setItem('referralFailed', 'true');
             }
             
             // ✅ Welcome email status
@@ -1468,9 +1484,13 @@ export function AuthProvider({ children }) {
             await refreshUserData();
             
             toast.success(`👋 Welcome to TheSpark, ${firstName}!`);
+            
+            // ✅ Return full referral status
             return { 
                 success: true, 
-                referralFailed: setupResult.referral && !setupResult.referral.success 
+                referralFailed: referralFailed,
+                referralSuccess: referralSuccess,
+                bonusAmount: bonusAmount
             };
         } catch (error) {
             console.error('Google sign in error:', error);
@@ -1519,6 +1539,9 @@ export function AuthProvider({ children }) {
             // ✅ Show referral bonus toast if successful
             if (setupResult.referral?.success && setupResult.referral?.bonus) {
                 toast.success(`🎉 You got ₦${setupResult.referral.bonus} referral bonus!`);
+                localStorage.removeItem('pendingReferralCode');
+                localStorage.removeItem('pendingReferralCodeTimestamp');
+                localStorage.removeItem('referralFailed');
             }
             
             await refreshUserData();
