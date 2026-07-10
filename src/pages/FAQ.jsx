@@ -20,6 +20,11 @@ const faqs = [
         answer: "We focus on habit-building, not quick fixes. We teach proven principles from ancient wisdom, not get-rich-quick schemes. We're a mission to reduce poverty, not just a business."
     },
     {
+    category: "general",
+    question: "👨‍💼 Who is the founder of TheSpark?",
+    answer: "TheSpark was founded by Gideon Gideon, a financial educator and founder of Gimablockchain (CAC Registered BN 3091833). Gideon's mission is to reduce poverty in Nigeria by teaching timeless wealth principles from 'The Richest Man in Babylon'."
+    },  
+    {
         category: "general",
         question: "📅 When was TheSpark founded?",
         answer: "TheSpark was founded in may-2026 with a mission to reduce poverty in Nigeria through financial education and accountability."
