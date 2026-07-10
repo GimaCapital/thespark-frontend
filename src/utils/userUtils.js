@@ -151,7 +151,6 @@ export const processReferral = async (userId, referralCode) => {
     if (!referralCode) return { success: false, reason: 'No referral code' };
     
     try {
-        // ✅ Wait for auth to be ready with retries
         let retries = 0;
         let token = null;
         
@@ -166,7 +165,6 @@ export const processReferral = async (userId, referralCode) => {
         }
         
         if (!token) {
-            // ✅ Store for retry later
             localStorage.setItem('referralFailed', 'true');
             console.warn('⚠️ No auth token available, referral will be retried later');
             return { success: false, reason: 'Auth not ready' };
@@ -178,36 +176,31 @@ export const processReferral = async (userId, referralCode) => {
         const data = response.data;
         
         if (data.success && data.bonus) {
-            // ✅ Clear referral code from storage on success
             localStorage.removeItem('pendingReferralCode');
             localStorage.removeItem('pendingReferralCodeTimestamp');
             localStorage.removeItem('referralFailed');
-            
             return { success: true, bonus: data.bonus };
         }
         
         if (data.alreadyReferred) {
-            // ✅ Clear on already referred
             localStorage.removeItem('pendingReferralCode');
             localStorage.removeItem('pendingReferralCodeTimestamp');
             localStorage.removeItem('referralFailed');
             return { success: true, alreadyReferred: true };
         }
         
-        // ❌ Referral failed - set flag and keep code for retry
         localStorage.setItem('referralFailed', 'true');
         return { success: false, reason: data.error || 'Referral failed' };
     } catch (error) {
         console.error('Referral processing error:', error);
-        // ❌ Referral failed - set flag and keep code for retry
         localStorage.setItem('referralFailed', 'true');
         return { success: false, reason: error.message };
     }
 };
 
 /**
- * ✅ Send welcome email with better auth handling
- * Uses the same working backend endpoint as admin
+ * ✅ Send welcome email - FINAL BEST VERSION
+ * Uses the same endpoint as admin with improved auth handling
  */
 export const sendWelcomeEmail = async (email, fullName) => {
     if (!email) {
@@ -216,33 +209,35 @@ export const sendWelcomeEmail = async (email, fullName) => {
     }
     
     try {
-        // ✅ Wait for auth to be ready (with retries)
+        // ✅ Wait for auth token (up to 20 seconds)
         let retries = 0;
         let token = null;
-        let currentUser = null;
         
-        while (!token && retries < 10) {
-            currentUser = auth.currentUser;
-            if (currentUser) {
+        console.log('⏳ Waiting for auth token for email...');
+        
+        while (!token && retries < 20) {
+            if (auth.currentUser) {
                 try {
-                    token = await currentUser.getIdToken();
-                    console.log('✅ Auth token obtained for email');
+                    token = await auth.currentUser.getIdToken(true);
+                    if (token) {
+                        console.log('✅ Auth token obtained for email');
+                        break;
+                    }
                 } catch (tokenError) {
-                    console.log(`⏳ Token error, retry ${retries + 1}/10:`, tokenError.message);
+                    console.log(`⏳ Token error, retry ${retries + 1}/20`);
                 }
             } else {
-                console.log(`⏳ Waiting for auth... (${retries + 1}/10)`);
+                console.log(`⏳ Waiting for auth.currentUser... (${retries + 1}/20)`);
             }
             
             if (!token) {
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 retries++;
             }
         }
         
         if (!token) {
-            console.warn('⚠️ Could not get auth token after 10 retries, email will be sent later');
-            // Store that email needs to be sent later
+            console.warn('⚠️ Could not get auth token after 20 retries');
             try {
                 const userRef = doc(db, 'users', auth.currentUser?.uid || '');
                 if (userRef) {
@@ -258,7 +253,7 @@ export const sendWelcomeEmail = async (email, fullName) => {
             return { success: false, reason: 'Auth not ready', attempts: 0 };
         }
         
-        // ✅ Set auth token for API call
+        // ✅ Set auth token and send email
         setAuthToken(token);
         
         console.log('📧 Sending welcome email to:', email);
@@ -268,8 +263,8 @@ export const sendWelcomeEmail = async (email, fullName) => {
             fullName: fullName || 'Thespark Member'
         });
         
-        console.log('✅ Welcome email sent successfully:', response.data);
-        return { success: true, data: response.data };
+        console.log('✅ Welcome email sent successfully');
+        return { success: true, data: response.data, attempts: 1 };
     } catch (error) {
         console.error('❌ Welcome email error:', error);
         return { 
@@ -281,19 +276,21 @@ export const sendWelcomeEmail = async (email, fullName) => {
 };
 
 /**
- * ✅ COMPLETE: Setup new user (handles everything)
- * Includes: document creation, referral processing, welcome email
+ * ✅ COMPLETE: Setup new user - FINAL BEST VERSION
+ * Includes: document creation, referral processing, welcome email with retries
  */
 export const setupNewUser = async (userId, userData = {}) => {
     try {
-        // 1. Ensure user document exists
         const { userRef, isNewUser, referrerId } = await ensureUserDocument(userId, userData);
         console.log(`📝 User setup: ${isNewUser ? 'NEW' : 'EXISTING'}`);
         
         let referralResult = null;
         let emailResult = null;
+        let emailSent = false;
+        let attempts = 0;
+        const maxAttempts = 3;
         
-        // 2. Process referral if new user
+        // 1. Process referral if new user
         if (isNewUser) {
             const referralCode = localStorage.getItem('pendingReferralCode');
             if (referralCode) {
@@ -306,47 +303,53 @@ export const setupNewUser = async (userId, userData = {}) => {
             }
         }
         
-        // 3. Send welcome email (for new users with email)
+        // 2. Send welcome email with retries
         if (isNewUser && userData.email) {
-            // ✅ Give auth time to fully initialize
-            console.log('⏳ Waiting for auth to initialize before sending email...');
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            console.log('⏳ Waiting 3 seconds for auth to fully initialize...');
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
-            emailResult = await sendWelcomeEmail(userData.email, userData.fullName);
+            while (!emailSent && attempts < maxAttempts) {
+                attempts++;
+                console.log(`📧 Email attempt ${attempts}/${maxAttempts}...`);
+                
+                emailResult = await sendWelcomeEmail(userData.email, userData.fullName);
+                
+                if (emailResult.success) {
+                    emailSent = true;
+                    console.log('✅ Welcome email sent successfully');
+                } else {
+                    console.warn(`⚠️ Email attempt ${attempts} failed:`, emailResult.reason);
+                    if (attempts < maxAttempts) {
+                        console.log(`⏳ Waiting 3 seconds before retry...`);
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                    }
+                }
+            }
             
-            if (emailResult.success) {
-                console.log('✅ Welcome email sent');
-                try {
-                    await updateDoc(userRef, {
-                        welcomeEmailSent: true,
-                        welcomeEmailSentAt: new Date().toISOString(),
-                        welcomeEmailError: null,
-                        welcomeEmailAttempts: 1
-                    });
-                } catch (updateError) {
-                    console.warn('⚠️ Could not update welcome email status:', updateError);
-                }
-            } else {
-                console.warn('⚠️ Welcome email failed:', emailResult.reason);
-                // Store error but don't block user creation
-                try {
-                    await updateDoc(userRef, {
-                        welcomeEmailSent: false,
-                        welcomeEmailError: emailResult.reason || 'Email failed',
-                        welcomeEmailAttempts: 1
-                    });
-                } catch (updateError) {
-                    console.warn('⚠️ Could not update welcome email error:', updateError);
-                }
+            // Update user document
+            try {
+                await updateDoc(userRef, {
+                    welcomeEmailSent: emailSent,
+                    welcomeEmailSentAt: emailSent ? new Date().toISOString() : null,
+                    welcomeEmailError: emailSent ? null : (emailResult?.reason || 'Email failed after 3 attempts'),
+                    welcomeEmailAttempts: attempts,
+                    welcomeEmailLastAttempt: new Date().toISOString()
+                });
+            } catch (updateError) {
+                console.warn('⚠️ Could not update welcome email status:', updateError);
+            }
+            
+            if (!emailSent) {
+                console.warn('⚠️ Welcome email failed after 3 attempts. Admin can retry from dashboard.');
             }
         } else if (isNewUser && !userData.email) {
             console.log('ℹ️ No email provided, skipping welcome email');
-            // Mark as sent since there's no email to send
             try {
                 await updateDoc(userRef, {
                     welcomeEmailSent: true,
                     welcomeEmailError: 'No email provided',
-                    welcomeEmailAttempts: 0
+                    welcomeEmailAttempts: 0,
+                    welcomeEmailLastAttempt: new Date().toISOString()
                 });
             } catch (updateError) {
                 console.warn('⚠️ Could not update email status:', updateError);
@@ -358,6 +361,8 @@ export const setupNewUser = async (userId, userData = {}) => {
             isNewUser,
             referral: referralResult,
             email: emailResult,
+            emailSent: emailSent,
+            emailAttempts: attempts,
             referrerId
         };
     } catch (error) {
