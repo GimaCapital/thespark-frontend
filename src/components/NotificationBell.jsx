@@ -1,3 +1,4 @@
+// // src/components/NotificationBell.jsx
 // import React, { useState, useEffect } from 'react';
 // import { db } from '../services/firebase';
 // import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
@@ -59,25 +60,87 @@
 
 //     const unreadCount = notifications.filter(n => !n.read).length;
 
+//     // ✅ COMPLETE: All notification types supported
 //     const getIcon = (type) => {
-//         if (type === 'deposit_approved') return '✅';
-//         if (type === 'deposit_rejected') return '❌';
-//         if (type === 'deposit_reversed') return '🔄';
-//         return '🔔';
+//         const icons = {
+//             // Deposit types
+//             'deposit_approved': '✅',
+//             'deposit_rejected': '❌',
+//             'deposit_reversed': '🔄',
+//             // Withdrawal types
+//             'withdrawal_approved': '💳',
+//             'withdrawal_rejected': '🚫',
+//             'withdrawal_failed': '⚠️',
+//             'withdrawal_processing': '⏳',
+//             'withdrawal_completed': '✅',
+//             // Product types
+//             'product_approved': '✅',
+//             'product_rejected': '❌',
+//             'product_submitted': '📦',
+//             'product_updated': '🔄',
+//             // Order types
+//             'order_placed': '📦',
+//             'order_processing': '⚙️',
+//             'order_dispatched': '🚚',
+//             'order_out_for_delivery': '🚚',
+//             'order_delivered': '✅',
+//             'order_cancelled': '❌',
+//             'new_order': '🛒',
+//             // Investment types
+//             'investment_interest': '📈',
+//             'investment_confirmation': '✅',
+//             // Generic
+//             'email_sent': '📧',
+//             'codes_generated': '🔑'
+//         };
+//         return icons[type] || '🔔';
 //     };
 
 //     const getIconColor = (type) => {
-//         if (type === 'deposit_approved') return 'bg-green-100 text-green-600';
-//         if (type === 'deposit_rejected') return 'bg-red-100 text-red-600';
-//         if (type === 'deposit_reversed') return 'bg-orange-100 text-orange-600';
-//         return 'bg-gray-100 text-gray-600';
+//         const colors = {
+//             // Deposit types
+//             'deposit_approved': 'bg-green-100 text-green-600',
+//             'deposit_rejected': 'bg-red-100 text-red-600',
+//             'deposit_reversed': 'bg-orange-100 text-orange-600',
+//             // Withdrawal types
+//             'withdrawal_approved': 'bg-blue-100 text-blue-600',
+//             'withdrawal_rejected': 'bg-red-100 text-red-600',
+//             'withdrawal_failed': 'bg-red-100 text-red-600',
+//             'withdrawal_processing': 'bg-yellow-100 text-yellow-600',
+//             'withdrawal_completed': 'bg-green-100 text-green-600',
+//             // Product types
+//             'product_approved': 'bg-green-100 text-green-600',
+//             'product_rejected': 'bg-red-100 text-red-600',
+//             'product_submitted': 'bg-yellow-100 text-yellow-600',
+//             'product_updated': 'bg-blue-100 text-blue-600',
+//             // Order types
+//             'order_placed': 'bg-blue-100 text-blue-600',
+//             'order_processing': 'bg-yellow-100 text-yellow-600',
+//             'order_dispatched': 'bg-purple-100 text-purple-600',
+//             'order_out_for_delivery': 'bg-indigo-100 text-indigo-600',
+//             'order_delivered': 'bg-green-100 text-green-600',
+//             'order_cancelled': 'bg-red-100 text-red-600',
+//             'new_order': 'bg-spark-100 text-spark-600',
+//             // Investment types
+//             'investment_interest': 'bg-purple-100 text-purple-600',
+//             'investment_confirmation': 'bg-green-100 text-green-600',
+//             // Generic
+//             'email_sent': 'bg-blue-100 text-blue-600',
+//             'codes_generated': 'bg-spark-100 text-spark-600'
+//         };
+//         return colors[type] || 'bg-gray-100 text-gray-600';
 //     };
 
 //     const formatDate = (timestamp) => {
 //         if (!timestamp) return 'Just now';
 //         try {
 //             const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-//             return date.toLocaleString();
+//             return date.toLocaleString('en-US', {
+//                 month: 'short',
+//                 day: 'numeric',
+//                 hour: '2-digit',
+//                 minute: '2-digit'
+//             });
 //         } catch (e) {
 //             return 'Unknown date';
 //         }
@@ -159,6 +222,7 @@
 // }
 
 
+
 // src/components/NotificationBell.jsx
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/firebase';
@@ -183,13 +247,26 @@ export default function NotificationBell() {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const notifs = [];
             snapshot.forEach(doc => {
-                notifs.push({ id: doc.id, ...doc.data() });
+                const data = doc.data();
+                // ✅ Check for chat message status
+                if (data.type === 'chat_message') {
+                    data.status = data.status || 'sent'; // Default to 'sent'
+                }
+                notifs.push({ id: doc.id, ...data });
             });
+            
+            // ✅ SORT: Unread first, then by date (newest first)
             notifs.sort((a, b) => {
+                // First: Unread (read === false) come first
+                if (a.read !== b.read) {
+                    return a.read ? 1 : -1; // unread (false) first
+                }
+                // Then: Sort by date (newest first)
                 const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
                 const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
                 return dateB - dateA;
             });
+            
             setNotifications(notifs);
         });
 
@@ -198,7 +275,11 @@ export default function NotificationBell() {
 
     const markAsRead = async (id) => {
         try {
-            await updateDoc(doc(db, 'notifications', id), { read: true });
+            await updateDoc(doc(db, 'notifications', id), { 
+                read: true,
+                status: 'read',
+                readAt: new Date().toISOString()
+            });
         } catch (error) {
             console.error('Error marking as read:', error);
         }
@@ -221,7 +302,7 @@ export default function NotificationBell() {
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
-    // ✅ COMPLETE: All notification types supported
+    // ✅ ALL notification types including chat messages
     const getIcon = (type) => {
         const icons = {
             // Deposit types
@@ -239,14 +320,23 @@ export default function NotificationBell() {
             'product_rejected': '❌',
             'product_submitted': '📦',
             'product_updated': '🔄',
-            // Order types
-            'order_placed': '📦',
+            // Marketplace Order types
+            'order_placed': '🛒',
             'order_processing': '⚙️',
             'order_dispatched': '🚚',
             'order_out_for_delivery': '🚚',
             'order_delivered': '✅',
             'order_cancelled': '❌',
             'new_order': '🛒',
+            'order_payment_confirmed': '💰',
+            'order_shipping_update': '📦',
+            'order_delivery_confirmed': '📋',
+            // Chat/Support types
+            'chat_message': '💬',
+            'agent_handoff': '👤',
+            'support_handoff': '👤',
+            'chat_resolved': '✅',
+            'new_message': '💬',
             // Investment types
             'investment_interest': '📈',
             'investment_confirmation': '✅',
@@ -274,7 +364,7 @@ export default function NotificationBell() {
             'product_rejected': 'bg-red-100 text-red-600',
             'product_submitted': 'bg-yellow-100 text-yellow-600',
             'product_updated': 'bg-blue-100 text-blue-600',
-            // Order types
+            // Marketplace Order types
             'order_placed': 'bg-blue-100 text-blue-600',
             'order_processing': 'bg-yellow-100 text-yellow-600',
             'order_dispatched': 'bg-purple-100 text-purple-600',
@@ -282,6 +372,15 @@ export default function NotificationBell() {
             'order_delivered': 'bg-green-100 text-green-600',
             'order_cancelled': 'bg-red-100 text-red-600',
             'new_order': 'bg-spark-100 text-spark-600',
+            'order_payment_confirmed': 'bg-green-100 text-green-600',
+            'order_shipping_update': 'bg-blue-100 text-blue-600',
+            'order_delivery_confirmed': 'bg-green-100 text-green-600',
+            // Chat/Support types
+            'chat_message': 'bg-blue-100 text-blue-600',
+            'agent_handoff': 'bg-purple-100 text-purple-600',
+            'support_handoff': 'bg-purple-100 text-purple-600',
+            'chat_resolved': 'bg-green-100 text-green-600',
+            'new_message': 'bg-spark-100 text-spark-600',
             // Investment types
             'investment_interest': 'bg-purple-100 text-purple-600',
             'investment_confirmation': 'bg-green-100 text-green-600',
@@ -290,6 +389,18 @@ export default function NotificationBell() {
             'codes_generated': 'bg-spark-100 text-spark-600'
         };
         return colors[type] || 'bg-gray-100 text-gray-600';
+    };
+
+    // ✅ Get status badge for chat messages
+    const getStatusBadge = (status) => {
+        const statusMap = {
+            'sent': { label: '📤 Sent', color: 'text-gray-500' },
+            'delivered': { label: '📩 Delivered', color: 'text-blue-500' },
+            'read': { label: '📖 Read', color: 'text-green-500' },
+            'failed': { label: '❌ Failed', color: 'text-red-500' },
+            'pending': { label: '⏳ Pending', color: 'text-yellow-500' }
+        };
+        return statusMap[status] || { label: '❓ Unknown', color: 'text-gray-400' };
     };
 
     const formatDate = (timestamp) => {
@@ -350,29 +461,42 @@ export default function NotificationBell() {
                             </div>
                         ) : (
                             <div className="divide-y divide-gray-100">
-                                {notifications.map(notif => (
-                                    <div
-                                        key={notif.id}
-                                        onClick={() => handleNotificationClick(notif)}
-                                        className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${
-                                            !notif.read ? 'bg-spark-50' : 'bg-white'
-                                        }`}
-                                    >
-                                        <div className="flex gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${getIconColor(notif.type)}`}>
-                                                <span className="text-sm">{getIcon(notif.type)}</span>
+                                {notifications.map(notif => {
+                                    const statusInfo = notif.type === 'chat_message' || notif.type === 'new_message' 
+                                        ? getStatusBadge(notif.status) 
+                                        : null;
+                                    
+                                    return (
+                                        <div
+                                            key={notif.id}
+                                            onClick={() => handleNotificationClick(notif)}
+                                            className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${
+                                                !notif.read ? 'bg-spark-50' : 'bg-white'
+                                            }`}
+                                        >
+                                            <div className="flex gap-3">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${getIconColor(notif.type)}`}>
+                                                    <span className="text-sm">{getIcon(notif.type)}</span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-sm font-semibold text-gray-900">{notif.title}</p>
+                                                        {statusInfo && (
+                                                            <span className={`text-xs ${statusInfo.color}`}>
+                                                                • {statusInfo.label}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{notif.message}</p>
+                                                    <p className="text-xs text-gray-400 mt-2">{formatDate(notif.createdAt)}</p>
+                                                </div>
+                                                {!notif.read && (
+                                                    <div className="w-2 h-2 bg-spark-500 rounded-full flex-shrink-0 mt-2"></div>
+                                                )}
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-gray-900">{notif.title}</p>
-                                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">{notif.message}</p>
-                                                <p className="text-xs text-gray-400 mt-2">{formatDate(notif.createdAt)}</p>
-                                            </div>
-                                            {!notif.read && (
-                                                <div className="w-2 h-2 bg-spark-500 rounded-full flex-shrink-0 mt-2"></div>
-                                            )}
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

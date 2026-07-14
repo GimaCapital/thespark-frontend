@@ -617,6 +617,7 @@ export default function Dashboard() {
                                 currentDay={balanceData.currentDay}
                             />
                         </div>
+                        <span>Day {balanceData.globalDay || 0}</span>
 
                         {todayMessage && (
                             <DailyMessage message={todayMessage} />

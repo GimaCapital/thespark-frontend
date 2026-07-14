@@ -792,7 +792,7 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
                         disabled={loading || !amount}
                         className="btn btn-primary w-full sm:w-auto"
                     >
-                        {loading ? 'Processing...' : 'Initiate Deposit'}
+                        {loading ? 'Processing...' : 'Add Funds'}
                     </button>
                 </div>
                 
@@ -837,7 +837,7 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
                                 </button>
                             </div>
                             <p className="text-sm text-green-600 mt-3 font-medium">
-                                You will receive <span className="font-bold">₦{intendedAmount?.toFixed(2)}</span> in your wallet
+                                You will receive <span className="font-bold">₦{intendedAmount?.toFixed(2)}</span> in your acct
                             </p>
                         </div>
 
