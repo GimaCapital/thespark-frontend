@@ -399,7 +399,7 @@ export default function SellProduct() {
         
         // Scroll to form
         document.getElementById('edit-form')?.scrollIntoView({ behavior: 'smooth' });
-        toast.info('✏️ Edit your product and resubmit for approval');
+        toast.success('✏️ Edit your product and resubmit for approval');
     };
 
     // ============================================================
@@ -598,65 +598,123 @@ export default function SellProduct() {
                             <p className="text-gray-500 text-sm">You haven't listed any products yet</p>
                         </div>
                     ) : (
+                        // <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        //     {userProducts.map(product => {
+                        //         const status = getStatusBadge(product.status);
+                        //         return (
+                        //             <div key={product.id} className="bg-white rounded-xl p-4 border border-gray-200">
+                        //                 <div className="flex items-start justify-between">
+                        //                     <div className="flex items-center gap-3 flex-1">
+                        //                         {product.image && product.image !== '📦' ? (
+                        //                             <img 
+                        //                                 src={product.image} 
+                        //                                 alt={product.name}
+                        //                                 className="w-12 h-12 rounded-lg object-cover"
+                        //                                 onError={(e) => {
+                        //                                     e.target.onerror = null;
+                        //                                     e.target.style.display = 'none';
+                        //                                     e.target.parentElement.innerHTML = `<span class="text-3xl">📦</span>`;
+                        //                                 }}
+                        //                             />
+                        //                         ) : (
+                        //                             <span className="text-3xl">📦</span>
+                        //                         )}
+                        //                         <div className="flex-1 min-w-0">
+                        //                             <p className="font-medium text-gray-900 text-sm truncate">{product.name}</p>
+                        //                             <p className="text-xs text-gray-500">₦{product.discountPrice?.toLocaleString()}</p>
+                        //                             <span className={`text-xs px-2 py-0.5 rounded-full ${status.color}`}>
+                        //                                 {status.label}
+                        //                             </span>
+                        //                             {product.status === 'rejected' && product.rejectionReason && (
+                        //                                 <p className="text-xs text-red-600 mt-1">
+                        //                                     Reason: {product.rejectionReason}
+                        //                                 </p>
+                        //                             )}
+                        //                         </div>
+                        //                     </div>
+                        //                     <div className="flex gap-1 ml-2 flex-shrink-0">
+                        //                         {product.status === 'rejected' && (
+                        //                             <button
+                        //                                 onClick={() => handleEditProduct(product)}
+                        //                                 className="text-spark-500 hover:text-spark-700 text-xs px-2 py-1 border border-spark-200 rounded-lg whitespace-nowrap"
+                        //                                 title="Edit and resubmit"
+                        //                             >
+                        //                                 ✏️ Edit
+                        //                             </button>
+                        //                         )}
+                        //                         {(product.status === 'pending' || product.status === 'rejected') && (
+                        //                             <button
+                        //                                 onClick={() => deleteProduct(product.id)}
+                        //                                 className="text-red-500 hover:text-red-700 text-sm"
+                        //                                 title="Delete product"
+                        //                             >
+                        //                                 ✕
+                        //                             </button>
+                        //                         )}
+                        //                     </div>
+                        //                 </div>
+                        //             </div>
+                        //         );
+                        //     })}
+                        // </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {userProducts.map(product => {
-                                const status = getStatusBadge(product.status);
-                                return (
-                                    <div key={product.id} className="bg-white rounded-xl p-4 border border-gray-200">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-center gap-3 flex-1">
-                                                {product.image && product.image !== '📦' ? (
-                                                    <img 
-                                                        src={product.image} 
-                                                        alt={product.name}
-                                                        className="w-12 h-12 rounded-lg object-cover"
-                                                        onError={(e) => {
-                                                            e.target.onerror = null;
-                                                            e.target.style.display = 'none';
-                                                            e.target.parentElement.innerHTML = `<span class="text-3xl">📦</span>`;
-                                                        }}
-                                                    />
-                                                ) : (
-                                                    <span className="text-3xl">📦</span>
-                                                )}
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-gray-900 text-sm truncate">{product.name}</p>
-                                                    <p className="text-xs text-gray-500">₦{product.discountPrice?.toLocaleString()}</p>
-                                                    <span className={`text-xs px-2 py-0.5 rounded-full ${status.color}`}>
-                                                        {status.label}
-                                                    </span>
-                                                    {product.status === 'rejected' && product.rejectionReason && (
-                                                        <p className="text-xs text-red-600 mt-1">
-                                                            Reason: {product.rejectionReason}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-1 ml-2 flex-shrink-0">
-                                                {product.status === 'rejected' && (
-                                                    <button
-                                                        onClick={() => handleEditProduct(product)}
-                                                        className="text-spark-500 hover:text-spark-700 text-xs px-2 py-1 border border-spark-200 rounded-lg whitespace-nowrap"
-                                                        title="Edit and resubmit"
-                                                    >
-                                                        ✏️ Edit
-                                                    </button>
-                                                )}
-                                                {(product.status === 'pending' || product.status === 'rejected') && (
-                                                    <button
-                                                        onClick={() => deleteProduct(product.id)}
-                                                        className="text-red-500 hover:text-red-700 text-sm"
-                                                        title="Delete product"
-                                                    >
-                                                        ✕
-                                                    </button>
+                        {userProducts.map(product => {
+                            const status = getStatusBadge(product.status);
+                            return (
+                                <div key={product.id} className="bg-white rounded-xl p-4 border border-gray-200">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3 flex-1">
+                                            {product.image && product.image !== '📦' ? (
+                                                <img 
+                                                    src={product.image} 
+                                                    alt={product.name}
+                                                    className="w-12 h-12 rounded-lg object-cover"
+                                                    onError={(e) => {
+                                                        e.target.onerror = null;
+                                                        e.target.style.display = 'none';
+                                                        e.target.parentElement.innerHTML = `<span class="text-3xl">📦</span>`;
+                                                    }}
+                                                />
+                                            ) : (
+                                                <span className="text-3xl">📦</span>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-gray-900 text-sm truncate">{product.name}</p>
+                                                <p className="text-xs text-gray-500">₦{product.discountPrice?.toLocaleString()}</p>
+                                                <span className={`text-xs px-2 py-0.5 rounded-full ${status.color}`}>
+                                                    {status.label}
+                                                </span>
+                                                {product.status === 'rejected' && product.rejectionReason && (
+                                                    <p className="text-xs text-red-600 mt-1">
+                                                        Reason: {product.rejectionReason}
+                                                    </p>
                                                 )}
                                             </div>
                                         </div>
+                                        <div className="flex gap-1 ml-2 flex-shrink-0">
+                                            {/* ✅ Edit button - Shows for ALL products */}
+                                            <button
+                                                onClick={() => handleEditProduct(product)}
+                                                className="text-spark-500 hover:text-spark-700 text-xs px-2 py-1 border border-spark-200 rounded-lg whitespace-nowrap"
+                                            >
+                                                ✏️ Edit
+                                            </button>
+                                            {/* ✅ Delete button - Only for pending/rejected */}
+                                            {(product.status === 'pending' || product.status === 'rejected') && (
+                                                <button
+                                                    onClick={() => deleteProduct(product.id)}
+                                                    className="text-red-500 hover:text-red-700 text-sm"
+                                                    title="Delete product"
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                );
-                            })}
-                        </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                     )}
                 </div>
 
