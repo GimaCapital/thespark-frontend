@@ -46,7 +46,7 @@ export const uploadProductImage = async (file, path = 'products') => {
         
         return downloadUrl;
     } catch (error) {
-        console.error('Image upload error:', error);
+        // console.error('Image upload error:', error);
         toast.error(error.message || 'Failed to upload image');
         return null;
     }

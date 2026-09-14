@@ -64,7 +64,7 @@ export const findReferrer = async (referralCode) => {
         }
         return null;
     } catch (error) {
-        console.error('Error finding referrer:', error);
+        // console.error('Error finding referrer:', error);
         return null;
     }
 };
@@ -85,7 +85,7 @@ export const ensureUserDocument = async (userId, userData = {}) => {
         
         if (!userSnap.exists()) {
             isNewUser = true;
-            console.log(`📝 Creating user document for: ${userId}`);
+            // console.log(`📝 Creating user document for: ${userId}`);
             
             const defaultData = getDefaultUserData(
                 userId, 
@@ -100,10 +100,10 @@ export const ensureUserDocument = async (userId, userData = {}) => {
                     referrerId = await findReferrer(referralCode);
                     if (referrerId) {
                         defaultData.referredBy = referrerId;
-                        console.log(`✅ Referrer found: ${referrerId}`);
+                        // console.log(`✅ Referrer found: ${referrerId}`);
                     }
                 } catch (error) {
-                    console.warn('Referral lookup failed:', error);
+                    // console.warn('Referral lookup failed:', error);
                 }
             }
             
@@ -116,7 +116,7 @@ export const ensureUserDocument = async (userId, userData = {}) => {
             };
             
             await setDoc(userRef, finalData);
-            console.log('✅ User document created');
+            // console.log('✅ User document created');
         } else {
             // ✅ Update existing user if needed
             const existingData = userSnap.data();
@@ -133,13 +133,13 @@ export const ensureUserDocument = async (userId, userData = {}) => {
             
             if (Object.keys(updates).length > 1) {
                 await updateDoc(userRef, updates);
-                console.log('✅ User document updated');
+                // console.log('✅ User document updated');
             }
         }
         
         return { userRef, isNewUser, referrerId };
     } catch (error) {
-        console.error('❌ Failed to ensure user document:', error);
+        // console.error('❌ Failed to ensure user document:', error);
         throw new Error('Failed to setup user account. Please try again.');
     }
 };
@@ -158,7 +158,7 @@ export const processReferral = async (userId, referralCode) => {
             if (auth.currentUser) {
                 token = await auth.currentUser.getIdToken();
             } else {
-                console.log(`⏳ Waiting for auth... (${retries + 1}/5)`);
+                // console.log(`⏳ Waiting for auth... (${retries + 1}/5)`);
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 retries++;
             }
@@ -166,7 +166,7 @@ export const processReferral = async (userId, referralCode) => {
         
         if (!token) {
             localStorage.setItem('referralFailed', 'true');
-            console.warn('⚠️ No auth token available, referral will be retried later');
+            // console.warn('⚠️ No auth token available, referral will be retried later');
             return { success: false, reason: 'Auth not ready' };
         }
         
@@ -192,7 +192,7 @@ export const processReferral = async (userId, referralCode) => {
         localStorage.setItem('referralFailed', 'true');
         return { success: false, reason: data.error || 'Referral failed' };
     } catch (error) {
-        console.error('Referral processing error:', error);
+        // console.error('Referral processing error:', error);
         localStorage.setItem('referralFailed', 'true');
         return { success: false, reason: error.message };
     }
@@ -204,7 +204,7 @@ export const processReferral = async (userId, referralCode) => {
  */
 export const sendWelcomeEmail = async (email, fullName) => {
     if (!email) {
-        console.log('⚠️ No email provided, skipping welcome email');
+        // console.log('⚠️ No email provided, skipping welcome email');
         return { success: false, reason: 'No email provided', attempts: 0 };
     }
     
@@ -213,21 +213,21 @@ export const sendWelcomeEmail = async (email, fullName) => {
         let retries = 0;
         let token = null;
         
-        console.log('⏳ Waiting for auth token for email...');
+        // console.log('⏳ Waiting for auth token for email...');
         
         while (!token && retries < 20) {
             if (auth.currentUser) {
                 try {
                     token = await auth.currentUser.getIdToken(true);
                     if (token) {
-                        console.log('✅ Auth token obtained for email');
+                        // console.log('✅ Auth token obtained for email');
                         break;
                     }
                 } catch (tokenError) {
-                    console.log(`⏳ Token error, retry ${retries + 1}/20`);
+                    // console.log(`⏳ Token error, retry ${retries + 1}/20`);
                 }
             } else {
-                console.log(`⏳ Waiting for auth.currentUser... (${retries + 1}/20)`);
+                // console.log(`⏳ Waiting for auth.currentUser... (${retries + 1}/20)`);
             }
             
             if (!token) {
@@ -237,7 +237,7 @@ export const sendWelcomeEmail = async (email, fullName) => {
         }
         
         if (!token) {
-            console.warn('⚠️ Could not get auth token after 20 retries');
+            // console.warn('⚠️ Could not get auth token after 20 retries');
             try {
                 const userRef = doc(db, 'users', auth.currentUser?.uid || '');
                 if (userRef) {
@@ -248,7 +248,7 @@ export const sendWelcomeEmail = async (email, fullName) => {
                     });
                 }
             } catch (e) {
-                console.warn('Could not update email status:', e);
+                // console.warn('Could not update email status:', e);
             }
             return { success: false, reason: 'Auth not ready', attempts: 0 };
         }
@@ -256,17 +256,17 @@ export const sendWelcomeEmail = async (email, fullName) => {
         // ✅ Set auth token and send email
         setAuthToken(token);
         
-        console.log('📧 Sending welcome email to:', email);
+        // console.log('📧 Sending welcome email to:', email);
         
         const response = await api.post('/users/send-welcome-email', {
             email,
             fullName: fullName || 'Thespark Member'
         });
         
-        console.log('✅ Welcome email sent successfully');
+        // console.log('✅ Welcome email sent successfully');
         return { success: true, data: response.data, attempts: 1 };
     } catch (error) {
-        console.error('❌ Welcome email error:', error);
+        // console.error('❌ Welcome email error:', error);
         return { 
             success: false, 
             reason: error.response?.data?.error || error.message || 'Failed to send email',
@@ -282,7 +282,7 @@ export const sendWelcomeEmail = async (email, fullName) => {
 export const setupNewUser = async (userId, userData = {}) => {
     try {
         const { userRef, isNewUser, referrerId } = await ensureUserDocument(userId, userData);
-        console.log(`📝 User setup: ${isNewUser ? 'NEW' : 'EXISTING'}`);
+        // console.log(`📝 User setup: ${isNewUser ? 'NEW' : 'EXISTING'}`);
         
         let referralResult = null;
         let emailResult = null;
@@ -296,31 +296,31 @@ export const setupNewUser = async (userId, userData = {}) => {
             if (referralCode) {
                 referralResult = await processReferral(userId, referralCode);
                 if (referralResult.success) {
-                    console.log(`✅ Referral bonus processed: ₦${referralResult.bonus || 0}`);
+                    // console.log(`✅ Referral bonus processed: ₦${referralResult.bonus || 0}`);
                 } else {
-                    console.warn('⚠️ Referral failed, code kept for retry');
+                    // console.warn('⚠️ Referral failed, code kept for retry');
                 }
             }
         }
         
         // 2. Send welcome email with retries
         if (isNewUser && userData.email) {
-            console.log('⏳ Waiting 3 seconds for auth to fully initialize...');
+            // console.log('⏳ Waiting 3 seconds for auth to fully initialize...');
             await new Promise(resolve => setTimeout(resolve, 3000));
             
             while (!emailSent && attempts < maxAttempts) {
                 attempts++;
-                console.log(`📧 Email attempt ${attempts}/${maxAttempts}...`);
+                // console.log(`📧 Email attempt ${attempts}/${maxAttempts}...`);
                 
                 emailResult = await sendWelcomeEmail(userData.email, userData.fullName);
                 
                 if (emailResult.success) {
                     emailSent = true;
-                    console.log('✅ Welcome email sent successfully');
+                    // console.log('✅ Welcome email sent successfully');
                 } else {
-                    console.warn(`⚠️ Email attempt ${attempts} failed:`, emailResult.reason);
+                    // console.warn(`⚠️ Email attempt ${attempts} failed:`, emailResult.reason);
                     if (attempts < maxAttempts) {
-                        console.log(`⏳ Waiting 3 seconds before retry...`);
+                        // console.log(`⏳ Waiting 3 seconds before retry...`);
                         await new Promise(resolve => setTimeout(resolve, 3000));
                     }
                 }
@@ -336,14 +336,14 @@ export const setupNewUser = async (userId, userData = {}) => {
                     welcomeEmailLastAttempt: new Date().toISOString()
                 });
             } catch (updateError) {
-                console.warn('⚠️ Could not update welcome email status:', updateError);
+                // console.warn('⚠️ Could not update welcome email status:', updateError);
             }
             
             if (!emailSent) {
-                console.warn('⚠️ Welcome email failed after 3 attempts. Admin can retry from dashboard.');
+                // console.warn('⚠️ Welcome email failed after 3 attempts. Admin can retry from dashboard.');
             }
         } else if (isNewUser && !userData.email) {
-            console.log('ℹ️ No email provided, skipping welcome email');
+            // console.log('ℹ️ No email provided, skipping welcome email');
             try {
                 await updateDoc(userRef, {
                     welcomeEmailSent: true,
@@ -352,7 +352,7 @@ export const setupNewUser = async (userId, userData = {}) => {
                     welcomeEmailLastAttempt: new Date().toISOString()
                 });
             } catch (updateError) {
-                console.warn('⚠️ Could not update email status:', updateError);
+                // console.warn('⚠️ Could not update email status:', updateError);
             }
         }
         
@@ -366,7 +366,7 @@ export const setupNewUser = async (userId, userData = {}) => {
             referrerId
         };
     } catch (error) {
-        console.error('❌ User setup failed:', error);
+        // console.error('❌ User setup failed:', error);
         return { success: false, error: error.message };
     }
 };

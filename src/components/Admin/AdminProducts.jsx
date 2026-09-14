@@ -36,7 +36,7 @@ export default function AdminProducts() {
             const data = await getPendingProducts();
             setPendingProducts(data || []);
         } catch (error) {
-            console.error('Failed to load pending products:', error);
+            // console.error('Failed to load pending products:', error);
             toast.error('Failed to load pending products');
             setPendingProducts([]);
         } finally {
@@ -50,7 +50,7 @@ export default function AdminProducts() {
             const data = await getAllOrders();
             setMarketplaceOrders(data || []);
         } catch (error) {
-            console.error('Failed to load marketplace orders:', error);
+            // console.error('Failed to load marketplace orders:', error);
             toast.error('Failed to load marketplace orders');
             setMarketplaceOrders([]);
         } finally {
@@ -63,7 +63,7 @@ export default function AdminProducts() {
             const data = await getMarketplaceStats();
             setMarketplaceStats(data);
         } catch (error) {
-            console.error('Failed to load marketplace stats:', error);
+            // console.error('Failed to load marketplace stats:', error);
         }
     };
 
@@ -74,7 +74,7 @@ export default function AdminProducts() {
             loadPendingProducts();
             loadMarketplaceStats();
         } catch (error) {
-            console.error('Failed to approve product:', error);
+            // console.error('Failed to approve product:', error);
             toast.error('Failed to approve product');
         }
     };
@@ -90,7 +90,7 @@ export default function AdminProducts() {
             loadPendingProducts();
             loadMarketplaceStats();
         } catch (error) {
-            console.error('Failed to reject product:', error);
+            // console.error('Failed to reject product:', error);
             toast.error('Failed to reject product');
         }
     };
@@ -103,7 +103,7 @@ export default function AdminProducts() {
             loadMarketplaceStats();
             setShowOrderModal(false);
         } catch (error) {
-            console.error('Failed to update order status:', error);
+            // console.error('Failed to update order status:', error);
             toast.error('Failed to update order status');
         }
     };

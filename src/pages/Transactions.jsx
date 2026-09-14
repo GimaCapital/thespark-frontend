@@ -54,7 +54,7 @@ export default function Transactions() {
                 totalPremiumFees: premiumFees
             });
         } catch (error) {
-            console.error('Failed to load transactions:', error);
+            // console.error('Failed to load transactions:', error);
             toast.error('Failed to load transactions');
         } finally {
             setLoading(false);

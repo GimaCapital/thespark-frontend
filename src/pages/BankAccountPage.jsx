@@ -62,7 +62,7 @@ export default function BankAccount() {
                 setFilteredBanks(response.data.banks);
             }
         } catch (error) {
-            console.error('Failed to fetch banks:', error);
+            // console.error('Failed to fetch banks:', error);
             toast.error('Failed to load banks');
         }
     };
@@ -77,7 +77,7 @@ export default function BankAccount() {
                 setBankAccount(response.data);
             }
         } catch (error) {
-            console.error('Failed to load bank account:', error);
+            // console.error('Failed to load bank account:', error);
         } finally {
             setLoading(false);
         }

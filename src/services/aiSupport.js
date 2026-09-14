@@ -25,7 +25,7 @@ export const sendAIMessage = async (message, sessionId = null) => {
 
         return response.data;
     } catch (error) {
-        console.error('Error sending AI message:', error);
+        // console.error('Error sending AI message:', error);
         throw error;
     }
 };
@@ -48,7 +48,7 @@ export const getChatHistory = async (sessionId) => {
         const response = await api.get(`/ai/history/${sessionId}`);
         return response.data;
     } catch (error) {
-        console.error('Error fetching chat history:', error);
+        // console.error('Error fetching chat history:', error);
         return [];
     }
 };
@@ -68,7 +68,7 @@ export const checkHumanAvailability = async () => {
         const response = await api.get('/ai/human-available');
         return response.data.available || false;
     } catch (error) {
-        console.error('Error checking human availability:', error);
+        // console.error('Error checking human availability:', error);
         return false;
     }
 };
@@ -91,7 +91,7 @@ export const requestHumanHandoff = async (sessionId) => {
         const response = await api.post('/ai/handoff', { sessionId });
         return response.data;
     } catch (error) {
-        console.error('Error requesting human handoff:', error);
+        // console.error('Error requesting human handoff:', error);
         throw error;
     }
 };
@@ -113,7 +113,7 @@ export const getHandoffRequests = async () => {
         const response = await api.get('/ai/handoffs');
         return response.data;
     } catch (error) {
-        console.error('Error fetching handoff requests:', error);
+        // console.error('Error fetching handoff requests:', error);
         return [];
     }
 };
@@ -136,7 +136,7 @@ export const claimHandoff = async (handoffId) => {
         const response = await api.put(`/ai/handoffs/${handoffId}/claim`);
         return response.data;
     } catch (error) {
-        console.error('Error claiming handoff:', error);
+        // console.error('Error claiming handoff:', error);
         throw error;
     }
 };
@@ -160,7 +160,7 @@ export const resolveHandoff = async (handoffId, resolution) => {
         const response = await api.put(`/ai/handoffs/${handoffId}/resolve`, { resolution });
         return response.data;
     } catch (error) {
-        console.error('Error resolving handoff:', error);
+        // console.error('Error resolving handoff:', error);
         throw error;
     }
 };
@@ -185,7 +185,7 @@ export const getChatSession = async (sessionId) => {
         const response = await api.get(`/ai/session/${sessionId}`);
         return response.data;
     } catch (error) {
-        console.error('Error getting chat session:', error);
+        // console.error('Error getting chat session:', error);
         return null;
     }
 };
@@ -216,12 +216,12 @@ export const sendChatMessage = async (chatSessionId, message) => {
         console.log(`✅ Message sent successfully`);
         return response.data;
     } catch (error) {
-        console.error('❌ Error sending message:', {
-            status: error.response?.status,
-            data: error.response?.data,
-            message: error.message,
-            sessionId: chatSessionId
-        });
+        // console.error('❌ Error sending message:', {
+        //     status: error.response?.status,
+        //     data: error.response?.data,
+        //     message: error.message,
+        //     sessionId: chatSessionId
+        // });
         throw error;
     }
 };
@@ -242,7 +242,7 @@ export const getChatMessages = async (chatSessionId) => {
         const response = await api.get(`/ai/chat/${chatSessionId}/history`);
         return response.data.messages || [];
     } catch (error) {
-        console.error('Error getting chat messages:', error);
+        // console.error('Error getting chat messages:', error);
         return [];
     }
 };
@@ -265,7 +265,7 @@ export const resolveChat = async (chatSessionId) => {
         const response = await api.put(`/ai/chat/${chatSessionId}/resolve`);
         return response.data;
     } catch (error) {
-        console.error('Error resolving chat:', error);
+        // console.error('Error resolving chat:', error);
         throw error;
     }
 };
@@ -285,7 +285,7 @@ export const getActiveSessions = async () => {
         const response = await api.get('/ai/sessions/active');
         return response.data || [];
     } catch (error) {
-        console.error('Error fetching active sessions:', error);
+        // console.error('Error fetching active sessions:', error);
         return [];
     }
 };
@@ -305,7 +305,7 @@ export const getPendingHandoffs = async () => {
         const response = await api.get('/ai/handoffs/pending');
         return response.data || [];
     } catch (error) {
-        console.error('Error fetching pending handoffs:', error);
+        // console.error('Error fetching pending handoffs:', error);
         return [];
     }
 };
@@ -330,7 +330,7 @@ export const claimHandoffRequest = async (handoffId) => {
         console.log('✅ Claim response:', response.data);
         return response.data;
     } catch (error) {
-        console.error('❌ Error claiming handoff:', error);
+        // console.error('❌ Error claiming handoff:', error);
         throw error;
     }
 };

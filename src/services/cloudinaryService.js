@@ -10,20 +10,20 @@ const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'marketpl
  */
 export const uploadToCloudinary = async (file, folder = 'products') => {
     if (!file) {
-        console.error('No file provided');
+        // console.error('No file provided');
         return null;
     }
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-        console.error('Image must be less than 5MB');
+        // console.error('Image must be less than 5MB');
         return null;
     }
 
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
-        console.error('Please upload a JPEG, PNG, or WebP image');
+        // console.error('Please upload a JPEG, PNG, or WebP image');
         return null;
     }
 
@@ -47,10 +47,10 @@ export const uploadToCloudinary = async (file, folder = 'products') => {
             return data.secure_url;
         }
 
-        console.error('Upload failed:', data.error?.message || 'Unknown error');
+        // console.error('Upload failed:', data.error?.message || 'Unknown error');
         return null;
     } catch (error) {
-        console.error('Upload error:', error);
+        // console.error('Upload error:', error);
         return null;
     }
 };

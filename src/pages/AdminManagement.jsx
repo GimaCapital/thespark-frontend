@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api, setAuthToken } from '../services/api';
 import { auth } from '../services/firebase';
 import toast from 'react-hot-toast';
-import { formatDate, getFullDate } from '../utils/dateUtils';  // ✅ Import date utilities
+import { formatDate, getFullDate } from '../utils/dateUtils'; 
 
 export default function AdminManagement() {
     const { user } = useAuth();
@@ -31,7 +31,7 @@ export default function AdminManagement() {
             setAdmins(adminsRes.data);
             setUsers(usersRes.data);
         } catch (error) {
-            console.error('Failed to load data:', error);
+            // console.error('Failed to load data:', error);
             toast.error('Failed to load admin data');
         } finally {
             setLoading(false);

@@ -18,7 +18,7 @@ export const getProducts = async () => {
         const response = await api.get('/marketplace/products');
         return response.data;
     } catch (error) {
-        console.error('Error fetching products:', error);
+        // console.error('Error fetching products:', error);
         throw error;
     }
 };
@@ -34,7 +34,7 @@ export const getProduct = async (productId) => {
         const response = await api.get(`/marketplace/products/${productId}`);
         return response.data;
     } catch (error) {
-        console.error('Error fetching product:', error);
+        // console.error('Error fetching product:', error);
         throw error;
     }
 };
@@ -50,7 +50,7 @@ export const getProductsByCategory = async (category) => {
         const response = await api.get(`/marketplace/products/category/${category}`);
         return response.data;
     } catch (error) {
-        console.error('Error fetching products by category:', error);
+        // console.error('Error fetching products by category:', error);
         throw error;
     }
 };
@@ -66,7 +66,7 @@ export const searchProducts = async (query) => {
         const response = await api.get(`/marketplace/products/search?q=${encodeURIComponent(query)}`);
         return response.data;
     } catch (error) {
-        console.error('Error searching products:', error);
+        // console.error('Error searching products:', error);
         throw error;
     }
 };
@@ -83,7 +83,7 @@ export const getMyProducts = async () => {
         const response = await api.get('/marketplace/my-products');
         return response.data;
     } catch (error) {
-        console.error('Error fetching user products:', error);
+        // console.error('Error fetching user products:', error);
         throw error;
     }
 };
@@ -98,7 +98,7 @@ export const submitProduct = async (productData) => {
         const response = await api.post('/marketplace/products/submit', productData);
         return response.data;
     } catch (error) {
-        console.error('Error submitting product:', error);
+        // console.error('Error submitting product:', error);
         throw error;
     }
 };
@@ -113,7 +113,7 @@ export const updateProduct = async (productId, productData) => {
         const response = await api.put(`/marketplace/products/update/${productId}`, productData);
         return response.data;
     } catch (error) {
-        console.error('Error updating product:', error);
+        // console.error('Error updating product:', error);
         throw error;
     }
 };
@@ -128,7 +128,7 @@ export const deleteProduct = async (productId) => {
         const response = await api.delete(`/marketplace/products/delete/${productId}`);
         return response.data;
     } catch (error) {
-        console.error('Error deleting product:', error);
+        // console.error('Error deleting product:', error);
         throw error;
     }
 };
@@ -150,7 +150,7 @@ export const createOrder = async (items, total, deliveryAddress, addressId) => {
         });
         return response.data;
     } catch (error) {
-        console.error('Error creating order:', error);
+        // console.error('Error creating order:', error);
         throw error;
     }
 };
@@ -165,7 +165,7 @@ export const getOrders = async () => {
         const response = await api.get('/marketplace/orders');
         return response.data;
     } catch (error) {
-        console.error('Error fetching orders:', error);
+        // console.error('Error fetching orders:', error);
         throw error;
     }
 };
@@ -180,7 +180,7 @@ export const getOrder = async (orderId) => {
         const response = await api.get(`/marketplace/orders/${orderId}`);
         return response.data;
     } catch (error) {
-        console.error('Error fetching order:', error);
+        // console.error('Error fetching order:', error);
         throw error;
     }
 };
@@ -195,7 +195,7 @@ export const cancelOrder = async (orderId) => {
         const response = await api.delete(`/marketplace/orders/${orderId}`);
         return response.data;
     } catch (error) {
-        console.error('Error cancelling order:', error);
+        // console.error('Error cancelling order:', error);
         throw error;
     }
 };
@@ -212,7 +212,7 @@ export const getPendingProducts = async () => {
         const response = await api.get('/marketplace/admin/pending');
         return response.data;
     } catch (error) {
-        console.error('Error fetching pending products:', error);
+        // console.error('Error fetching pending products:', error);
         throw error;
     }
 };
@@ -227,7 +227,7 @@ export const approveProduct = async (productId) => {
         const response = await api.post(`/marketplace/admin/approve/${productId}`);
         return response.data;
     } catch (error) {
-        console.error('Error approving product:', error);
+        // console.error('Error approving product:', error);
         throw error;
     }
 };
@@ -242,7 +242,7 @@ export const rejectProduct = async (productId, reason) => {
         const response = await api.post(`/marketplace/admin/reject/${productId}`, { reason });
         return response.data;
     } catch (error) {
-        console.error('Error rejecting product:', error);
+        // console.error('Error rejecting product:', error);
         throw error;
     }
 };
@@ -257,7 +257,7 @@ export const getAllOrders = async () => {
         const response = await api.get('/marketplace/admin/orders');
         return response.data;
     } catch (error) {
-        console.error('Error fetching all orders:', error);
+        // console.error('Error fetching all orders:', error);
         throw error;
     }
 };
@@ -272,7 +272,7 @@ export const updateOrderStatus = async (orderId, stage) => {
         const response = await api.put(`/marketplace/orders/${orderId}/status`, { stage });
         return response.data;
     } catch (error) {
-        console.error('Error updating order status:', error);
+        // console.error('Error updating order status:', error);
         throw error;
     }
 };
@@ -287,7 +287,7 @@ export const getMarketplaceStats = async () => {
         const response = await api.get('/marketplace/admin/stats');
         return response.data;
     } catch (error) {
-        console.error('Error fetching marketplace stats:', error);
+        // console.error('Error fetching marketplace stats:', error);
         throw error;
     }
 };
@@ -305,7 +305,7 @@ export const getCategories = async () => {
         const response = await api.get('/marketplace/categories');
         return response.data;
     } catch (error) {
-        console.error('Error fetching categories:', error);
+        // console.error('Error fetching categories:', error);
         throw error;
     }
 };

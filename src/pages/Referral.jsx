@@ -26,7 +26,7 @@ export default function Referral() {
             const response = await api.get('/users/me');
             setReferralData(response.data);
         } catch (error) {
-            console.error('Failed to load referral data:', error);
+            // console.error('Failed to load referral data:', error);
             toast.error('Failed to load data');
         } finally {
             setLoading(false);

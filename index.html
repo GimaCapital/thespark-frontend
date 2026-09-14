@@ -4,35 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#F97316" />
-    <!-- <link rel="manifest" href="/manifest.json" /> -->
-    <link rel="manifest" href="/manifest.json?v=2" />
-    <!-- Favicon - Just the flame-only (no other options for Chrome to choose from) -->
+    <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" href="/icons/thespark-logo-full-flame-512x512.png" />
     <link rel="apple-touch-icon" href="/icons/thespark-logo-full-flame-512x512.png" />
-    
-    <!-- ✅ FIXED: Use mobile-web-app-capable instead of deprecated apple-mobile-web-app-capable -->
+
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="TheSpark" />
-    
+
     <title>TheSpark — Be the spark.</title>
 
-    <!-- ✅ CATCH INSTALL PROMPT EARLY - BEFORE REACT LOADS -->
     <script>
-        // Store the prompt globally
         window.deferredPrompt = null;
-        
-        // Listen for the event IMMEDIATELY
+
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             window.deferredPrompt = e;
-            console.log('✅ Install prompt captured in HTML!');
-            
-            // Dispatch custom event for React
             window.dispatchEvent(new CustomEvent('pwaPromptReady'));
         });
 
-        console.log('✅ PWA install listener ready in HTML');
+    
     </script>
 </head>
 <body>

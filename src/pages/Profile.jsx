@@ -1,182 +1,3 @@
-// import React, { useEffect } from 'react';
-// import { Link } from 'react-router-dom';
-// import { useAuth } from '../contexts/AuthContext';
-// import toast from 'react-hot-toast';
-
-// export default function Profile() {
-//     const { userData, refreshUserData, logout, isAdmin } = useAuth();
-//     const isGraduated = userData?.currentCycle > 8 || userData?.graduationDate;
-    
-//     // Refresh data when page loads
-//     useEffect(() => {
-//         refreshUserData();
-//     }, []);
-    
-//     const handleLogout = async () => {
-//         await logout();
-//         toast.success('Logged out successfully');
-//     };
-    
-//     const copyReferralCode = () => {
-//         if (userData?.referralCode) {
-//             navigator.clipboard.writeText(userData.referralCode);
-//             toast.success('Referral code copied!');
-//         }
-//     };
-    
-//     const getInitials = (name) => {
-//         if (!name) return '👤';
-//         return name.charAt(0).toUpperCase();
-//     };
-    
-//     if (!userData) {
-//         return (
-//             <div className="flex-center h-64">
-//                 <div className="spinner"></div>
-//             </div>
-//         );
-//     }
-    
-//     const menuItems = [
-//         { icon: '📖', label: '7 Rules of Wealth', subtext: 'Learn the principles', link: '/7-rules', showAlways: true },
-//         { icon: '🌟', label: 'Success Stories', subtext: 'Read inspiring stories', link: '/success-stories', showAlways: true },
-//         { icon: '❓', label: 'FAQ', subtext: 'Frequently asked questions', link: '/faq', showAlways: true },
-//         { icon: '⭐', label: 'Premium Plans', subtext: 'Upgrade for better rates', link: '/premium', showWhen: !!userData },
-//         { icon: '🎓', label: 'Graduation', subtext: 'View your certificate', link: '/graduation', showWhen: !!userData && isGraduated },
-//     ];
-    
-//     const adminItems = [
-//         { icon: '⚙️', label: 'Admin Dashboard', link: '/admin' },
-//         { icon: '👥', label: 'Manage Admins', link: '/admin-management' },
-//         { icon: '💰', label: 'Hybrid Lending', link: '/hybrid-lending' },
-//     ];
-    
-//     const visibleMenuItems = menuItems.filter(item => 
-//         item.showAlways || (item.showWhen !== undefined && item.showWhen)
-//     );
-    
-//     return (
-//         <div style={{ backgroundColor: '#F9FAFB', minHeight: '100vh', paddingBottom: '5rem' }}>
-//             {/* Profile Header */}
-//             <div className="profile-header">
-//                 <div className="flex-center">
-//                     <div className="profile-avatar-large">
-//                         {userData?.photoURL ? (
-//                             <img src={userData.photoURL} alt={userData.fullName} />
-//                         ) : (
-//                             <span>{getInitials(userData?.fullName)}</span>
-//                         )}
-//                     </div>
-//                 </div>
-//                 <div className="text-center">
-//                     <h2 className="profile-name">{userData?.fullName || 'Spark Member'}</h2>
-//                     <p className="profile-phone">{userData?.email || userData?.phone}</p>
-//                     {userData?.premiumPlan && userData.premiumPlan !== 'Basic' && (
-//                         <span className="profile-badge">⭐ {userData.premiumPlan} Member</span>
-//                     )}
-//                 </div>
-//             </div>
-            
-//             {/* Stats Card */}
-//             <div className="profile-stats-card">
-//                 <div>
-//                     <div className="profile-stat-value">₦{userData?.currentBalance?.toLocaleString() || 0}</div>
-//                     <div className="profile-stat-label">Balance</div>
-//                 </div>
-//                 <div>
-//                     <div className="profile-stat-value">Cycle {userData?.currentCycle || 1}</div>
-//                     <div className="profile-stat-label">Current Cycle</div>
-//                 </div>
-//                 <div>
-//                     <div className="profile-stat-value">Day {userData?.currentDay || 1}</div>
-//                     <div className="profile-stat-label">Current Day</div>
-//                 </div>
-//             </div>
-            
-//             <div className="profile-content">
-//                 {/* Account Info Section */}
-//                 <div className="card" style={{ marginBottom: '1rem' }}>
-//                     <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
-//                         <span style={{ fontWeight: '600', color: '#1F2937' }}>Account Info</span>
-//                         <span style={{ fontSize: '0.7rem', color: '#F97316' }}>Member since {userData?.joinDate ? new Date(userData.joinDate).toLocaleDateString() : 'Recent'}</span>
-//                     </div>
-//                     <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>
-//                         <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
-//                             <span>Total Saved</span>
-//                             <span style={{ fontWeight: '600', color: '#1F2937' }}>₦{userData?.totalPrincipalSaved?.toLocaleString() || 0}</span>
-//                         </div>
-//                         <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
-//                             <span>Interest Earned</span>
-//                             <span style={{ fontWeight: '600', color: '#10B981' }}>₦{userData?.totalInterestEarned?.toLocaleString() || 0}</span>
-//                         </div>
-//                         <div className="flex-between">
-//                             <span>Interest Rate</span>
-//                             <span style={{ fontWeight: '600', color: '#F97316' }}>{userData?.premiumInterestRate || 5}% per 21 days</span>
-//                         </div>
-//                     </div>
-//                 </div>
-                
-//                 {/* Referral Code Card */}
-//                 <div className="card" style={{ marginBottom: '1rem', textAlign: 'center' }}>
-//                     <div style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.5rem' }}>Your Referral Code</div>
-//                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#F97316', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-//                         {userData?.referralCode || 'SPARK'}
-//                     </div>
-//                     <div style={{ fontSize: '0.7rem', color: '#6B7280', marginBottom: '0.75rem' }}>
-//                         Share your code. Get ₦500 when they join!
-//                     </div>
-//                     <button onClick={copyReferralCode} className="btn btn-primary btn-sm btn-full">
-//                         Copy Referral Code
-//                     </button>
-//                 </div>
-                
-//                 {/* Menu Items */}
-//                 {visibleMenuItems.map((item, index) => (
-//                     <Link key={index} to={item.link} style={{ textDecoration: 'none' }}>
-//                         <div className="profile-menu-item">
-//                             <div className="profile-menu-left">
-//                                 <div className="profile-menu-icon">{item.icon}</div>
-//                                 <div>
-//                                     <div className="profile-menu-text">{item.label}</div>
-//                                     {item.subtext && <div className="profile-menu-subtext">{item.subtext}</div>}
-//                                 </div>
-//                             </div>
-//                             <div className="profile-menu-arrow">›</div>
-//                         </div>
-//                     </Link>
-//                 ))}
-                
-//                 <div className="profile-divider"></div>
-                
-//                 {/* Admin Section */}
-//                 {isAdmin && (
-//                     <>
-//                         {adminItems.map((item, index) => (
-//                             <Link key={index} to={item.link} style={{ textDecoration: 'none' }}>
-//                                 <div className="profile-menu-item">
-//                                     <div className="profile-menu-left">
-//                                         <div className="profile-menu-icon">{item.icon}</div>
-//                                         <div>
-//                                             <div className="profile-menu-text">{item.label}</div>
-//                                         </div>
-//                                     </div>
-//                                     <div className="profile-menu-arrow">›</div>
-//                                 </div>
-//                             </Link>
-//                         ))}
-//                         <div className="profile-divider"></div>
-//                     </>
-//                 )}
-                
-//                 {/* Logout Button */}
-//                 <div onClick={handleLogout} className="profile-logout">
-//                     <span>🚪</span>
-//                     <span>Logout</span>
-//                 </div>
-//             </div>
-//         </div>
-//     );
-// }
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -230,7 +51,7 @@ export default function Profile() {
                 setBankAccount(response.data);
             }
         } catch (error) {
-            console.error('Failed to load bank account:', error);
+            // console.error('Failed to load bank account:', error);
         } finally {
             setLoadingBank(false);
         }
@@ -291,7 +112,7 @@ export default function Profile() {
                 await refreshUserData();
             }
         } catch (error) {
-            console.error('Failed to enable notifications:', error);
+            // console.error('Failed to enable notifications:', error);
             // Check if permission was denied
             if ('Notification' in window) {
                 const newStatus = Notification.permission;
@@ -356,7 +177,7 @@ export default function Profile() {
                 toast.success('✅ Notifications re-enabled!');
             });
         } catch (error) {
-            console.error('Failed to save token after re-enable:', error);
+            // console.error('Failed to save token after re-enable:', error);
         }
     };
     

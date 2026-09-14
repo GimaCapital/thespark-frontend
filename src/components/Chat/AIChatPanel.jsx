@@ -122,7 +122,7 @@ export default function AIChatPanel() {
             loadHistory()
                 .then(() => setLoadingHistory(false))
                 .catch((error) => {
-                    console.error('❌ Failed to load history:', error);
+                    // console.error('❌ Failed to load history:', error);
                     setLoadingHistory(false);
                 });
             if (inputRef.current) inputRef.current.focus();

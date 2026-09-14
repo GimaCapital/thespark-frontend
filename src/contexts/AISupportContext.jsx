@@ -1,622 +1,3 @@
-// // src/contexts/AISupportContext.jsx
-// import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
-// import { useAuth } from './AuthContext';
-// import { api, setAuthToken } from '../services/api';
-// import { db } from '../services/firebase';
-// import { 
-//     collection, 
-//     query, 
-//     where, 
-//     onSnapshot, 
-//     doc,
-//     orderBy 
-// } from 'firebase/firestore';
-// import { 
-//     sendAIMessage, 
-//     getChatHistory, 
-//     checkHumanAvailability,
-//     requestHumanHandoff,
-//     sendChatMessage,
-//     resolveChat
-// } from '../services/aiSupport';
-// import toast from 'react-hot-toast';
-
-// const AISupportContext = createContext();
-
-// export function AISupportProvider({ children }) {
-//     const { user } = useAuth();
-//     const [messages, setMessages] = useState([]);
-//     const [isOpen, setIsOpen] = useState(false);
-//     const [isTyping, setIsTyping] = useState(false);
-//     const [sessionId, setSessionId] = useState(null);
-//     const [unreadCount, setUnreadCount] = useState(0);
-//     const [isHumanMode, setIsHumanMode] = useState(false);
-//     const [isHumanAvailable, setIsHumanAvailable] = useState(false);
-//     const [handoffShown, setHandoffShown] = useState(false);
-//     const [chatSessionId, setChatSessionId] = useState(null);
-//     const [agentName, setAgentName] = useState(null);
-//     const [isAgentTyping, setIsAgentTyping] = useState(false);
-    
-//     const handoffListenerRef = useRef(null);
-//     const messagesListenerRef = useRef(null);
-//     const lastProcessedHandoffRef = useRef(null);
-
-//     // Initialize session
-//     useEffect(() => {
-//         if (user && !sessionId) {
-//             setSessionId(`session-${user.uid}-${Date.now()}`);
-//         }
-//     }, [user]);
-
-//     // Check human availability on mount
-//     useEffect(() => {
-//         if (user) {
-//             checkHumanAvailability().then(setIsHumanAvailable);
-//         }
-//     }, [user]);
-
-//     // Load history when chat opens
-//     useEffect(() => {
-//         if (user && sessionId && isOpen) {
-//             loadHistory();
-//         }
-//     }, [user, sessionId, isOpen]);
-
-//     // Load chat session history when chatSessionId changes (human mode)
-//     useEffect(() => {
-//         if (chatSessionId && isOpen && isHumanMode) {
-//             console.log('📤 Loading chat session history for:', chatSessionId);
-//             loadChatSessionHistory();
-            
-//             // ✅ Set up real-time listener when chat is open
-//             listenToMessages(chatSessionId);
-//         }
-        
-//         // ✅ Cleanup listener when chat closes or session changes
-//         return () => {
-//             if (messagesListenerRef.current) {
-//                 console.log('🧹 Cleaning up messages listener');
-//                 messagesListenerRef.current();
-//                 messagesListenerRef.current = null;
-//             }
-//         };
-//     }, [chatSessionId, isOpen, isHumanMode]);
-
-//     // ✅ FIXED: Listen for handoffs - only set human mode when chat is active and open
-//     useEffect(() => {
-//         if (!user) {
-//             console.log('❌ No user, skipping handoff listener');
-//             return;
-//         }
-
-//         console.log('📡 Setting up real-time handoff listener for user:', user.uid);
-
-//         const handoffsQuery = query(
-//             collection(db, 'handoffRequests'),
-//             where('userId', '==', user.uid),
-//             orderBy('createdAt', 'desc')
-//         );
-
-//         handoffListenerRef.current = onSnapshot(
-//             handoffsQuery,
-//             (snapshot) => {
-//                 console.log(`📩 Handoff snapshot received: ${snapshot.size} documents`);
-                
-//                 const handoffs = [];
-//                 snapshot.forEach((doc) => {
-//                     const data = doc.data();
-//                     handoffs.push({ 
-//                         id: doc.id, 
-//                         ...data,
-//                         createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt)
-//                     });
-//                 });
-
-//                 // ✅ Find the MOST RECENT claimed handoff
-//                 const claimedHandoffs = handoffs
-//                     .filter(h => h.status === 'claimed' && h.chatSessionId)
-//                     .sort((a, b) => b.createdAt - a.createdAt);
-
-//                 if (claimedHandoffs.length > 0) {
-//                     const latestClaimed = claimedHandoffs[0];
-//                     const chatId = latestClaimed.chatSessionId;
-//                     const agent = latestClaimed.agentName || 'Agent';
-                    
-//                     const handoffKey = `${latestClaimed.id}-${chatId}`;
-//                     if (lastProcessedHandoffRef.current !== handoffKey) {
-//                         lastProcessedHandoffRef.current = handoffKey;
-                        
-//                         console.log('🔄 PROCESSING NEW HANDOFF:', {
-//                             from: chatSessionId || 'none',
-//                             to: chatId,
-//                             handoffId: latestClaimed.id
-//                         });
-                        
-//                         // ✅ Store the chat session and agent name
-//                         setChatSessionId(chatId);
-//                         setAgentName(agent);
-                        
-//                         // ✅ Only set human mode if the chat is open
-//                         if (isOpen) {
-//                             setIsHumanMode(true);
-                            
-//                             setMessages([]);
-                            
-//                             const connectedMessage = {
-//                                 id: `msg-${Date.now()}`,
-//                                 sender: 'ai',
-//                                 content: `👤 ${agent} has joined the chat. They can help you with your questions.`,
-//                                 timestamp: new Date().toISOString()
-//                             };
-//                             setMessages([connectedMessage]);
-                            
-//                             toast.success(`👤 ${agent} connected!`, {
-//                                 duration: 3000,
-//                                 icon: '👤'
-//                             });
-                            
-//                             if (chatId) {
-//                                 if (messagesListenerRef.current) {
-//                                     messagesListenerRef.current();
-//                                     messagesListenerRef.current = null;
-//                                 }
-                                
-//                                 setTimeout(async () => {
-//                                     console.log('📤 Loading messages for new session:', chatId);
-//                                     await loadChatSessionHistory();
-//                                     listenToMessages(chatId);
-//                                 }, 500);
-//                             }
-//                         } else {
-//                             // ✅ Store the session but don't switch to human mode until chat opens
-//                             console.log('💾 Stored chat session for later:', chatId);
-//                         }
-//                     }
-//                 } else {
-//                     // ✅ Check if there's any pending handoff
-//                     const pendingHandoffs = handoffs
-//                         .filter(h => h.status === 'pending')
-//                         .sort((a, b) => b.createdAt - a.createdAt);
-
-//                     if (pendingHandoffs.length > 0 && isOpen) {
-//                         console.log('⏳ Handoff pending, waiting for agent...');
-//                         const hasWaitingMessage = messages.some(m => 
-//                             m.content && m.content.includes('Connecting you to a human agent')
-//                         );
-//                         if (!hasWaitingMessage && !isHumanMode) {
-//                             const waitingMessage = {
-//                                 id: `msg-${Date.now()}`,
-//                                 sender: 'ai',
-//                                 content: '👤 Connecting you to a human agent. Please wait...',
-//                                 timestamp: new Date().toISOString()
-//                             };
-//                             setMessages(prev => [...prev, waitingMessage]);
-//                         }
-//                     }
-//                 }
-//             },
-//             (error) => {
-//                 console.error('❌ Handoff listener error:', error);
-//             }
-//         );
-
-//         return () => {
-//             console.log('🧹 Cleaning up handoff listener');
-//             if (handoffListenerRef.current) {
-//                 handoffListenerRef.current();
-//                 handoffListenerRef.current = null;
-//             }
-//         };
-//     }, [user, isOpen]); // ✅ Add isOpen as dependency
-
-//     // ✅ FIXED: Listen to messages - NO FALLBACKS, use sender directly
-//     const listenToMessages = (sessionId) => {
-//         if (!sessionId) {
-//             console.warn('⚠️ No sessionId provided to listenToMessages');
-//             return;
-//         }
-
-//         console.log('📡 Setting up real-time messages listener for session:', sessionId);
-
-//         const sessionRef = doc(db, 'chatSessions', sessionId);
-        
-//         if (messagesListenerRef.current) {
-//             console.log('🧹 Cleaning up old messages listener');
-//             messagesListenerRef.current();
-//             messagesListenerRef.current = null;
-//         }
-
-//         messagesListenerRef.current = onSnapshot(
-//             sessionRef,
-//             (docSnapshot) => {
-//                 if (docSnapshot.exists()) {
-//                     const data = docSnapshot.data();
-//                     const newMessages = data?.messages || [];
-                    
-//                     console.log(`📩 Real-time update: ${newMessages.length} messages in session ${sessionId}`);
-                    
-//                     // ✅ NO FALLBACKS - Use sender directly from Firestore
-//                     const formattedMessages = newMessages.map(msg => ({
-//                         id: msg.id || `msg-${Date.now()}`,
-//                         content: msg.content || '',
-//                         timestamp: msg.timestamp || new Date().toISOString(),
-//                         senderName: msg.senderName || (msg.sender === 'user' ? 'You' : 'Agent'),
-//                         sender: msg.sender, // ✅ Use sender directly, NO FALLBACK
-//                         isAgent: msg.isAgent || false,
-//                         senderId: msg.senderId || null
-//                     }));
-                    
-//                     const sortedMessages = formattedMessages.sort((a, b) => {
-//                         return new Date(a.timestamp) - new Date(b.timestamp);
-//                     });
-                    
-//                     console.log('📩 Senders:', sortedMessages.map(m => ({ id: m.id, sender: m.sender })));
-                    
-//                     setMessages(sortedMessages);
-                    
-//                     const currentIds = new Set(messages.map(m => m.id));
-//                     const newAgentMessages = sortedMessages.filter(m => 
-//                         m.sender === 'agent' && !currentIds.has(m.id)
-//                     );
-                    
-//                     if (newAgentMessages.length > 0 && !isOpen) {
-//                         setUnreadCount(prev => prev + newAgentMessages.length);
-//                     }
-//                 } else {
-//                     console.warn(`⚠️ Session ${sessionId} does not exist or has been deleted`);
-//                 }
-//             },
-//             (error) => {
-//                 console.error('❌ Messages listener error:', error);
-//             }
-//         );
-//     };
-
-//     // ✅ FIXED: Load chat session history - NO FALLBACKS
-//     const loadChatSessionHistory = async () => {
-//         if (!chatSessionId || !user) {
-//             console.warn('⚠️ No chatSessionId or user');
-//             return;
-//         }
-        
-//         try {
-//             console.log('📤 Fetching chat session messages for:', chatSessionId);
-//             const token = await user.getIdToken();
-//             setAuthToken(token);
-//             const response = await api.get(`/ai/chat/${chatSessionId}/history`);
-            
-//             console.log('📤 API Response success:', response.data.success);
-//             console.log('📤 Messages count:', response.data.messages?.length || 0);
-            
-//             if (response.data.success && response.data.messages && response.data.messages.length > 0) {
-//                 console.log(`📤 Received ${response.data.messages.length} messages from API`);
-                
-//                 const chatMessages = response.data.messages.map(msg => ({
-//                     id: msg.id || `chat-${Date.now()}`,
-//                     content: msg.content || '',
-//                     timestamp: msg.timestamp || new Date().toISOString(),
-//                     senderName: msg.senderName || (msg.sender === 'user' ? 'You' : 'Agent'),
-//                     sender: msg.sender, // ✅ Use sender directly, NO FALLBACK
-//                     isAgent: msg.isAgent || false,
-//                     senderId: msg.senderId || null
-//                 }));
-                
-//                 const sortedMessages = chatMessages.sort((a, b) => {
-//                     return new Date(a.timestamp) - new Date(b.timestamp);
-//                 });
-                
-//                 console.log('📩 Loaded senders:', sortedMessages.map(m => ({ id: m.id, sender: m.sender })));
-                
-//                 setMessages(sortedMessages);
-//                 console.log('✅ Chat session history loaded:', sortedMessages.length, 'messages');
-//             } else {
-//                 console.log('ℹ️ No messages found in chat session');
-//                 setMessages([{
-//                     id: 'human-mode',
-//                     sender: 'ai',
-//                     content: '👤 You are now chatting with a human agent. They will respond shortly.',
-//                     timestamp: new Date().toISOString()
-//                 }]);
-//             }
-//         } catch (error) {
-//             console.error('❌ Error loading chat session history:', error);
-//         }
-//     };
-
-//     // ✅ UPDATED: Load history - only set human mode if chat is open
-//     const loadHistory = async () => {
-//         if (!user || !sessionId) {
-//             console.warn('⚠️ User or session ID missing');
-//             return;
-//         }
-        
-//         console.log('📤 Fetching chat history...');
-        
-//         try {
-//             // ✅ FIRST: Check if we have a chatSessionId and the user is in human mode
-//             if (chatSessionId && isHumanMode && isOpen) {
-//                 console.log('👤 Using existing chat session:', chatSessionId);
-//                 await loadChatSessionHistory();
-//                 listenToMessages(chatSessionId);
-//                 return;
-//             }
-            
-//             // ✅ SECOND: Check for any pending or active chat sessions for this user
-//             console.log('🔍 Checking for existing chat sessions...');
-//             const token = await user.getIdToken();
-//             setAuthToken(token);
-            
-//             const sessionsResponse = await api.get('/ai/sessions/active');
-//             const sessions = sessionsResponse.data || [];
-            
-//             const userSession = sessions.find(s => s.userId === user.uid);
-            
-//             if (userSession) {
-//                 console.log('✅ Found existing chat session:', userSession.id);
-//                 setChatSessionId(userSession.id);
-//                 // ✅ Only set human mode if the chat is open
-//                 if (isOpen) {
-//                     setIsHumanMode(true);
-//                     await loadChatSessionHistory();
-//                     listenToMessages(userSession.id);
-//                 } else {
-//                     // ✅ Store session but don't switch to human mode yet
-//                     console.log('💾 Stored session for later:', userSession.id);
-//                 }
-//                 return;
-//             }
-            
-//             // ✅ THIRD: Try AI chat history
-//             const history = await getChatHistory(sessionId);
-            
-//             if (history.length > 0) {
-//                 const formattedHistory = history.map(item => ({
-//                     id: item.id || `hist-${Date.now()}`,
-//                     sender: 'user',
-//                     content: item.message || item.content,
-//                     timestamp: item.createdAt || item.timestamp || new Date().toISOString()
-//                 }));
-//                 setMessages(formattedHistory);
-//                 console.log('✅ AI History loaded:', formattedHistory.length, 'messages');
-//                 return;
-//             }
-            
-//             setMessages([{
-//                 id: 'welcome',
-//                 sender: 'ai',
-//                 content: "👋 Hello! Welcome to TheSpark.\n\nI can help you with:\n💰 Balance & Wallet\n📚 Wealth Building Education\n🛠️ Wealth Building Tools\n🛍️ Marketplace & Orders\n\nWhat can I help you with today?",
-//                 timestamp: new Date().toISOString()
-//             }]);
-//             console.log('✅ No history found, showing welcome message');
-            
-//         } catch (error) {
-//             console.error('❌ Error loading history:', error);
-//             setMessages([{
-//                 id: 'welcome',
-//                 sender: 'ai',
-//                 content: "👋 Hello! Welcome to TheSpark.\n\nI can help you with:\n💰 Balance & Wallet\n📚 Wealth Building Education\n🛠️ Wealth Building Tools\n🛍️ Marketplace & Orders\n\nWhat can I help you with today?",
-//                 timestamp: new Date().toISOString()
-//             }]);
-//         }
-//     };
-
-//     // ✅ UPDATED: Send message to AI or Agent
-//     const sendMessage = async (content) => {
-//         if (!user) {
-//             toast.error('Please login to chat');
-//             return;
-//         }
-
-//         const userMessage = {
-//             id: `msg-${Date.now()}`,
-//             sender: 'user',
-//             content: content,
-//             timestamp: new Date().toISOString()
-//         };
-//         setMessages(prev => [...prev, userMessage]);
-
-//         if (isHumanMode && chatSessionId) {
-//             try {
-//                 const token = await user.getIdToken();
-//                 setAuthToken(token);
-//                 const response = await api.post(`/ai/chat/${chatSessionId}/message`, {
-//                     message: content
-//                 });
-//                 if (response.data.success) {
-//                     console.log('✅ Message sent to agent');
-//                     toast.success('Message sent to agent');
-//                 }
-//             } catch (error) {
-//                 console.error('Error sending to agent:', error);
-//                 toast.error('Failed to send message to agent');
-//             }
-//             return;
-//         }
-
-//         setIsTyping(true);
-//         setHandoffShown(false);
-
-//         try {
-//             const response = await sendAIMessage(content, sessionId);
-
-//             if (!response.success) {
-//                 toast.error(response.error || 'Failed to send message');
-//                 setIsTyping(false);
-//                 return;
-//             }
-
-//             if (response.needsHuman) {
-//                 const lowerContent = content.toLowerCase();
-//                 const askedForHuman = lowerContent.includes('human') || 
-//                                      lowerContent.includes('agent') || 
-//                                      lowerContent.includes('person') ||
-//                                      lowerContent.includes('real person') ||
-//                                      lowerContent.includes('speak to') ||
-//                                      lowerContent.includes('talk to') ||
-//                                      lowerContent.includes('support agent');
-                
-//                 if (askedForHuman && !handoffShown) {
-//                     const availability = await checkHumanAvailability();
-                    
-//                     if (!availability) {
-//                         const noAgentMessage = {
-//                             id: `msg-${Date.now() + 1}`,
-//                             sender: 'ai',
-//                             content: "I'm sorry, no human agents are currently available. I'm here to help you instead. What would you like to know?",
-//                             timestamp: new Date().toISOString()
-//                         };
-//                         setMessages(prev => [...prev, noAgentMessage]);
-//                         setIsTyping(false);
-//                         return;
-//                     }
-                    
-//                     setHandoffShown(true);
-//                     setIsHumanMode(true);
-                    
-//                     const connectingMessage = {
-//                         id: `msg-${Date.now() + 1}`,
-//                         sender: 'ai',
-//                         content: '👤 Connecting you to a human agent. Please wait...',
-//                         timestamp: new Date().toISOString()
-//                     };
-//                     setMessages(prev => [...prev, connectingMessage]);
-                    
-//                     const handoffResponse = await requestHumanHandoff(sessionId);
-                    
-//                     if (!handoffResponse.success) {
-//                         setIsHumanMode(false);
-//                         setHandoffShown(false);
-//                         const failedMessage = {
-//                             id: `msg-${Date.now() + 2}`,
-//                             sender: 'ai',
-//                             content: "I'm having trouble connecting you to a human agent. I'm here to help you instead. What would you like to know?",
-//                             timestamp: new Date().toISOString()
-//                         };
-//                         setMessages(prev => [...prev, failedMessage]);
-//                     }
-//                 }
-                
-//                 setIsTyping(false);
-//                 return;
-//             }
-
-//             const aiMessage = {
-//                 id: `msg-${Date.now() + 1}`,
-//                 sender: 'ai',
-//                 content: response.response,
-//                 timestamp: new Date().toISOString()
-//             };
-//             setMessages(prev => [...prev, aiMessage]);
-            
-//         } catch (error) {
-//             console.error('Error sending message:', error);
-//             toast.error(error.message || 'Failed to send message');
-//         } finally {
-//             setIsTyping(false);
-//         }
-//     };
-
-//     const toggleChat = () => {
-//         const newIsOpen = !isOpen;
-//         setIsOpen(newIsOpen);
-//         if (newIsOpen) {
-//             // When opening chat, check if there's a stored session
-//             if (chatSessionId && !isHumanMode) {
-//                 setIsHumanMode(true);
-//                 loadChatSessionHistory();
-//                 listenToMessages(chatSessionId);
-//             }
-//         }
-//         if (!newIsOpen) {
-//             setUnreadCount(0);
-//         }
-//     };
-
-//     const clearMessages = () => {
-//         setMessages([]);
-//         setSessionId(`session-${user?.uid}-${Date.now()}`);
-//         setIsHumanMode(false);
-//         setHandoffShown(false);
-//         setChatSessionId(null);
-//         setAgentName(null);
-//         lastProcessedHandoffRef.current = null;
-        
-//         if (handoffListenerRef.current) {
-//             handoffListenerRef.current();
-//             handoffListenerRef.current = null;
-//         }
-//         if (messagesListenerRef.current) {
-//             messagesListenerRef.current();
-//             messagesListenerRef.current = null;
-//         }
-//     };
-
-//     const resolveCurrentChat = async () => {
-//         if (!chatSessionId) {
-//             throw new Error('No active chat session to resolve');
-//         }
-        
-//         try {
-//             const token = await user.getIdToken();
-//             setAuthToken(token);
-//             const response = await api.put(`/ai/chat/${chatSessionId}/resolve`);
-            
-//             if (!response.data.success) {
-//                 throw new Error(response.data.error || 'Failed to resolve chat');
-//             }
-            
-//             toast.success('✅ Chat resolved');
-//             setIsHumanMode(false);
-//             setChatSessionId(null);
-//             setAgentName(null);
-//             lastProcessedHandoffRef.current = null;
-            
-//             if (messagesListenerRef.current) {
-//                 messagesListenerRef.current();
-//                 messagesListenerRef.current = null;
-//             }
-//         } catch (error) {
-//             console.error('Error resolving chat:', error);
-//             toast.error(error.message || 'Failed to resolve chat');
-//             throw error;
-//         }
-//     };
-
-//     return (
-//         <AISupportContext.Provider value={{
-//             messages,
-//             isOpen,
-//             isTyping,
-//             unreadCount,
-//             isHumanMode,
-//             isHumanAvailable,
-//             sessionId,
-//             chatSessionId,
-//             agentName,
-//             isAgentTyping,
-//             sendMessage,
-//             toggleChat,
-//             clearMessages,
-//             setIsOpen,
-//             setUnreadCount,
-//             loadHistory,
-//             resolveCurrentChat
-//         }}>
-//             {children}
-//         </AISupportContext.Provider>
-//     );
-// }
-
-// export function useAISupport() {
-//     const context = useContext(AISupportContext);
-//     if (!context) {
-//         throw new Error('useAISupport must be used within an AISupportProvider');
-//     }
-//     return context;
-// }
-
-
-
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { api, setAuthToken } from '../services/api';
@@ -675,7 +56,7 @@ export function AISupportProvider({ children }) {
             }
             return false;
         } catch (error) {
-            console.log('⚠️ Error checking session messages:', error.message);
+            // console.log('⚠️ Error checking session messages:', error.message);
             return false;
         }
     };
@@ -704,7 +85,7 @@ export function AISupportProvider({ children }) {
     // Load chat session history when chatSessionId changes (human mode)
     useEffect(() => {
         if (chatSessionId && isOpen && isHumanMode) {
-            console.log('📤 Loading chat session history for:', chatSessionId);
+            // console.log('📤 Loading chat session history for:', chatSessionId);
             loadChatSessionHistory();
             
             // ✅ Set up real-time listener when chat is open
@@ -714,7 +95,7 @@ export function AISupportProvider({ children }) {
         // ✅ Cleanup listener when chat closes or session changes
         return () => {
             if (messagesListenerRef.current) {
-                console.log('🧹 Cleaning up messages listener');
+                // console.log('🧹 Cleaning up messages listener');
                 messagesListenerRef.current();
                 messagesListenerRef.current = null;
             }
@@ -725,7 +106,7 @@ export function AISupportProvider({ children }) {
     useEffect(() => {
         if (!chatSessionId || !user) return;
 
-        console.log('📡 Setting up resolution listener for session:', chatSessionId);
+        // console.log('📡 Setting up resolution listener for session:', chatSessionId);
 
         const sessionRef = doc(db, 'chatSessions', chatSessionId);
 
@@ -736,10 +117,10 @@ export function AISupportProvider({ children }) {
                     const data = docSnapshot.data();
                     const status = data.status;
                     
-                    console.log('📩 Chat status update:', status);
+                    // console.log('📩 Chat status update:', status);
                     
                     if (status === 'resolved' && !isResolved) {
-                        console.log('✅ Chat has been resolved');
+                        // console.log('✅ Chat has been resolved');
                         setIsResolved(true);
                         toast.success('✅ Chat has been resolved. Please rate your experience!');
                     }
@@ -761,11 +142,11 @@ export function AISupportProvider({ children }) {
     // ✅ FIXED: Listen for handoffs - only set human mode when chat is active and open
     useEffect(() => {
         if (!user) {
-            console.log('❌ No user, skipping handoff listener');
+            // console.log('❌ No user, skipping handoff listener');
             return;
         }
 
-        console.log('📡 Setting up real-time handoff listener for user:', user.uid);
+        // console.log('📡 Setting up real-time handoff listener for user:', user.uid);
 
         const handoffsQuery = query(
             collection(db, 'handoffRequests'),
@@ -776,7 +157,7 @@ export function AISupportProvider({ children }) {
         handoffListenerRef.current = onSnapshot(
             handoffsQuery,
             async (snapshot) => {
-                console.log(`📩 Handoff snapshot received: ${snapshot.size} documents`);
+                // console.log(`📩 Handoff snapshot received: ${snapshot.size} documents`);
                 
                 const handoffs = [];
                 snapshot.forEach((doc) => {
@@ -803,22 +184,22 @@ export function AISupportProvider({ children }) {
                         const sessionRef = doc(db, 'chatSessions', chatId);
                         const sessionDoc = await getDoc(sessionRef);
                         if (sessionDoc.exists() && sessionDoc.data().status === 'resolved') {
-                            console.log(`⏭️ Skipping resolved handoff: ${chatId}`);
+                            // console.log(`⏭️ Skipping resolved handoff: ${chatId}`);
                             return;
                         }
                     } catch (error) {
-                        console.log('ℹ️ Could not check session status:', error.message);
+                        // console.log('ℹ️ Could not check session status:', error.message);
                     }
                     
                     const handoffKey = `${latestClaimed.id}-${chatId}`;
                     if (lastProcessedHandoffRef.current !== handoffKey) {
                         lastProcessedHandoffRef.current = handoffKey;
                         
-                        console.log('🔄 PROCESSING NEW HANDOFF:', {
-                            from: chatSessionId || 'none',
-                            to: chatId,
-                            handoffId: latestClaimed.id
-                        });
+                        //  console.log('🔄 PROCESSING NEW HANDOFF:', {
+                        //     from: chatSessionId || 'none',
+                        //     to: chatId,
+                        //     handoffId: latestClaimed.id
+                        // });
                         
                         // ✅ Store the chat session and agent name
                         setChatSessionId(chatId);
@@ -854,17 +235,17 @@ export function AISupportProvider({ children }) {
                                     }
                                     
                                     setTimeout(async () => {
-                                        console.log('📤 Loading messages for new session:', chatId);
+                                        // console.log('📤 Loading messages for new session:', chatId);
                                         await loadChatSessionHistory();
                                         listenToMessages(chatId);
                                     }, 500);
                                 }
                             } else {
-                                console.log('ℹ️ Session has no messages, not switching to human mode');
+                                // console.log('ℹ️ Session has no messages, not switching to human mode');
                             }
                         } else {
                             // ✅ Store the session but don't switch to human mode until chat opens
-                            console.log('💾 Stored chat session for later:', chatId);
+                            // console.log('💾 Stored chat session for later:', chatId);
                         }
                     }
                 } else {
@@ -874,7 +255,7 @@ export function AISupportProvider({ children }) {
                         .sort((a, b) => b.createdAt - a.createdAt);
 
                     if (pendingHandoffs.length > 0 && isOpen) {
-                        console.log('⏳ Handoff pending, waiting for agent...');
+                        // console.log('⏳ Handoff pending, waiting for agent...');
                         const hasWaitingMessage = messages.some(m => 
                             m.content && m.content.includes('Connecting you to a human agent')
                         );
@@ -896,7 +277,7 @@ export function AISupportProvider({ children }) {
         );
 
         return () => {
-            console.log('🧹 Cleaning up handoff listener');
+            // console.log('🧹 Cleaning up handoff listener');
             if (handoffListenerRef.current) {
                 handoffListenerRef.current();
                 handoffListenerRef.current = null;
@@ -911,12 +292,12 @@ export function AISupportProvider({ children }) {
             return;
         }
 
-        console.log('📡 Setting up real-time messages listener for session:', sessionId);
+        // console.log('📡 Setting up real-time messages listener for session:', sessionId);
 
         const sessionRef = doc(db, 'chatSessions', sessionId);
         
         if (messagesListenerRef.current) {
-            console.log('🧹 Cleaning up old messages listener');
+            // console.log('🧹 Cleaning up old messages listener');
             messagesListenerRef.current();
             messagesListenerRef.current = null;
         }
@@ -928,7 +309,7 @@ export function AISupportProvider({ children }) {
                     const data = docSnapshot.data();
                     const newMessages = data?.messages || [];
                     
-                    console.log(`📩 Real-time update: ${newMessages.length} messages in session ${sessionId}`);
+                    // console.log(`📩 Real-time update: ${newMessages.length} messages in session ${sessionId}`);
                     
                     const formattedMessages = newMessages.map(msg => {
                         const isAI = msg.isAI === true || msg.sender === 'ai';
@@ -960,14 +341,14 @@ export function AISupportProvider({ children }) {
                         return new Date(a.timestamp) - new Date(b.timestamp);
                     });
                     
-                    console.log('📩 Senders:', sortedMessages.map(m => ({ 
-                        id: m.id, 
-                        sender: m.sender, 
-                        senderName: m.senderName,
-                        isAI: m.isAI,
-                        isResolved: m.isResolved,
-                        isRatingPrompt: m.isRatingPrompt
-                    })));
+                    //  console.log('📩 Senders:', sortedMessages.map(m => ({ 
+                    //     id: m.id, 
+                    //     sender: m.sender, 
+                    //     senderName: m.senderName,
+                    //     isAI: m.isAI,
+                    //     isResolved: m.isResolved,
+                    //     isRatingPrompt: m.isRatingPrompt
+                    // })));
                     
                     setMessages(sortedMessages);
                     
@@ -997,16 +378,16 @@ export function AISupportProvider({ children }) {
         }
         
         try {
-            console.log('📤 Fetching chat session messages for:', chatSessionId);
+            // console.log('📤 Fetching chat session messages for:', chatSessionId);
             const token = await user.getIdToken();
             setAuthToken(token);
             const response = await api.get(`/ai/chat/${chatSessionId}/history`);
             
-            console.log('📤 API Response success:', response.data.success);
-            console.log('📤 Messages count:', response.data.messages?.length || 0);
+            // console.log('📤 API Response success:', response.data.success);
+            // console.log('📤 Messages count:', response.data.messages?.length || 0);
             
             if (response.data.success && response.data.messages && response.data.messages.length > 0) {
-                console.log(`📤 Received ${response.data.messages.length} messages from API`);
+                // console.log(`📤 Received ${response.data.messages.length} messages from API`);
                 
                 const chatMessages = response.data.messages.map(msg => {
                     const isAI = msg.isAI === true || msg.sender === 'ai';
@@ -1043,9 +424,9 @@ export function AISupportProvider({ children }) {
                 });
                 
                 setMessages(sortedMessages);
-                console.log('✅ Chat session history loaded:', sortedMessages.length, 'messages');
+                // console.log('✅ Chat session history loaded:', sortedMessages.length, 'messages');
             } else {
-                console.log('ℹ️ No messages found in chat session');
+                // console.log('ℹ️ No messages found in chat session');
                 setMessages([{
                     id: 'human-mode',
                     sender: 'ai',
@@ -1065,9 +446,9 @@ export function AISupportProvider({ children }) {
             return;
         }
         
-        console.log(`📤 Fetching chat history for user: ${user.uid}`);
-        console.log(`📤 Current chatSessionId: ${chatSessionId}`);
-        console.log(`📤 isHumanMode: ${isHumanMode}`);
+        // console.log(`📤 Fetching chat history for user: ${user.uid}`);
+        // console.log(`📤 Current chatSessionId: ${chatSessionId}`);
+        // console.log(`📤 isHumanMode: ${isHumanMode}`);
         
         try {
             // ✅ FIRST: Check if we have a chatSessionId
@@ -1078,10 +459,10 @@ export function AISupportProvider({ children }) {
                     
                     if (sessionDoc.exists()) {
                         const data = sessionDoc.data();
-                        console.log('📋 Session data:', data);
+                        // console.log('📋 Session data:', data);
                         
                         if (data.status === 'resolved') {
-                            console.log('ℹ️ Chat session is resolved, clearing it');
+                            // console.log('ℹ️ Chat session is resolved, clearing it');
                             setChatSessionId(null);
                             setIsHumanMode(false);
                             setIsResolved(false);
@@ -1090,26 +471,26 @@ export function AISupportProvider({ children }) {
                             // ✅ Chat is active - ONLY use if it has messages
                             const messages = data.messages || [];
                             if (messages.length > 0) {
-                                console.log(`👤 Using existing active chat session with ${messages.length} messages:`, chatSessionId);
+                                // console.log(`👤 Using existing active chat session with ${messages.length} messages:`, chatSessionId);
                                 setIsHumanMode(true);
                                 await loadChatSessionHistory();
                                 listenToMessages(chatSessionId);
                                 return;
                             } else {
-                                console.log('ℹ️ Chat session exists but has no messages, clearing');
+                                // console.log('ℹ️ Chat session exists but has no messages, clearing');
                                 setChatSessionId(null);
                                 setIsHumanMode(false);
                                 setAgentName(null);
                             }
                         }
                     } else {
-                        console.log('ℹ️ Chat session does not exist, clearing');
+                        // console.log('ℹ️ Chat session does not exist, clearing');
                         setChatSessionId(null);
                         setIsHumanMode(false);
                         setAgentName(null);
                     }
                 } catch (error) {
-                    console.log('ℹ️ Could not check session status:', error.message);
+                    // console.log('ℹ️ Could not check session status:', error.message);
                     setChatSessionId(null);
                     setIsHumanMode(false);
                     setAgentName(null);
@@ -1117,14 +498,14 @@ export function AISupportProvider({ children }) {
             }
             
             // ✅ SECOND: Try AI chat history from supportInteractions
-            console.log('🔍 Fetching AI chat history from supportInteractions...');
+            // console.log('🔍 Fetching AI chat history from supportInteractions...');
             
             const response = await api.get(`/ai/history/${sessionId}`);
             
-            console.log('📤 History response:', response.data);
+            // console.log('📤 History response:', response.data);
             
             if (response.data && response.data.length > 0) {
-                console.log(`✅ Found ${response.data.length} AI chat interactions`);
+                // console.log(`✅ Found ${response.data.length} AI chat interactions`);
                 
                 const allMessages = [];
                 response.data.forEach((item, index) => {
@@ -1159,7 +540,7 @@ export function AISupportProvider({ children }) {
                 
                 if (sortedMessages.length > 0) {
                     setMessages(sortedMessages);
-                    console.log('✅ Chat history loaded:', sortedMessages.length, 'messages');
+                    // console.log('✅ Chat history loaded:', sortedMessages.length, 'messages');
                     setIsResolved(false);
                     setChatSessionId(null);
                     setIsHumanMode(false);
@@ -1169,7 +550,7 @@ export function AISupportProvider({ children }) {
             }
             
             // ✅ No history found - show welcome
-            console.log('ℹ️ No history found for user');
+            // console.log('ℹ️ No history found for user');
             setMessages([{
                 id: 'welcome',
                 sender: 'ai',
@@ -1205,7 +586,7 @@ export function AISupportProvider({ children }) {
 
     // ✅ Start New Chat
     const startNewChat = () => {
-        console.log('🔄 Starting new chat...');
+        // console.log('🔄 Starting new chat...');
         
         setMessages([]);
         const newSessionId = `session-${user?.uid}-${Date.now()}`;
@@ -1254,9 +635,9 @@ export function AISupportProvider({ children }) {
             return;
         }
 
-        console.log(`📤 Sending message: ${content?.substring(0, 30)}...`);
-        console.log(`📤 Current session ID: ${sessionId}`);
-        console.log(`📤 Current messages count: ${messages.length}`);
+        // console.log(`📤 Sending message: ${content?.substring(0, 30)}...`);
+        // console.log(`📤 Current session ID: ${sessionId}`);
+        // console.log(`📤 Current messages count: ${messages.length}`);
 
         const userMessage = {
             id: `msg-${Date.now()}`,
@@ -1274,7 +655,7 @@ export function AISupportProvider({ children }) {
                     message: content
                 });
                 if (response.data.success) {
-                    console.log('✅ Message sent to agent');
+                    // console.log('✅ Message sent to agent');
                     toast.success('Message sent to agent');
                 }
             } catch (error) {
@@ -1289,8 +670,8 @@ export function AISupportProvider({ children }) {
         try {
             const response = await sendAIMessage(content, sessionId);
 
-            console.log('📤 AI Response:', response);
-            console.log(`📤 needsHuman: ${response.needsHuman}`);
+            // console.log('📤 AI Response:', response);
+            // console.log(`📤 needsHuman: ${response.needsHuman}`);
 
             if (!response.success) {
                 toast.error(response.error || 'Failed to send message');
@@ -1306,7 +687,7 @@ export function AISupportProvider({ children }) {
                 isAI: true
             };
             setMessages(prev => [...prev, aiMessage]);
-            console.log('✅ AI response added to chat');
+            // console.log('✅ AI response added to chat');
 
             setIsTyping(false);
 
@@ -1361,18 +742,18 @@ export function AISupportProvider({ children }) {
                             const data = sessionDoc.data();
                             const messages = data.messages || [];
                             if (messages.length > 0) {
-                                console.log(`👤 Session has ${messages.length} messages, switching to human mode`);
+                                // console.log(`👤 Session has ${messages.length} messages, switching to human mode`);
                                 setIsHumanMode(true);
                                 loadChatSessionHistory();
                                 listenToMessages(chatSessionId);
                             } else {
-                                console.log('ℹ️ Session has no messages, staying in AI mode');
+                                // console.log('ℹ️ Session has no messages, staying in AI mode');
                                 setChatSessionId(null);
                                 setAgentName(null);
                             }
                         }
                     } catch (error) {
-                        console.log('⚠️ Error checking session:', error.message);
+                        // console.log('⚠️ Error checking session:', error.message);
                     }
                 };
                 checkSession();
@@ -1414,7 +795,7 @@ export function AISupportProvider({ children }) {
         }
         
         try {
-            console.log('✅ resolveCurrentChat called for session:', chatSessionId);
+            // console.log('✅ resolveCurrentChat called for session:', chatSessionId);
             
             const token = await user.getIdToken();
             setAuthToken(token);
@@ -1424,7 +805,7 @@ export function AISupportProvider({ children }) {
                 throw new Error(response.data.error || 'Failed to resolve chat');
             }
             
-            console.log('✅ Chat resolved successfully');
+            // console.log('✅ Chat resolved successfully');
             toast.success('✅ Chat resolved');
             setIsResolved(true);
             
@@ -1445,7 +826,7 @@ export function AISupportProvider({ children }) {
                 isRatingPrompt: true
             };
             setMessages(prev => {
-                console.log('📊 Adding rating prompt from resolveCurrentChat. Current count:', prev.length);
+                // console.log('📊 Adding rating prompt from resolveCurrentChat. Current count:', prev.length);
                 return [...prev, ratingMessage];
             });
             

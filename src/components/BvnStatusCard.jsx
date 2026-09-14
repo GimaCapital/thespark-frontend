@@ -34,7 +34,7 @@ export default function BvnStatusCard() {
                 setStatus(response.data.data);
             }
         } catch (error) {
-            console.error('Error loading BVN status:', error);
+            // console.error('Error loading BVN status:', error);
         }
     };
 
@@ -70,7 +70,7 @@ export default function BvnStatusCard() {
                 toast.error(response.data.error || 'Failed to remove BVN');
             }
         } catch (error) {
-            console.error('Error deleting BVN:', error);
+            // console.error('Error deleting BVN:', error);
             toast.error('Failed to remove BVN');
         } finally {
             setLoading(false);
@@ -121,7 +121,7 @@ export default function BvnStatusCard() {
                 toast.error(response.data.error || 'Failed to update BVN');
             }
         } catch (error) {
-            console.error('Error updating BVN:', error);
+            // console.error('Error updating BVN:', error);
             const errorMsg = error.response?.data?.error || 'Failed to update BVN';
             setError(errorMsg);
             toast.error(errorMsg);
@@ -151,7 +151,7 @@ export default function BvnStatusCard() {
                 toast.error('Virtual account creation failed: ' + response.data.error);
             }
         } catch (error) {
-            console.error('Error retrying VA:', error);
+            // console.error('Error retrying VA:', error);
             toast.error('Failed to create virtual account');
         } finally {
             setLoading(false);

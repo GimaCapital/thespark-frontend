@@ -1,219 +1,3 @@
-// import React, { useState, useEffect } from 'react';
-// import { useAuth } from '../contexts/AuthContext';
-// import { api, setAuthToken } from '../services/api';
-// import { auth } from '../services/firebase';
-// import BalanceCard from '../components/Dashboard/BalanceCard';
-// import DailySavingsLog from '../components/Dashboard/DailySavingsLog';
-// import CycleTracker from '../components/Dashboard/CycleTracker';
-// import DailyMessage from '../components/Dashboard/DailyMessage';
-// import WithdrawModal from '../components/Dashboard/WithdrawModal';
-// import ReferralCard from '../components/Dashboard/ReferralCard';
-// import InterestCalculator from '../components/Dashboard/InterestCalculator';
-// import { Link } from 'react-router-dom';
-// import toast from 'react-hot-toast';
-
-// export default function Dashboard() {
-//     const { user, userData, refreshUserData } = useAuth();
-//     const [todayMessage, setTodayMessage] = useState(null);
-//     const [loading, setLoading] = useState(true);
-//     const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-//     const [balanceData, setBalanceData] = useState(null);
-//     const [showBalance, setShowBalance] = useState(true);
-
-//     // FIXED: Removed userData from dependencies
-//     useEffect(() => {
-//         if (user) {
-//             loadData();
-//         }
-//     }, [user]);  // ✅ Only runs when user logs in/out, not when userData changes
-
-//     const loadData = async () => {
-//         setLoading(true);
-//         try {
-//             const idToken = await user.getIdToken();
-//             setAuthToken(idToken);
-//             const response = await api.get('/users/me');
-//             setTodayMessage(response.data.todayMessage);
-//             setBalanceData(response.data);
-//         } catch (error) {
-//             console.error('Failed to load data:', error);
-//             toast.error('Failed to load data');
-//         } finally {
-//             setLoading(false);
-//         }
-//     };
-
-//     const refreshData = async () => {
-//         await loadData();
-//         if (refreshUserData) await refreshUserData();
-//     };
-
-//     const toggleBalanceVisibility = () => {
-//         setShowBalance(!showBalance);
-//     };
-
-//     if (loading) {
-//         return (
-//             <div className="flex-center h-64">
-//                 <div className="spinner"></div>
-//             </div>
-//         );
-//     }
-
-//     if (!balanceData) {
-//         return (
-//             <div className="container text-center">
-//                 <p className="text-error">Failed to load data.</p>
-//                 <button onClick={loadData} className="btn btn-primary mt-4">Retry</button>
-//             </div>
-//         );
-//     }
-
-//     const isPremium = balanceData.premiumPlan && balanceData.premiumPlan !== 'Basic';
-//     const getInitials = (name) => name ? name.charAt(0).toUpperCase() : '👤';
-
-//     return (
-//         <div style={{ backgroundColor: '#F9FAFB', minHeight: '100vh', paddingBottom: '5rem' }}>
-//             {/* Header with greeting and private mode */}
-//                 <div style={{ backgroundColor: 'white', padding: '1rem', borderBottom: '1px solid #F0F0F0' }}>
-//                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-//                     <div>
-//                         <p style={{ fontSize: '0.75rem', color: '#6B7280', margin: 0 }}>Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'},</p>
-//                         <h1 style={{ fontSize: '1.25rem', fontWeight: '600', margin: '0.25rem 0 0 0' }}>
-//                             {userData?.fullName?.split(' ')[0] || 'Spark Member'}
-//                         </h1>
-//                     </div>
-//                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-//                         <button
-//                             onClick={toggleBalanceVisibility}
-//                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer' }}
-//                         >
-//                             {showBalance ? '👁️' : '🙈'}
-//                         </button>
-//                         <Link to="/profile" style={{ textDecoration: 'none' }}>
-//                             <div style={{
-//                                 width: '2.5rem',
-//                                 height: '2.5rem',
-//                                 borderRadius: '9999px',
-//                                 backgroundColor: '#F97316',
-//                                 display: 'flex',
-//                                 alignItems: 'center',
-//                                 justifyContent: 'center',
-//                                 color: 'white',
-//                                 fontWeight: 'bold',
-//                                 fontSize: '1rem',
-//                                 overflow: 'hidden'
-//                             }}>
-//                                 {userData?.photoURL ? (
-//                                     <img src={userData.photoURL} alt={userData.fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-//                                 ) : (
-//                                     <span>{getInitials(userData?.fullName)}</span>
-//                                 )}
-//                             </div>
-//                         </Link>
-//                     </div>
-//                 </div>
-//             </div>
-
-//             {/* Balance Card */}
-//             <div className="container" style={{ paddingTop: '1rem', paddingBottom: '0.5rem' }}>
-//                 <BalanceCard 
-//                     balance={showBalance ? balanceData.currentBalance : '••••••'}
-//                     totalSaved={showBalance ? balanceData.totalPrincipalSaved : '••••••'}
-//                     totalInterest={showBalance ? balanceData.totalInterestEarned : '••••••'}
-//                 />
-//             </div>
-
-//             {/* Quick Actions */}
-//             <div className="container">
-//                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
-//                     <button 
-//                         onClick={() => document.querySelector('.preset-btn')?.scrollIntoView({ behavior: 'smooth' })}
-//                         style={{ textAlign: 'center', backgroundColor: 'white', padding: '0.75rem', borderRadius: '0.75rem', border: 'none', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
-//                     >
-//                         <span style={{ fontSize: '1.5rem', display: 'block' }}>📥</span>
-//                         <span style={{ fontSize: '0.7rem', color: '#4B5563' }}>Deposit</span>
-//                     </button>
-//                     <button 
-//                         onClick={() => setShowWithdrawModal(true)}
-//                         style={{ textAlign: 'center', backgroundColor: 'white', padding: '0.75rem', borderRadius: '0.75rem', border: 'none', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
-//                     >
-//                         <span style={{ fontSize: '1.5rem', display: 'block' }}>📤</span>
-//                         <span style={{ fontSize: '0.7rem', color: '#4B5563' }}>Withdraw</span>
-//                     </button>
-//                     <Link to="/transactions" style={{ textAlign: 'center', backgroundColor: 'white', padding: '0.75rem', borderRadius: '0.75rem', textDecoration: 'none', display: 'block', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-//                         <span style={{ fontSize: '1.5rem', display: 'block' }}>📊</span>
-//                         <span style={{ fontSize: '0.7rem', color: '#4B5563' }}>History</span>
-//                     </Link>
-//                     <Link to="/premium" style={{ textAlign: 'center', backgroundColor: 'white', padding: '0.75rem', borderRadius: '0.75rem', textDecoration: 'none', display: 'block', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-//                         <span style={{ fontSize: '1.5rem', display: 'block' }}>⭐</span>
-//                         <span style={{ fontSize: '0.7rem', color: '#4B5563' }}>Upgrade</span>
-//                     </Link>
-//                 </div>
-//             </div>
-
-//             {/* Daily Savings Log */}
-//             <div className="container">
-//                 <DailySavingsLog 
-//                     userId={balanceData.userId}
-//                     currentCycle={balanceData.currentCycle}
-//                     currentDay={balanceData.currentDay}
-//                     onSave={refreshData}
-//                 />
-//             </div>
-
-//             {/* Cycle Tracker */}
-//             <div className="container">
-//                 <CycleTracker 
-//                     currentCycle={balanceData.currentCycle}
-//                     currentDay={balanceData.currentDay}
-//                 />
-//             </div>
-
-//             {/* Interest Calculator */}
-//             <div className="container">
-//                 <InterestCalculator 
-//                     currentBalance={balanceData.currentBalance}
-//                     lowestBalance={balanceData.lowestBalanceThisCycle}
-//                     avgBalance={balanceData.avgDailyBalanceThisCycle}
-//                     currentDay={balanceData.currentDay}
-//                     interestRate={balanceData.premiumInterestRate || 5}
-//                 />
-//             </div>
-
-//             {/* Today's Message */}
-//             <div className="container">
-//                 {todayMessage ? (
-//                     <DailyMessage message={todayMessage} />
-//                 ) : (
-//                     <div className="card text-center">
-//                         <p className="text-body">Loading daily message...</p>
-//                     </div>
-//                 )}
-//             </div>
-
-//             {/* Referral Card */}
-//             <div className="container">
-//                 <ReferralCard referralCode={balanceData.referralCode} />
-//             </div>
-
-//             {/* Withdraw Modal */}
-//             <WithdrawModal 
-//                 isOpen={showWithdrawModal}
-//                 onClose={() => setShowWithdrawModal(false)}
-//                 currentBalance={balanceData.currentBalance}
-//                 currentCycle={balanceData.currentCycle}
-//                 currentDay={balanceData.currentDay}
-//                 onSuccess={refreshData}
-//             />
-//         </div>
-//     );
-// }
-
-
-
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api, setAuthToken } from '../services/api';
@@ -257,7 +41,7 @@ export default function Dashboard() {
             setTodayMessage(response.data.todayMessage);
             setBalanceData(response.data);
         } catch (error) {
-            console.error('Failed to load data:', error);
+            // console.error('Failed to load data:', error);
             toast.error('Failed to load data');
         } finally {
             setLoading(false);
@@ -271,7 +55,7 @@ export default function Dashboard() {
             const response = await api.get('/withdrawals/requests');
             setWithdrawalRequests(response.data);
         } catch (error) {
-            console.error('Failed to load withdrawal requests:', error);
+            // console.error('Failed to load withdrawal requests:', error);
         }
     };
 
@@ -284,29 +68,7 @@ export default function Dashboard() {
     const toggleBalanceVisibility = () => {
         setShowBalance(!showBalance);
     };
-
-    // const scrollToDeposit = () => {
-    //     if (activeTab !== 'savings') {
-    //         setActiveTab('savings');
-    //         setTimeout(() => {
-    //             if (dailySavingsRef.current) {
-    //                 dailySavingsRef.current.scrollIntoView({ 
-    //                     behavior: 'smooth', 
-    //                     block: 'start' 
-    //                 });
-    //             }
-    //         }, 100);
-    //     } else {
-    //         if (dailySavingsRef.current) {
-    //             dailySavingsRef.current.scrollIntoView({ 
-    //                 behavior: 'smooth', 
-    //                 block: 'start' 
-    //             });
-    //         }
-    //     }
-    // };
-
-
+ 
  const scrollToDeposit = () => {
     const navbarHeight = 70; // Adjust based on your navbar height
     
@@ -353,7 +115,7 @@ export default function Dashboard() {
                 toast.success('Referral link copied to clipboard!');
             }
         } catch (error) {
-            console.error('Error sharing:', error);
+            // console.error('Error sharing:', error);
             if (error.name !== 'AbortError') {
                 toast.error('Failed to share. Please try again.');
             }

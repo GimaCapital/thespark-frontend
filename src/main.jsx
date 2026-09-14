@@ -1,24 +1,51 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import './styles/globals.css';
-import 'antd/dist/reset.css';  // ← ADD THIS LINE
+import 'antd/dist/reset.css';
 
-// Register both service workers
+// ============================================================
+// 1. PWA SERVICE WORKER (auto-registered by vite-plugin-pwa)
+// ============================================================
+const updateSW = registerSW({
+    onNeedRefresh() {
+        if (
+            window.confirm(
+                'A new version of TheSpark is available. Reload to update?'
+            )
+        ) {
+            updateSW(true);
+        }
+    },
+    onOfflineReady() {
+        // console.log('✅ TheSpark is ready to work offline');
+    },
+    onRegisteredSW(swUrl, registration) {
+        // console.log('✅ PWA Service Worker registered:', swUrl);
+        if (registration) {
+            setInterval(() => registration.update(), 60 * 60 * 1000);
+        }
+    },
+    onRegisterError(error) {
+        // console.error('❌ PWA SW registration failed:', error);
+    },
+});
+
+// ============================================================
+// 2. FCM SERVICE WORKER (push notifications, separate scope)
+// ============================================================
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
         try {
-            // 1. Register PWA service worker (offline support, installable app)
-            const pwaSW = await navigator.serviceWorker.register('/sw.js');
-            console.log('✅ PWA Service Worker registered:', pwaSW.scope);
-            
-            // 2. Register Firebase Messaging service worker (push notifications)
-            const messagingSW = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-            console.log('✅ Firebase Messaging SW registered:', messagingSW.scope);
-            
+            const fcmReg = await navigator.serviceWorker.register(
+                '/firebase-messaging-sw.js',
+                { scope: '/firebase-cloud-messaging-push-scope/' }
+            );
+            // console.log('✅ FCM Service Worker registered:', fcmReg.scope);
         } catch (error) {
-            console.error('❌ Service Worker registration failed:', error);
+            // console.error('❌ FCM SW registration failed:', error);
         }
     });
 }
