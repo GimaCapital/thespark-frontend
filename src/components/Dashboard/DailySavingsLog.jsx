@@ -420,6 +420,8 @@
 //     );
 // }
 
+
+// C:\Users\HP\Desktop\TheSpark\thespark-frontend\src\components\Dashboard\DailySavingsLog.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { api, setAuthToken } from '../../services/api';
 import { auth } from '../../services/firebase';
@@ -638,41 +640,88 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
         };
     }, [amount]);
 
-    useEffect(() => {
-        let interval;
-        if (waitingForDeposit && !depositConfirmed) {
-            interval = setInterval(async () => {
-                try {
-                    const idToken = await auth.currentUser.getIdToken();
-                    setAuthToken(idToken);
-                    const response = await api.get('/deposits/check-intent');
+    // useEffect(() => {
+    //     let interval;
+    //     if (waitingForDeposit && !depositConfirmed) {
+    //         interval = setInterval(async () => {
+    //             try {
+    //                 const idToken = await auth.currentUser.getIdToken();
+    //                 setAuthToken(idToken);
+    //                 const response = await api.get('/deposits/check-intent');
                     
-                    if (response.data.matched) {
-                        if (response.data.intentId) {
-                            await api.post('/deposits/confirm-intent', {
-                                intentId: response.data.intentId
-                            });
-                        }
+    //                 if (response.data.matched) {
+    //                     if (response.data.intentId) {
+    //                         await api.post('/deposits/confirm-intent', {
+    //                             intentId: response.data.intentId
+    //                         });
+    //                     }
                         
-                        setDepositConfirmed(true);
-                        setWaitingForDeposit(false);
-                        toast.success('✅ Deposit confirmed! Your wallet has been credited.');
-                        setTimeout(() => {
-                            setShowModal(false);
-                            setDepositConfirmed(false);
-                            setAmount('');
-                            if (onSave) onSave();
-                        }, 3000);
-                    }
-                } catch (error) {
-                    console.error('Failed to check deposit status:', error);
+    //                     setDepositConfirmed(true);
+    //                     setWaitingForDeposit(false);
+    //                     toast.success('✅ Deposit confirmed! Your wallet has been credited.');
+    //                     setTimeout(() => {
+    //                         setShowModal(false);
+    //                         setDepositConfirmed(false);
+    //                         setAmount('');
+    //                         if (onSave) onSave();
+    //                     }, 3000);
+    //                 }
+    //             } catch (error) {
+    //                 console.error('Failed to check deposit status:', error);
+    //             }
+    //         }, 5000);
+    //     }
+    //     return () => {
+    //         if (interval) clearInterval(interval);
+    //     };
+    // }, [waitingForDeposit, depositConfirmed, onSave]);
+
+    useEffect(() => {
+    let interval;
+    if (waitingForDeposit && !depositConfirmed) {
+        interval = setInterval(async () => {
+            try {
+                const idToken = await auth.currentUser.getIdToken();
+                setAuthToken(idToken);
+                const response = await api.get('/deposits/check-intent');
+                const data = response.data;
+
+                if (data.failed) {
+                    clearInterval(interval);
+                    setWaitingForDeposit(false);
+                    setDepositConfirmed(false);
+                    toast.error(
+                        `Deposit failed: ${data.reason || 'unknown'}. Contact support if you were charged.`
+                    );
+                    return;
                 }
-            }, 5000);
-        }
-        return () => {
-            if (interval) clearInterval(interval);
-        };
-    }, [waitingForDeposit, depositConfirmed, onSave]);
+
+                if (data.matched) {
+                    if (data.intentId) {
+                        await api.post('/deposits/confirm-intent', {
+                            intentId: data.intentId,
+                        });
+                    }
+
+                    setDepositConfirmed(true);
+                    setWaitingForDeposit(false);
+                    toast.success('✅ Deposit confirmed! Your wallet has been credited.');
+                    setTimeout(() => {
+                        setShowModal(false);
+                        setDepositConfirmed(false);
+                        setAmount('');
+                        if (onSave) onSave();
+                    }, 3000);
+                }
+            } catch (error) {
+                console.error('Failed to check deposit status:', error);
+            }
+        }, 5000);
+    }
+    return () => {
+        if (interval) clearInterval(interval);
+    };
+}, [waitingForDeposit, depositConfirmed, onSave]);
 
     const handleSaveClick = async () => {
         const numAmount = parseFloat(amount);
