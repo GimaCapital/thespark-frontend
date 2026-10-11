@@ -420,8 +420,7 @@
 //     );
 // }
 
-
-// C:\Users\HP\Desktop\TheSpark\thespark-frontend\src\components\Dashboard\DailySavingsLog.jsx
+// src/components/Dashboard/DailySavingsLog.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { api, setAuthToken } from '../../services/api';
 import { auth } from '../../services/firebase';
@@ -575,6 +574,10 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
     const [showFeePopover, setShowFeePopover] = useState(false);
     const debounceTimerRef = useRef(null);
 
+    // ✅ NEW: track today's saved amount and remaining allowance
+    const [userSavedToday, setUserSavedToday] = useState(0);
+    const [userRemaining, setUserRemaining] = useState(2000);
+
     useEffect(() => {
         const fetchPlanLimits = async () => {
             try {
@@ -586,6 +589,12 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
                 
                 const limits = getPlanLimits(plan);
                 setPlanLimits(limits);
+
+                // ✅ NEW: read today's progress
+                const lastDay = user.lastDepositDay;
+                const todaysDeposit = lastDay === user.currentDay ? (user.todaysDeposit || 0) : 0;
+                setUserSavedToday(todaysDeposit);
+                setUserRemaining(Math.max(0, limits.max - todaysDeposit));
             } catch (error) {
                 console.error('Failed to fetch plan limits:', error);
             }
@@ -640,94 +649,75 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
         };
     }, [amount]);
 
-    // useEffect(() => {
-    //     let interval;
-    //     if (waitingForDeposit && !depositConfirmed) {
-    //         interval = setInterval(async () => {
-    //             try {
-    //                 const idToken = await auth.currentUser.getIdToken();
-    //                 setAuthToken(idToken);
-    //                 const response = await api.get('/deposits/check-intent');
-                    
-    //                 if (response.data.matched) {
-    //                     if (response.data.intentId) {
-    //                         await api.post('/deposits/confirm-intent', {
-    //                             intentId: response.data.intentId
-    //                         });
-    //                     }
-                        
-    //                     setDepositConfirmed(true);
-    //                     setWaitingForDeposit(false);
-    //                     toast.success('✅ Deposit confirmed! Your wallet has been credited.');
-    //                     setTimeout(() => {
-    //                         setShowModal(false);
-    //                         setDepositConfirmed(false);
-    //                         setAmount('');
-    //                         if (onSave) onSave();
-    //                     }, 3000);
-    //                 }
-    //             } catch (error) {
-    //                 console.error('Failed to check deposit status:', error);
-    //             }
-    //         }, 5000);
-    //     }
-    //     return () => {
-    //         if (interval) clearInterval(interval);
-    //     };
-    // }, [waitingForDeposit, depositConfirmed, onSave]);
-
     useEffect(() => {
-    let interval;
-    if (waitingForDeposit && !depositConfirmed) {
-        interval = setInterval(async () => {
-            try {
-                const idToken = await auth.currentUser.getIdToken();
-                setAuthToken(idToken);
-                const response = await api.get('/deposits/check-intent');
-                const data = response.data;
+        let interval;
+        if (waitingForDeposit && !depositConfirmed) {
+            interval = setInterval(async () => {
+                try {
+                    const idToken = await auth.currentUser.getIdToken();
+                    setAuthToken(idToken);
+                    const response = await api.get('/deposits/check-intent');
+                    const data = response.data;
 
-                if (data.failed) {
-                    clearInterval(interval);
-                    setWaitingForDeposit(false);
-                    setDepositConfirmed(false);
-                    toast.error(
-                        `Deposit failed: ${data.reason || 'unknown'}. Contact support if you were charged.`
-                    );
-                    return;
-                }
-
-                if (data.matched) {
-                    if (data.intentId) {
-                        await api.post('/deposits/confirm-intent', {
-                            intentId: data.intentId,
-                        });
+                    if (data.failed) {
+                        clearInterval(interval);
+                        setWaitingForDeposit(false);
+                        setDepositConfirmed(false);
+                        toast.error(
+                            `Deposit failed: ${data.reason || 'unknown'}. Contact support if you were charged.`
+                        );
+                        return;
                     }
 
-                    setDepositConfirmed(true);
-                    setWaitingForDeposit(false);
-                    toast.success('✅ Deposit confirmed! Your wallet has been credited.');
-                    setTimeout(() => {
-                        setShowModal(false);
-                        setDepositConfirmed(false);
-                        setAmount('');
-                        if (onSave) onSave();
-                    }, 3000);
+                    if (data.matched) {
+                        if (data.intentId) {
+                            await api.post('/deposits/confirm-intent', {
+                                intentId: data.intentId,
+                            });
+                        }
+
+                        // ✅ NEW: refresh user data to update "saved today" display
+                        try {
+                            const userResponse = await api.get('/users/me');
+                            const freshUser = userResponse.data;
+                            const freshLastDay = freshUser.lastDepositDay;
+                            const freshToday = freshLastDay === freshUser.currentDay ? (freshUser.todaysDeposit || 0) : 0;
+                            setUserSavedToday(freshToday);
+                            setUserRemaining(Math.max(0, planLimits.max - freshToday));
+                        } catch (err) {
+                            console.error('Failed to refresh user after deposit:', err);
+                        }
+
+                        setDepositConfirmed(true);
+                        setWaitingForDeposit(false);
+                        toast.success('✅ Deposit confirmed! Your wallet has been credited.');
+                        setTimeout(() => {
+                            setShowModal(false);
+                            setDepositConfirmed(false);
+                            setAmount('');
+                            if (onSave) onSave();
+                        }, 3000);
+                    }
+                } catch (error) {
+                    console.error('Failed to check deposit status:', error);
                 }
-            } catch (error) {
-                console.error('Failed to check deposit status:', error);
-            }
-        }, 5000);
-    }
-    return () => {
-        if (interval) clearInterval(interval);
-    };
-}, [waitingForDeposit, depositConfirmed, onSave]);
+            }, 5000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [waitingForDeposit, depositConfirmed, onSave, planLimits.max]);
 
     const handleSaveClick = async () => {
         const numAmount = parseFloat(amount);
         
         if (isNaN(numAmount) || numAmount < planLimits.min || numAmount > planLimits.max) {
             toast.error(`Amount must be between ₦${planLimits.min} and ₦${planLimits.max} for your plan`);
+            return;
+        }
+
+        if (numAmount > userRemaining) {
+            toast.error(`You can only save up to ₦${userRemaining.toLocaleString()} more today.`);
             return;
         }
 
@@ -793,11 +783,12 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
         </button>
     );
 
-    // Copy function
     const copyToClipboard = (text, label) => {
         navigator.clipboard.writeText(text);
         toast.success(`${label} copied!`);
     };
+
+    const dailyLimitReached = userRemaining <= 0;
 
     return (
         <>
@@ -805,7 +796,9 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
                 <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                     <h3 className="text-lg font-semibold text-gray-900">💰 Daily Savings</h3>
                     <span className="text-xs text-gray-500">
-                        Limit: ₦{planLimits.min} - ₦{planLimits.max}
+                        {userSavedToday > 0
+                            ? `Saved today: ₦${userSavedToday.toLocaleString()} · Remaining: ₦${userRemaining.toLocaleString()}`
+                            : `Limit: ₦${planLimits.min} - ₦${planLimits.max}`}
                     </span>
                 </div>
                 
@@ -815,11 +808,15 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
                             type="number"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
-                            placeholder={`Amount (₦${planLimits.min} - ₦${planLimits.max})`}
+                            placeholder={
+                                dailyLimitReached
+                                    ? 'Daily limit reached'
+                                    : `Amount (₦${planLimits.min} - ₦${userRemaining})`
+                            }
                             className="input w-full"
-                            disabled={loading}
+                            disabled={loading || dailyLimitReached}
                         />
-                        {amount && parseFloat(amount) > 0 && (
+                        {amount && parseFloat(amount) > 0 && !dailyLimitReached && (
                             <button
                                 onClick={() => setShowFeePopover(!showFeePopover)}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded transition"
@@ -838,10 +835,10 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
                     </div>
                     <button
                         onClick={handleSaveClick}
-                        disabled={loading || !amount}
+                        disabled={loading || !amount || dailyLimitReached}
                         className="btn btn-primary w-full sm:w-auto"
                     >
-                        {loading ? 'Processing...' : 'Add Funds'}
+                        {loading ? 'Processing...' : dailyLimitReached ? 'Limit Reached' : 'Add Funds'}
                     </button>
                 </div>
                 
@@ -852,10 +849,16 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
                     feeBreakdown={feeBreakdown}
                     isCalculating={isCalculatingFee}
                 />
-                
-                <p className="text-xs text-gray-400 mt-2">
-                    Initiate deposit first, then transfer the amount shown
-                </p>
+
+                {dailyLimitReached ? (
+                    <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        ✅ You've reached your daily savings limit of ₦{planLimits.max.toLocaleString()}. Come back tomorrow to continue.
+                    </div>
+                ) : (
+                    <p className="text-xs text-gray-400 mt-2">
+                        Initiate deposit first, then transfer the amount shown
+                    </p>
+                )}
             </div>
 
             {/* Deposit Instructions Modal */}
@@ -896,7 +899,6 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
                             </p>
                         </div>
 
-                        {/* UPDATED: Transfer to Account Header with Brand Color (spark) */}
                         <div className="bg-gradient-to-r from-spark-50 to-spark-100 rounded-xl p-3 mb-3 border-2 border-spark-300">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="text-sm font-semibold text-spark-700">🏦 Transfer to Your Thespark Account</span>
@@ -985,7 +987,6 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
                             </div>
                         </div>
 
-                        {/* UPDATED: Transfer to Account Header with Brand Color (spark) */}
                         <div className="bg-gradient-to-r from-spark-50 to-spark-100 rounded-xl p-3 mb-3 border-2 border-spark-300">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="text-sm font-semibold text-spark-700">🏦 Transfer to Your Thespark Account</span>
