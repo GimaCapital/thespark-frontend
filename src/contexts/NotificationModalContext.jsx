@@ -38,6 +38,9 @@ function NotificationModal({ notification, onClose }) {
             'withdrawal_failed': '⚠️',
             'withdrawal_processing': '⏳',
             'withdrawal_completed': '✅',
+            'admin_withdrawal_failed': '⚠️',       // ✅
+            'admin_withdrawal_request': '💰',       // ✅ NEW
+            'withdrawal_retry': '🔄',               // ✅ NEW
             // Product types
             'product_approved': '✅',
             'product_rejected': '❌',
@@ -73,6 +76,9 @@ function NotificationModal({ notification, onClose }) {
             'withdrawal_failed': 'bg-red-100 text-red-600',
             'withdrawal_processing': 'bg-yellow-100 text-yellow-600',
             'withdrawal_completed': 'bg-green-100 text-green-600',
+            'admin_withdrawal_failed': 'bg-red-100 text-red-600',       // ✅
+            'admin_withdrawal_request': 'bg-spark-100 text-spark-600',   // ✅ NEW
+            'withdrawal_retry': 'bg-blue-100 text-blue-600',             // ✅ NEW
             // Product types
             'product_approved': 'bg-green-100 text-green-600',
             'product_rejected': 'bg-red-100 text-red-600',
@@ -108,6 +114,9 @@ function NotificationModal({ notification, onClose }) {
             'withdrawal_failed': 'Failed',
             'withdrawal_processing': 'Processing',
             'withdrawal_completed': 'Completed',
+            'admin_withdrawal_failed': 'Action Required',    // ✅
+            'admin_withdrawal_request': 'New Request',       // ✅ NEW
+            'withdrawal_retry': 'Retry Requested',           // ✅ NEW
             // Product types
             'product_approved': 'Approved',
             'product_rejected': 'Rejected',
@@ -128,7 +137,7 @@ function NotificationModal({ notification, onClose }) {
             'email_sent': 'Sent',
             'codes_generated': 'Generated'
         };
-        return statuses[type] || 'Unknown';
+        return statuses[type] || 'Notification';   // ✅ safer fallback than 'Unknown'
     };
 
     const getStatusColor = (type) => {
@@ -143,6 +152,9 @@ function NotificationModal({ notification, onClose }) {
             'withdrawal_failed': 'bg-red-100 text-red-700',
             'withdrawal_processing': 'bg-yellow-100 text-yellow-700',
             'withdrawal_completed': 'bg-green-100 text-green-700',
+            'admin_withdrawal_failed': 'bg-red-100 text-red-700',        // ✅
+            'admin_withdrawal_request': 'bg-spark-100 text-spark-700',   // ✅ NEW
+            'withdrawal_retry': 'bg-blue-100 text-blue-700',             // ✅ NEW
             // Product types
             'product_approved': 'bg-green-100 text-green-700',
             'product_rejected': 'bg-red-100 text-red-700',

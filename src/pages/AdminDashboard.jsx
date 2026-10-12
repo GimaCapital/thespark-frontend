@@ -6,6 +6,7 @@ import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/fire
 import { formatDate, getFullDate } from '../utils/dateUtils';
 import NotificationBell from '../components/NotificationBell';
 import toast from 'react-hot-toast';
+import { Modal, Button, Descriptions, Alert, Tag } from 'antd';
 import { Link } from 'react-router-dom';
 import EmailTracking from '../components/Admin/EmailTracking';
 import AdminProducts from '../components/Admin/AdminProducts';
@@ -30,7 +31,12 @@ export default function AdminDashboard() {
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [processingWithdrawal, setProcessingWithdrawal] = useState(null);
     const [retryingWithdrawal, setRetryingWithdrawal] = useState(null);
-    
+
+        // ✅ NEW: delete withdrawal modal
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleteMode, setDeleteMode] = useState('confirm');
+
     // ============ FLAGGED DEPOSITS ============
     const [flaggedDeposits, setFlaggedDeposits] = useState([]);
     const [flaggedLoading, setFlaggedLoading] = useState(false);
@@ -41,6 +47,22 @@ export default function AdminDashboard() {
     const [showReverseModal, setShowReverseModal] = useState(false);
     const [reverseReason, setReverseReason] = useState('');
     const [reversingFlagged, setReversingFlagged] = useState(false);
+
+    // ✅ NEW: track rejected deposits and orphan payments
+    const [rejectedDeposits, setRejectedDeposits] = useState([]);
+    const [orphanPayments, setOrphanPayments] = useState([]);
+    const [failedPaymentsLoading, setFailedPaymentsLoading] = useState(false);
+
+    // ✅ NEW: Flutterwave merchant balance
+    const [flwBalance, setFlwBalance] = useState(null);
+    const [flwBalanceLoading, setFlwBalanceLoading] = useState(false);
+    const [flwBalanceError, setFlwBalanceError] = useState(null);
+
+        // ✅ NEW: Withdrawal settings
+    const [minWithdrawalAmount, setMinWithdrawalAmount] = useState('');
+    const [autoApproveThreshold, setAutoApproveThreshold] = useState('');
+    const [withdrawalSettingsLoading, setWithdrawalSettingsLoading] = useState(false);
+    const [withdrawalSettingsSaving, setWithdrawalSettingsSaving] = useState(false);
 
     // ============ INVESTMENT INTERESTS ============
     const [investmentInterests, setInvestmentInterests] = useState([]);
@@ -71,6 +93,8 @@ export default function AdminDashboard() {
     useEffect(() => {
         if (user) {
             loadAdminData();
+            loadFlutterwaveBalance();
+            loadWithdrawalSettings();
         }
     }, [user]);
 
@@ -80,6 +104,7 @@ export default function AdminDashboard() {
         }
         if (activeTab === 'flagged') {
             loadFlaggedDeposits();
+            loadFailedPayments();
         }
         if (activeTab === 'investment') {
             loadInvestmentInterests();
@@ -92,14 +117,14 @@ export default function AdminDashboard() {
         try {
             const idToken = await user.getIdToken();
             setAuthToken(idToken);
-            
+
             const [statsRes, usersRes, withdrawalsRes, adminsRes] = await Promise.all([
                 api.get('/admin/stats'),
                 api.get('/admin/users'),
                 api.get('/admin/withdrawals/pending'),
                 api.get('/admin/admins')
             ]);
-            
+
             setStats(statsRes.data);
             setUsers(usersRes.data);
             setPendingWithdrawals(withdrawalsRes.data);
@@ -126,6 +151,76 @@ export default function AdminDashboard() {
         }
     };
 
+    // ✅ NEW: load rejected deposits + orphan payments in one call
+    const loadFailedPayments = async () => {
+        setFailedPaymentsLoading(true);
+        try {
+            const response = await api.get('/admin/failed-payments');
+            setRejectedDeposits(response.data.rejected || []);
+            setOrphanPayments(response.data.orphan || []);
+        } catch (error) {
+            console.error('Failed to load failed payments:', error);
+            // Non-fatal — user still sees flagged deposits
+        } finally {
+            setFailedPaymentsLoading(false);
+        }
+    };
+
+    // ✅ NEW: Fetch Flutterwave merchant balance + pending liability
+    const loadFlutterwaveBalance = async () => {
+        setFlwBalanceLoading(true);
+        setFlwBalanceError(null);
+        try {
+            const response = await api.get('/admin/flutterwave-balance');
+            setFlwBalance(response.data);
+        } catch (error) {
+            console.error('Failed to load Flutterwave balance:', error);
+            setFlwBalanceError(
+                error.response?.data?.error || 'Failed to fetch Flutterwave balance'
+            );
+        } finally {
+            setFlwBalanceLoading(false);
+        }
+    };
+
+        // ✅ NEW: Load withdrawal settings
+    const loadWithdrawalSettings = async () => {
+        setWithdrawalSettingsLoading(true);
+        try {
+            const response = await api.get('/admin/withdrawal-settings');
+            const { minWithdrawalAmount, autoApproveThreshold } = response.data;
+            setMinWithdrawalAmount(minWithdrawalAmount === null ? '' : String(minWithdrawalAmount));
+            setAutoApproveThreshold(autoApproveThreshold === null ? '' : String(autoApproveThreshold));
+        } catch (error) {
+            console.error('Failed to load withdrawal settings:', error);
+        } finally {
+            setWithdrawalSettingsLoading(false);
+        }
+    };
+
+    // ✅ NEW: Save withdrawal settings
+    const saveWithdrawalSettings = async () => {
+        setWithdrawalSettingsSaving(true);
+        try {
+            const payload = {
+                minWithdrawalAmount: minWithdrawalAmount === '' ? null : Number(minWithdrawalAmount),
+                autoApproveThreshold: autoApproveThreshold === '' ? null : Number(autoApproveThreshold),
+            };
+
+            const response = await api.put('/admin/withdrawal-settings', payload);
+            const { minWithdrawalAmount: newMin, autoApproveThreshold: newThreshold } = response.data;
+
+            setMinWithdrawalAmount(newMin === null ? '' : String(newMin));
+            setAutoApproveThreshold(newThreshold === null ? '' : String(newThreshold));
+
+            toast.success('Withdrawal settings saved');
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Failed to save settings');
+        } finally {
+            setWithdrawalSettingsSaving(false);
+        }
+    };
+
     const resolveFlaggedDeposit = async (flaggedId, action) => {
         setResolvingFlagged(true);
         try {
@@ -133,7 +228,7 @@ export default function AdminDashboard() {
                 status: action === 'approve' ? 'approved' : 'rejected',
                 resolveNote: resolveNote
             });
-            
+
             toast.success(`Flagged deposit ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
             loadFlaggedDeposits();
             setShowResolveModal(false);
@@ -153,7 +248,7 @@ export default function AdminDashboard() {
             await api.post(`/admin/flagged-deposits/${flaggedId}/reverse`, {
                 reverseReason: reverseReason
             });
-            
+
             toast.success('Decision reversed! Deposit is back for review.');
             loadFlaggedDeposits();
             setShowReverseModal(false);
@@ -174,7 +269,7 @@ export default function AdminDashboard() {
             const storiesRef = collection(db, 'successStories');
             const q = query(storiesRef, where('status', '==', 'pending'));
             const snapshot = await getDocs(q);
-            
+
             const stories = [];
             snapshot.forEach(doc => {
                 stories.push({ id: doc.id, ...doc.data() });
@@ -220,11 +315,11 @@ export default function AdminDashboard() {
                 approvedAt: new Date(),
                 approvedBy: user.uid
             };
-            
+
             if (rating) {
                 updateData.rating = rating;
             }
-            
+
             await updateDoc(doc(db, 'successStories', storyId), updateData);
             toast.success('Story approved and published');
             loadPendingStories();
@@ -236,7 +331,7 @@ export default function AdminDashboard() {
 
     const rejectStory = async (storyId) => {
         if (!window.confirm('Reject this story? The user will need to resubmit.')) return;
-        
+
         try {
             await updateDoc(doc(db, 'successStories', storyId), {
                 status: 'rejected',
@@ -254,72 +349,72 @@ export default function AdminDashboard() {
 
     // Add these functions in AdminDashboard.jsx - inside the component
 
-// Send single welcome email
-// ============ EMAIL FUNCTIONS ============
+    // Send single welcome email
+    // ============ EMAIL FUNCTIONS ============
 
-// ✅ Send single welcome email
-const sendSingleWelcomeEmail = async (userId) => {
-    if (!userId) {
-        toast.error('No user selected');
-        return;
-    }
-    
-    if (!window.confirm('Send welcome email to this user?')) {
-        return;
-    }
-    
-    setLoading(true);
-    try {
-        const idToken = await user.getIdToken();
-        setAuthToken(idToken);
-        
-        const response = await api.post('/users/resend-welcome-email', { userId });
-        
-        if (response.data.success) {
-            toast.success('✅ Welcome email sent successfully!');
-            loadAdminData(); // Refresh user list
-        } else {
-            toast.error(response.data.message || 'Failed to send email');
+    // ✅ Send single welcome email
+    const sendSingleWelcomeEmail = async (userId) => {
+        if (!userId) {
+            toast.error('No user selected');
+            return;
         }
-    } catch (error) {
-        // console.error('Error sending email:', error);
-        toast.error(error.response?.data?.error || 'Failed to send email');
-    } finally {
-        setLoading(false);
-    }
-};
 
-// ✅ Send bulk welcome emails
-const sendBulkWelcomeEmails = async () => {
-    if (!window.confirm('Send welcome email to ALL customers who haven\'t received one?')) {
-        return;
-    }
-    
-    setLoading(true);
-    try {
-        const idToken = await user.getIdToken();
-        setAuthToken(idToken);
-        
-        const response = await api.post('/users/send-bulk-welcome-emails');
-        
-        if (response.data.success) {
-            toast.success(`✅ ${response.data.sentCount} welcome emails sent! ${response.data.failedCount || 0} failed.`);
-            loadAdminData(); // Refresh user list
-        } else {
-            toast.error(response.data.message || 'Failed to send bulk emails');
+        if (!window.confirm('Send welcome email to this user?')) {
+            return;
         }
-    } catch (error) {
-        // console.error('Error sending bulk emails:', error);
-        toast.error(error.response?.data?.error || 'Failed to send bulk emails');
-    } finally {
-        setLoading(false);
-    }
-};
+
+        setLoading(true);
+        try {
+            const idToken = await user.getIdToken();
+            setAuthToken(idToken);
+
+            const response = await api.post('/users/resend-welcome-email', { userId });
+
+            if (response.data.success) {
+                toast.success('✅ Welcome email sent successfully!');
+                loadAdminData(); // Refresh user list
+            } else {
+                toast.error(response.data.message || 'Failed to send email');
+            }
+        } catch (error) {
+            // console.error('Error sending email:', error);
+            toast.error(error.response?.data?.error || 'Failed to send email');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ✅ Send bulk welcome emails
+    const sendBulkWelcomeEmails = async () => {
+        if (!window.confirm('Send welcome email to ALL customers who haven\'t received one?')) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const idToken = await user.getIdToken();
+            setAuthToken(idToken);
+
+            const response = await api.post('/users/send-bulk-welcome-emails');
+
+            if (response.data.success) {
+                toast.success(`✅ ${response.data.sentCount} welcome emails sent! ${response.data.failedCount || 0} failed.`);
+                loadAdminData(); // Refresh user list
+            } else {
+                toast.error(response.data.message || 'Failed to send bulk emails');
+            }
+        } catch (error) {
+            // console.error('Error sending bulk emails:', error);
+            toast.error(error.response?.data?.error || 'Failed to send bulk emails');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // ============ WITHDRAWAL FUNCTIONS ============
     const approveWithdrawal = async (requestId) => {
         setProcessingWithdrawal(requestId);
-        
+
         try {
             const response = await api.post(`/admin/withdrawals/${requestId}/approve`);
             toast.success('Withdrawal approved successfully!');
@@ -340,7 +435,7 @@ const sendBulkWelcomeEmails = async () => {
 
     const retryWithdrawal = async (requestId) => {
         setRetryingWithdrawal(requestId);
-        
+
         try {
             await api.post(`/admin/withdrawals/${requestId}/retry`);
             toast.success('Withdrawal reset to pending for retry');
@@ -365,24 +460,45 @@ const sendBulkWelcomeEmails = async () => {
     };
 
     // Add this function in the WITHDRAWAL FUNCTIONS section
-    const deleteWithdrawal = async (requestId) => {
-        if (!window.confirm('Delete this withdrawal?')) return;
-        
+         // Opens the delete modal. Decides mode based on the row data.
+    const openDeleteModal = (withdrawal) => {
+        const isBlocked = withdrawal.status === 'failed' && withdrawal.debitedAt != null && withdrawal.refunded !== true;
+        setDeleteTarget(withdrawal);
+        setDeleteMode(isBlocked ? 'blocked' : 'confirm');
+        setShowDeleteModal(true);
+    };
+
+    // Called from the modal's Delete button
+    const confirmDeleteWithdrawal = async () => {
+        if (!deleteTarget) return;
+        const requestId = deleteTarget.id;
+
         try {
             const idToken = await user.getIdToken();
             setAuthToken(idToken);
             await api.delete(`/admin/withdrawals/${requestId}`);
             toast.success('Deleted successfully');
+            setShowDeleteModal(false);
+            setDeleteTarget(null);
             loadAdminData();
         } catch (error) {
-            toast.error('Failed to delete');
+            const backendError = error.response?.data?.error;
+
+            if (backendError && backendError.includes('never refunded')) {
+                // Backend blocked it — switch modal to blocked mode
+                setDeleteMode('blocked');
+            } else if (backendError) {
+                toast.error(backendError, { duration: 6000 });
+            } else {
+                toast.error('Failed to delete');
+            }
         }
     };
 
     // ============ ADMIN MANAGEMENT FUNCTIONS ============
     const makeAdmin = async (userId, fullName) => {
         if (!window.confirm(`Make ${fullName} an admin?`)) return;
-        
+
         try {
             const idToken = await user.getIdToken();
             setAuthToken(idToken);
@@ -399,9 +515,9 @@ const sendBulkWelcomeEmails = async () => {
             toast.error('You cannot remove your own admin role');
             return;
         }
-        
+
         if (!window.confirm(`Remove ${fullName} from admin?`)) return;
-        
+
         try {
             const idToken = await user.getIdToken();
             setAuthToken(idToken);
@@ -460,7 +576,7 @@ const sendBulkWelcomeEmails = async () => {
                 count: generateCount,
                 investorName: investorName || 'Investor'
             });
-            
+
             if (response.data.success) {
                 toast.success(`${response.data.codes.length} access codes generated successfully!`);
                 setShowGenerateModal(false);
@@ -485,7 +601,7 @@ const sendBulkWelcomeEmails = async () => {
                 status: investmentStatus,
                 notes: investmentNote
             });
-            
+
             toast.success('Investment status updated successfully');
             setShowInvestmentModal(false);
             setSelectedInvestment(null);
@@ -517,12 +633,12 @@ const sendBulkWelcomeEmails = async () => {
 
     // ============ NEW INVESTMENT HELPER FUNCTIONS ============
     const getUserStatusBadge = (userExists, userId, wasLoggedIn) => {
-    if (userExists && userId) {
-        return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">✅ Registered User</span>;
-    } else {
-        return <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">🆕 New Lead</span>;
-    }
-};
+        if (userExists && userId) {
+            return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">✅ Registered User</span>;
+        } else {
+            return <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">🆕 New Lead</span>;
+        }
+    };
 
     const copyToClipboard = (text) => {
         navigator.clipboard.writeText(text);
@@ -537,47 +653,47 @@ const sendBulkWelcomeEmails = async () => {
         window.open(`/admin/users/${userId}`, '_blank');
     };
 
-    const filteredUsers = users.filter(u => 
+    const filteredUsers = users.filter(u =>
         u.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.phone?.includes(searchTerm)
     );
-// ============ SEND INVESTOR EMAIL ============
-const sendInvestorEmail = async (interest) => {
-    if (!interest.email) {
-        toast.error('No email address found for this investor');
-        return;
-    }
-    
-    if (!window.confirm(`Send investment details email to ${interest.email}?`)) {
-        return;
-    }
-    
-    setSendingEmail(true);
-    try {
-        const idToken = await user.getIdToken();
-        setAuthToken(idToken);
-        
-        const response = await api.post('/investment/send-investor-email', {
-            interestId: interest.id,
-            email: interest.email,
-            fullName: interest.fullName,
-            investmentAmount: interest.investmentAmount,
-            investorName: interest.investorName || ''
-        });
-        
-        if (response.data.success) {
-            toast.success('✅ Email sent successfully!');
-            // ✅ Refresh the investment list to show updated emailSent status
-            loadInvestmentInterests();
+    // ============ SEND INVESTOR EMAIL ============
+    const sendInvestorEmail = async (interest) => {
+        if (!interest.email) {
+            toast.error('No email address found for this investor');
+            return;
         }
-    } catch (error) {
-        // console.error('Error sending email:', error);
-        toast.error(error.response?.data?.error || 'Failed to send email');
-    } finally {
-        setSendingEmail(false);
-    }
-};
+
+        if (!window.confirm(`Send investment details email to ${interest.email}?`)) {
+            return;
+        }
+
+        setSendingEmail(true);
+        try {
+            const idToken = await user.getIdToken();
+            setAuthToken(idToken);
+
+            const response = await api.post('/investment/send-investor-email', {
+                interestId: interest.id,
+                email: interest.email,
+                fullName: interest.fullName,
+                investmentAmount: interest.investmentAmount,
+                investorName: interest.investorName || ''
+            });
+
+            if (response.data.success) {
+                toast.success('✅ Email sent successfully!');
+                // ✅ Refresh the investment list to show updated emailSent status
+                loadInvestmentInterests();
+            }
+        } catch (error) {
+            // console.error('Error sending email:', error);
+            toast.error(error.response?.data?.error || 'Failed to send email');
+        } finally {
+            setSendingEmail(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -606,49 +722,47 @@ const sendInvestorEmail = async (interest) => {
                         </Link>
                     </div>
                 </div>
-                
+
                 {/* Navigation Tabs */}
 
                 <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-200">
-                {[
-                    { id: 'stats', label: 'Overview', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-                    { id: 'withdrawals', label: 'Withdrawals', count: pendingWithdrawals.filter(w => w.status === 'pending').length, icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z' },
-                    { id: 'users', label: 'Customers', count: users.length, icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
-                    { id: 'stories', label: 'Stories', count: pendingStories.length, icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z' },
-                    { id: 'flagged', label: 'Flagged', count: flaggedDeposits.filter(f => f.status === 'review_needed' || !f.status).length, icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
-                    { id: 'investment', label: 'Investment', count: investmentInterests.filter(i => i.status === 'new' || !i.status).length, icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-                    { id: 'email-tracking', label: 'Email Tracking', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
-                    { id: 'marketplace', label: 'Marketplace', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
-                    { id: 'admin-stock-photos', label: '🖼️ Stock Photos',  icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
-                    { id: 'agent', label: '👤 Agent Support', icon: 'M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z' }                               
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-t-xl transition-all ${
-                            activeTab === tab.id 
-                                ? 'bg-white text-spark-500 border-b-2 border-spark-500' 
-                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                        }`}
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
-                        </svg>
-                        {tab.label}
-                        {tab.count > 0 && (
-                            <span className={`px-2 py-0.5 rounded-full text-xs ${
-                                activeTab === tab.id 
-                                    ? 'bg-spark-50 text-spark-600' 
-                                    : 'bg-gray-200 text-gray-700'
-                            }`}>
-                                {tab.count}
-                            </span>
-                        )}
-                    </button>
-                ))}
-            </div>
-                
-                {/* ============ STATS / OVERVIEW TAB ============ */}
+                    {[
+                        { id: 'stats', label: 'Overview', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+                        { id: 'withdrawals', label: 'Withdrawals', count: pendingWithdrawals.filter(w => w.status === 'pending').length, icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z' },
+                        { id: 'users', label: 'Customers', count: users.length, icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
+                        { id: 'stories', label: 'Stories', count: pendingStories.length, icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z' },
+                        { id: 'flagged', label: 'Flagged', count: flaggedDeposits.filter(f => f.status === 'review_needed' || !f.status).length, icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
+                        { id: 'investment', label: 'Investment', count: investmentInterests.filter(i => i.status === 'new' || !i.status).length, icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+                        { id: 'email-tracking', label: 'Email Tracking', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+                        { id: 'marketplace', label: 'Marketplace', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+                        { id: 'admin-stock-photos', label: '🖼️ Stock Photos', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
+                        { id: 'agent', label: '👤 Agent Support', icon: 'M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z' }
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-t-xl transition-all ${activeTab === tab.id
+                                    ? 'bg-white text-spark-500 border-b-2 border-spark-500'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                }`}
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+                            </svg>
+                            {tab.label}
+                            {tab.count > 0 && (
+                                <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id
+                                        ? 'bg-spark-50 text-spark-600'
+                                        : 'bg-gray-200 text-gray-700'
+                                    }`}>
+                                    {tab.count}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+
+                                {/* ============ STATS / OVERVIEW TAB ============ */}
                 {activeTab === 'stats' && stats && (
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -709,19 +823,17 @@ const sendInvestorEmail = async (interest) => {
                             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="font-semibold text-gray-900">Budget Utilization</h3>
-                                    <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                                        stats.cumulativeInterestPaid >= stats.budgetLimit ? 'bg-red-100 text-red-700' : 'bg-spark-50 text-spark-600'
-                                    }`}>
+                                    <span className={`px-2 py-1 rounded-lg text-xs font-medium ${stats.cumulativeInterestPaid >= stats.budgetLimit ? 'bg-red-100 text-red-700' : 'bg-spark-50 text-spark-600'
+                                        }`}>
                                         {((stats.cumulativeInterestPaid / stats.budgetLimit) * 100).toFixed(1)}% Used
                                     </span>
                                 </div>
                                 <div className="relative pt-1">
                                     <div className="overflow-hidden h-2 text-xs flex rounded-full bg-gray-200">
-                                        <div 
+                                        <div
                                             style={{ width: `${Math.min((stats.cumulativeInterestPaid / stats.budgetLimit) * 100, 100)}%` }}
-                                            className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center rounded-full ${
-                                                stats.cumulativeInterestPaid >= stats.budgetLimit ? 'bg-red-500' : 'bg-spark-500'
-                                            }`}
+                                            className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center rounded-full ${stats.cumulativeInterestPaid >= stats.budgetLimit ? 'bg-red-500' : 'bg-spark-500'
+                                                }`}
                                         />
                                     </div>
                                 </div>
@@ -749,6 +861,212 @@ const sendInvestorEmail = async (interest) => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* ============ ✅ NEW: FLUTTERWAVE MERCHANT BALANCE ============ */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            {/* Merchant Balance Card */}
+                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-10 h-10 rounded-xl bg-spark-50 flex items-center justify-center">
+                                            🏦
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-gray-900">Flutterwave Balance</h3>
+                                            <p className="text-xs text-gray-500">Merchant wallet (NGN)</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={loadFlutterwaveBalance}
+                                        disabled={flwBalanceLoading}
+                                        className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition disabled:opacity-50"
+                                    >
+                                        {flwBalanceLoading ? 'Loading...' : '🔄 Refresh'}
+                                    </button>
+                                </div>
+
+                                {flwBalanceError ? (
+                                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                                        <p className="text-xs text-red-600">{flwBalanceError}</p>
+                                    </div>
+                                ) : flwBalanceLoading && !flwBalance ? (
+                                    <div className="p-4 text-center">
+                                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-gray-300 border-t-spark-500"></div>
+                                        <p className="text-xs text-gray-500 mt-2">Loading balance...</p>
+                                    </div>
+                                ) : flwBalance ? (
+                                    <>
+                                        <p className={`text-3xl font-bold ${flwBalance.canCoverPending ? 'text-green-600' : 'text-red-600'}`}>
+                                            ₦{(flwBalance.available || 0).toLocaleString()}
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Ledger: ₦{(flwBalance.ledger || 0).toLocaleString()}
+                                        </p>
+
+                                        {flwBalance.canCoverPending ? (
+                                            <div className="mt-3 inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                                                ✅ Can cover pending withdrawals
+                                            </div>
+                                        ) : (
+                                            <div className="mt-3 inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                                                ⚠️ Short by ₦{(flwBalance.shortfall || 0).toLocaleString()}
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-gray-400">Balance not loaded</p>
+                                )}
+                            </div>
+
+                            {/* Withdrawal Liability Card */}
+                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                                <h3 className="font-semibold text-gray-900 mb-4">Withdrawal Liability</h3>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-xl border border-yellow-100">
+                                        <div>
+                                            <p className="text-xs text-gray-500">Pending Withdrawals</p>
+                                            <p className="text-lg font-bold text-gray-900">
+                                                ₦{(flwBalance?.pendingWithdrawals?.total || 0).toLocaleString()}
+                                            </p>
+                                        </div>
+                                        <span className="text-2xl">⏳</span>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
+                                        <div>
+                                            <p className="text-xs text-gray-500">Failed (insufficient balance)</p>
+                                            <p className="text-lg font-bold text-red-600">
+                                                ₦{(flwBalance?.failedInsufficient?.total || 0).toLocaleString()}
+                                            </p>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                {flwBalance?.failedInsufficient?.count || 0} request(s)
+                                            </p>
+                                        </div>
+                                        <span className="text-2xl">❌</span>
+                                    </div>
+                                </div>
+
+                                {flwBalance && !flwBalance.canCoverPending && flwBalance.pendingWithdrawals?.count > 0 && (
+                                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                                        <p className="text-xs text-red-700 font-medium">
+                                            ⚠️ Merchant balance is lower than pending withdrawals. Top up Flutterwave before approving.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* ============ ✅ NEW: FAILED WITHDRAWALS BANNER ============ */}
+                        {flwBalance && flwBalance.failedInsufficient?.count > 0 && (
+                            <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-5 flex items-start gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0 text-2xl">
+                                    ⚠️
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="font-semibold text-red-800">
+                                        {flwBalance.failedInsufficient.count} withdrawal{flwBalance.failedInsufficient.count > 1 ? 's' : ''} failed due to insufficient merchant balance
+                                    </h3>
+                                    <p className="text-sm text-red-700 mt-1">
+                                        Total pending retry: <span className="font-bold">₦{flwBalance.failedInsufficient.total.toLocaleString()}</span>
+                                    </p>
+                                    <p className="text-xs text-red-600 mt-2">
+                                        Top up your Flutterwave merchant wallet, then go to the Withdrawals tab and click 🔄 Retry on each failed request.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setActiveTab('withdrawals')}
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition flex-shrink-0"
+                                >
+                                    Go to Withdrawals →
+                                </button>
+                            </div>
+                        )}
+
+                        {/* ============ ✅ NEW: WITHDRAWAL SETTINGS ============ */}
+                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-spark-50 flex items-center justify-center">
+                                        ⚙️
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-gray-900">Withdrawal Settings</h3>
+                                        <p className="text-xs text-gray-500">
+                                            Control the minimum amount and auto-approval rules for withdrawals.
+                                        </p>
+                                    </div>
+                                </div>
+                                {withdrawalSettingsLoading && (
+                                    <span className="text-xs text-gray-400">Loading…</span>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">
+                                        Minimum Withdrawal Amount (₦)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="50"
+                                        value={minWithdrawalAmount}
+                                        onChange={(e) => setMinWithdrawalAmount(e.target.value)}
+                                        placeholder="Leave empty to disable minimum"
+                                        disabled={withdrawalSettingsLoading || withdrawalSettingsSaving}
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent disabled:opacity-50"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Requests below this amount are rejected.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">
+                                        Auto-Approve Threshold (₦)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="50"
+                                        value={autoApproveThreshold}
+                                        onChange={(e) => setAutoApproveThreshold(e.target.value)}
+                                        placeholder="Leave empty to require admin approval"
+                                        disabled={withdrawalSettingsLoading || withdrawalSettingsSaving}
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent disabled:opacity-50"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Requests at or below this amount are processed instantly.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 flex items-center justify-between flex-wrap gap-3">
+                                <div className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 flex-1">
+                                    {minWithdrawalAmount === '' && autoApproveThreshold === '' && (
+                                        <>🔒 All withdrawals require manual approval. No minimum enforced.</>
+                                    )}
+                                    {minWithdrawalAmount !== '' && autoApproveThreshold === '' && (
+                                        <>Minimum: <strong>₦{Number(minWithdrawalAmount).toLocaleString()}</strong> · Auto-approve: <strong>Off</strong></>
+                                    )}
+                                    {minWithdrawalAmount === '' && autoApproveThreshold !== '' && (
+                                        <>Minimum: <strong>None</strong> · Auto-approve ≤ <strong>₦{Number(autoApproveThreshold).toLocaleString()}</strong></>
+                                    )}
+                                    {minWithdrawalAmount !== '' && autoApproveThreshold !== '' && (
+                                        <>Minimum: <strong>₦{Number(minWithdrawalAmount).toLocaleString()}</strong> · Auto-approve ≤ <strong>₦{Number(autoApproveThreshold).toLocaleString()}</strong></>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={saveWithdrawalSettings}
+                                    disabled={withdrawalSettingsLoading || withdrawalSettingsSaving}
+                                    className="px-6 py-2 bg-spark-500 hover:bg-spark-600 text-white font-medium rounded-xl transition disabled:opacity-50 whitespace-nowrap"
+                                >
+                                    {withdrawalSettingsSaving ? 'Saving…' : 'Save Settings'}
+                                </button>
+                            </div>
+                        </div>
+
                     </div>
                 )}
                 
@@ -793,21 +1111,20 @@ const sendInvestorEmail = async (interest) => {
                                                 </div>
                                                 <div>
                                                     {/* ✅ FIX: Show user info with ID if deleted */}
-                                                   <p className="font-semibold text-gray-900">
-                                                        {w.userName && w.userName !== 'Deleted User' 
-                                                            ? `${w.userName} (${w.userId})` 
-                                                            : w.userId 
-                                                                ? `👻 Deleted User (${w.userId})` 
+                                                    <p className="font-semibold text-gray-900">
+                                                        {w.userName && w.userName !== 'Deleted User'
+                                                            ? `${w.userName} (${w.userId})`
+                                                            : w.userId
+                                                                ? `👻 Deleted User (${w.userId})`
                                                                 : 'Unknown User'
                                                         }
                                                     </p>
                                                     <p className="text-xs text-gray-500 mt-0.5">Request ID: {w.id}</p>
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
-                                                        w.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                        w.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                                        w.status === 'failed' ? 'bg-red-100 text-red-800' :
-                                                        'bg-gray-100 text-gray-800'
-                                                    }`}>
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${w.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                            w.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                                                w.status === 'failed' ? 'bg-red-100 text-red-800' :
+                                                                    'bg-gray-100 text-gray-800'
+                                                        }`}>
                                                         {w.status || 'pending'}
                                                     </span>
                                                     {w.error && (
@@ -841,8 +1158,8 @@ const sendInvestorEmail = async (interest) => {
                                                     >
                                                         {retryingWithdrawal === w.id ? 'Retrying...' : '🔄 Retry'}
                                                     </button>
-                                                    <button
-                                                        onClick={() => deleteWithdrawal(w.id)}
+                                                                                                        <button
+                                                        onClick={() => openDeleteModal(w)}
                                                         className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-xl transition-all"
                                                     >
                                                         🗑️ Delete
@@ -860,7 +1177,7 @@ const sendInvestorEmail = async (interest) => {
                                                 </span>
                                             )}
                                         </div>
-                                        
+
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div className="bg-gray-50 rounded-xl p-3">
                                                 <p className="text-xs text-gray-500">Amount</p>
@@ -884,83 +1201,81 @@ const sendInvestorEmail = async (interest) => {
                         )}
                     </div>
                 )}
-                
-                {/* ============ USERS / CUSTOMERS TAB ============ */}
-              
 
-{activeTab === 'users' && (
-    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">👥 Customers</h3>
-            <button
-                onClick={() => {
-                    if (window.confirm('Send welcome email to ALL customers who haven\'t received one?')) {
-                        sendBulkWelcomeEmails();
-                    }
-                }}
-                className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white rounded-lg text-sm font-medium transition"
-            >
-                📧 Send to All
-            </button>
-        </div>
-        
-        <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                    <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Welcome Email</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                    {users.length === 0 ? (
-                        <tr>
-                            <td colSpan="5" className="px-4 py-6 text-center text-gray-500">
-                                No users found
-                            </td>
-                        </tr>
-                    ) : (
-                        users.map((user) => (
-                            <tr key={user.id || user.userId} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 text-gray-900">{user.fullName || 'N/A'}</td>
-                                <td className="px-4 py-3 text-gray-600">{user.email}</td>
-                                <td className="px-4 py-3 text-gray-500 text-xs">
-                                    {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'}
-                                </td>
-                                <td className="px-4 py-3">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                        user.welcomeEmailSent 
-                                            ? 'bg-green-100 text-green-700' 
-                                            : 'bg-red-100 text-red-700'
-                                    }`}>
-                                        {user.welcomeEmailSent ? '✅ Sent' : '❌ Not Sent'}
-                                    </span>
-                                </td>
-                                <td className="px-4 py-3">
-                                    <button
-                                        onClick={() => sendSingleWelcomeEmail(user.id || user.userId)}
-                                        disabled={user.welcomeEmailSent}
-                                        className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-                                            user.welcomeEmailSent 
-                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                                                : 'bg-spark-500 hover:bg-spark-600 text-white'
-                                        }`}
-                                    >
-                                        {user.welcomeEmailSent ? 'Sent' : 'Send Email'}
-                                    </button>
-                                </td>
-                            </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
-        </div>
-    </div>
-)}
-                
+                {/* ============ USERS / CUSTOMERS TAB ============ */}
+
+
+                {activeTab === 'users' && (
+                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">👥 Customers</h3>
+                            <button
+                                onClick={() => {
+                                    if (window.confirm('Send welcome email to ALL customers who haven\'t received one?')) {
+                                        sendBulkWelcomeEmails();
+                                    }
+                                }}
+                                className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white rounded-lg text-sm font-medium transition"
+                            >
+                                📧 Send to All
+                            </button>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Welcome Email</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {users.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="5" className="px-4 py-6 text-center text-gray-500">
+                                                No users found
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        users.map((user) => (
+                                            <tr key={user.id || user.userId} className="hover:bg-gray-50">
+                                                <td className="px-4 py-3 text-gray-900">{user.fullName || 'N/A'}</td>
+                                                <td className="px-4 py-3 text-gray-600">{user.email}</td>
+                                                <td className="px-4 py-3 text-gray-500 text-xs">
+                                                    {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.welcomeEmailSent
+                                                            ? 'bg-green-100 text-green-700'
+                                                            : 'bg-red-100 text-red-700'
+                                                        }`}>
+                                                        {user.welcomeEmailSent ? '✅ Sent' : '❌ Not Sent'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <button
+                                                        onClick={() => sendSingleWelcomeEmail(user.id || user.userId)}
+                                                        disabled={user.welcomeEmailSent}
+                                                        className={`px-3 py-1 rounded-lg text-xs font-medium transition ${user.welcomeEmailSent
+                                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                : 'bg-spark-500 hover:bg-spark-600 text-white'
+                                                            }`}
+                                                    >
+                                                        {user.welcomeEmailSent ? 'Sent' : 'Send Email'}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
                 {/* ============ STORIES TAB ============ */}
                 {activeTab === 'stories' && (
                     <div className="space-y-6">
@@ -968,7 +1283,7 @@ const sendInvestorEmail = async (interest) => {
                             <h2 className="text-lg font-semibold text-gray-900">Success Stories Review</h2>
                             <p className="text-sm text-gray-500 mt-1">Review and publish customer success stories</p>
                         </div>
-                        
+
                         {storiesLoading ? (
                             <div className="bg-white rounded-2xl p-12 text-center">
                                 <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-spark-500 mx-auto"></div>
@@ -1025,11 +1340,11 @@ const sendInvestorEmail = async (interest) => {
                                                     </button>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="bg-gray-50 rounded-xl p-4 mb-4">
                                                 <p className="text-gray-700 italic">"{story.story}"</p>
                                             </div>
-                                            
+
                                             <div className="grid grid-cols-3 gap-4">
                                                 <div className="text-center p-3 bg-gray-50 rounded-xl">
                                                     <p className="text-xs text-gray-500">Total Saved</p>
@@ -1044,7 +1359,7 @@ const sendInvestorEmail = async (interest) => {
                                                     <p className="text-lg font-bold text-spark-500">₦{story.total?.toLocaleString()}</p>
                                                 </div>
                                             </div>
-                                               {/* ✅ Use renderStars here if you want to show rating */}
+                                            {/* ✅ Use renderStars here if you want to show rating */}
                                             {story.rating && (
                                                 <div className="mt-3 flex items-center gap-2">
                                                     <span className="text-xs text-gray-500">Rating:</span>
@@ -1058,9 +1373,8 @@ const sendInvestorEmail = async (interest) => {
                         )}
                     </div>
                 )}
-                
+
                 {/* ============ FLAGGED DEPOSITS TAB ============ */}
-               {/* ============ FLAGGED DEPOSITS TAB ============ */}
                 {activeTab === 'flagged' && (
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1079,7 +1393,7 @@ const sendInvestorEmail = async (interest) => {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -1095,7 +1409,7 @@ const sendInvestorEmail = async (interest) => {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -1111,7 +1425,7 @@ const sendInvestorEmail = async (interest) => {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div className="rounded-2xl p-5 shadow-lg text-white bg-gradient-to-r from-spark-500 to-spark-700">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -1128,7 +1442,7 @@ const sendInvestorEmail = async (interest) => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         {flaggedLoading ? (
                             <div className="bg-white rounded-2xl p-12 text-center">
                                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-spark-500 mx-auto"></div>
@@ -1151,14 +1465,13 @@ const sendInvestorEmail = async (interest) => {
                                         <div className="p-6">
                                             <div className="flex items-start justify-between mb-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                                                        deposit.status === 'approved' ? 'bg-green-100' :
-                                                        deposit.status === 'rejected' ? 'bg-red-100' :
-                                                        'bg-yellow-100'
-                                                    }`}>
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${deposit.status === 'approved' ? 'bg-green-100' :
+                                                            deposit.status === 'rejected' ? 'bg-red-100' :
+                                                                'bg-yellow-100'
+                                                        }`}>
                                                         {deposit.status === 'approved' ? '✅' :
-                                                        deposit.status === 'rejected' ? '❌' :
-                                                        '⚠️'}
+                                                            deposit.status === 'rejected' ? '❌' :
+                                                                '⚠️'}
                                                     </div>
                                                     <div>
                                                         <p className="font-semibold text-gray-900">
@@ -1167,12 +1480,11 @@ const sendInvestorEmail = async (interest) => {
                                                         <p className="text-xs text-gray-500 mt-0.5">
                                                             Transaction: {deposit.flwReference || deposit.id}
                                                         </p>
-                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
-                                                            deposit.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                                            deposit.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                                            deposit.status === 'review_needed' ? 'bg-yellow-100 text-yellow-800' :
-                                                            'bg-gray-100 text-gray-800'
-                                                        }`}>
+                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${deposit.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                                                deposit.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                                    deposit.status === 'review_needed' ? 'bg-yellow-100 text-yellow-800' :
+                                                                        'bg-gray-100 text-gray-800'
+                                                            }`}>
                                                             {deposit.status || 'review_needed'}
                                                         </span>
                                                         {deposit.resolveNote && (
@@ -1209,7 +1521,7 @@ const sendInvestorEmail = async (interest) => {
                                                     )}
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                                 <div className="bg-gray-50 rounded-xl p-3">
                                                     <p className="text-xs text-gray-500">Intended Amount</p>
@@ -1232,7 +1544,7 @@ const sendInvestorEmail = async (interest) => {
                                                     </p>
                                                 </div>
                                             </div>
-                                            
+
                                             {deposit.discrepancyReason && (
                                                 <div className="mt-3 p-3 bg-red-50 rounded-xl border border-red-200">
                                                     <p className="text-xs text-red-500 font-medium">⚠️ Discrepancy Reason</p>
@@ -1244,568 +1556,708 @@ const sendInvestorEmail = async (interest) => {
                                 ))}
                             </div>
                         )}
-                    </div>
-                )}
-                
-                {/* ============ INVESTMENT TAB ============ */}
-               {/* ============ INVESTMENT TAB ============ */}
-{activeTab === 'investment' && (
-    <div className="space-y-6">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm text-gray-500 font-medium">Total Investors</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-1">{investmentStats?.totalInterests || 0}</p>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-spark-50">
-                        <svg className="w-6 h-6 text-spark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                    </div>
-                </div>
-            </div>
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm text-gray-500 font-medium">Total Potential</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-1">{formatCurrency(investmentStats?.totalAmount || 0)}</p>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-spark-50">
-                        <svg className="w-6 h-6 text-spark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                </div>
-            </div>
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm text-gray-500 font-medium">New Leads</p>
-                        <p className="text-3xl font-bold text-blue-600 mt-1">{investmentStats?.stats?.new || 0}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                    </div>
-                </div>
-            </div>
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm text-gray-500 font-medium">Confirmed</p>
-                        <p className="text-3xl font-bold text-green-600 mt-1">{investmentStats?.stats?.invested || 0}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                </div>
-            </div>
-            <div className="rounded-2xl p-5 shadow-lg text-white bg-gradient-to-r from-spark-500 to-spark-700">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm text-white/80 font-medium">Avg Investment</p>
-                        <p className="text-3xl font-bold text-white mt-1">
-                            {investmentStats?.totalInterests > 0 
-                                ? formatCurrency(Math.round(investmentStats.totalAmount / investmentStats.totalInterests))
-                                : formatCurrency(0)}
-                        </p>
-                    </div>
-                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        {/* Actions */}
-        <div className="flex justify-between items-center flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-                <h2 className="text-lg font-semibold text-gray-900">Investment Interests</h2>
-                <span className="text-xs text-gray-400">
-                    {investmentInterests.filter(i => i.userExists).length} registered / {investmentInterests.filter(i => !i.userExists).length} new
-                </span>
-            </div>
-            <div className="flex items-center gap-3">
-                <select
-                    value={investmentFilter}
-                    onChange={(e) => setInvestmentFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-spark-500 focus:border-transparent"
-                >
-                    <option value="all">All Status</option>
-                    <option value="new">New</option>
-                    <option value="contacted">Contacted</option>
-                    <option value="invested">Invested</option>
-                    <option value="not_interested">Not Interested</option>
-                </select>
-                <button
-                    onClick={() => setShowGenerateModal(true)}
-                    className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white text-sm font-medium rounded-xl transition-all"
-                >
-                    + Generate Access Code
-                </button>
-            </div>
-        </div>
+                        {/* ============ ✅ NEW: REJECTED DEPOSITS ============ */}
+                        <div className="mt-8">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">🚫 Rejected Deposits</h3>
+                                    <p className="text-sm text-gray-500 mt-0.5">
+                                        Deposits that were received but not credited (plan limits, daily limits, etc.)
+                                    </p>
+                                </div>
+                                <span className="px-3 py-1 rounded-lg text-sm font-medium bg-red-50 text-red-600">
+                                    {rejectedDeposits.length} total
+                                </span>
+                            </div>
 
-        {/* Investment List */}
-        {investmentLoading ? (
-            <div className="bg-white rounded-2xl p-12 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-spark-500 mx-auto"></div>
-                <p className="text-gray-500 mt-4">Loading investment interests...</p>
-            </div>
-        ) : investmentInterests.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-1">No Investment Interests</h3>
-                <p className="text-gray-500">No one has expressed interest yet</p>
-            </div>
-        ) : (
-            <div className="space-y-4">
-                {investmentInterests
-                    .filter(i => investmentFilter === 'all' || i.status === investmentFilter)
-                    .map((interest) => {
-                        const isUser = interest.userExists === true;
-                        return (
-                            <div key={interest.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
-                                <div className="p-6">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isUser ? 'bg-green-50' : 'bg-spark-50'}`}>
-                                                <span className="text-lg">{isUser ? '👤' : '🆕'}</span>
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <p className="font-semibold text-gray-900">{interest.fullName || 'Anonymous'}</p>
-                                                    {getUserStatusBadge(interest.userExists, interest.userId)}
-                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getInvestmentStatusColor(interest.status || 'new')}`}>
-                                                        {interest.status || 'new'}
-                                                    </span>
+                            {failedPaymentsLoading ? (
+                                <div className="bg-white rounded-2xl p-8 text-center">
+                                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-gray-300 border-t-spark-500"></div>
+                                    <p className="text-gray-500 mt-3 text-sm">Loading...</p>
+                                </div>
+                            ) : rejectedDeposits.length === 0 ? (
+                                <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
+                                    <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-gray-500 text-sm">No rejected deposits — all clear</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {rejectedDeposits.map((r) => (
+                                        <div key={r.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                                            <div className="flex items-start justify-between flex-wrap gap-3">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-100 text-lg">
+                                                        🚫
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-gray-900">
+                                                            {r.userId || 'Unknown User'}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500 mt-0.5">
+                                                            <span className="font-medium text-red-600">{r.reason}</span>
+                                                        </p>
+                                                        <p className="text-xs font-mono text-gray-400 mt-1 break-all">
+                                                            Ref: {r.flwReference || 'N/A'}
+                                                        </p>
+                                                        {r.alreadySavedToday !== undefined && (
+                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                Already saved today: ₦{(r.alreadySavedToday || 0).toLocaleString()} / Limit: ₦{(r.dailyLimit || 0).toLocaleString()}
+                                                            </p>
+                                                        )}
+                                                        {r.createdAt && (
+                                                            <p className="text-xs text-gray-400 mt-1">
+                                                                {formatDate(r.createdAt)}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-xs text-gray-500">{interest.email}</span>
-                                                    <button
-                                                        onClick={() => copyToClipboard(interest.email)}
-                                                        className="text-gray-400 hover:text-gray-600 text-xs"
-                                                        title="Copy email"
-                                                    >
-                                                        📋
-                                                    </button>
-                                                </div>
-                                                <p className="text-xs text-gray-500">{interest.phone}</p>
-                                                <div className="flex items-center gap-3 mt-1">
-                                                    <span className="text-xs text-gray-400">
-                                                        {interest.createdAt ? formatDate(interest.createdAt) : 'N/A'}
-                                                    </span>
-                                                    {interest.ipAddress && (
-                                                        <span className="text-xs text-gray-400">
-                                                            🌐 {interest.ipAddress}
-                                                        </span>
-                                                    )}
-                                                    {interest.emailSent && (
-                                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                                                            ✅ Email Sent
-                                                        </span>
+                                                <div className="text-right">
+                                                    <p className="text-lg font-bold text-gray-900">
+                                                        ₦{(r.amount || 0).toLocaleString()}
+                                                    </p>
+                                                    {r.paidAmount && r.paidAmount !== r.amount && (
+                                                        <p className="text-xs text-red-600 mt-0.5">
+                                                            Paid: ₦{r.paidAmount.toLocaleString()}
+                                                        </p>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex gap-2 flex-wrap">
-                                            <button
-                                                onClick={() => sendInvestorEmail(interest)}
-                                                disabled={sendingEmail || interest.emailSent}
-                                                className={`px-3 py-1.5 text-white text-sm font-medium rounded-xl transition-all ${
-                                                    interest.emailSent 
-                                                        ? 'bg-green-500 cursor-default' 
-                                                        : sendingEmail 
-                                                            ? 'bg-gray-400 cursor-not-allowed' 
-                                                            : 'bg-blue-500 hover:bg-blue-600'
-                                                }`}
-                                                title={interest.emailSent ? 'Email already sent' : 'Send investment details email'}
-                                            >
-                                                {interest.emailSent ? '✅ Sent' : '📧 Send Email'}
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ============ ✅ NEW: ORPHAN PAYMENTS ============ */}
+                        <div className="mt-8">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">👻 Orphan Payments</h3>
+                                    <p className="text-sm text-gray-500 mt-0.5">
+                                        Payments received with no matching user account
+                                    </p>
+                                </div>
+                                <span className="px-3 py-1 rounded-lg text-sm font-medium bg-amber-50 text-amber-600">
+                                    {orphanPayments.length} total
+                                </span>
+                            </div>
+
+                            {failedPaymentsLoading ? (
+                                <div className="bg-white rounded-2xl p-8 text-center">
+                                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-gray-300 border-t-spark-500"></div>
+                                    <p className="text-gray-500 mt-3 text-sm">Loading...</p>
+                                </div>
+                            ) : orphanPayments.length === 0 ? (
+                                <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
+                                    <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-gray-500 text-sm">No orphan payments — all clear</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {orphanPayments.map((o) => (
+                                        <div key={o.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                                            <div className="flex items-start justify-between flex-wrap gap-3">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-amber-100 text-lg">
+                                                        👻
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-gray-900">
+                                                            {o.email || 'Unknown Email'}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500 mt-0.5">
+                                                            Reason: <span className="font-medium text-amber-600">{o.reason}</span>
+                                                        </p>
+                                                        <p className="text-xs font-mono text-gray-400 mt-1 break-all">
+                                                            Ref: {o.reference || 'N/A'}
+                                                        </p>
+                                                        {o.createdAt && (
+                                                            <p className="text-xs text-gray-400 mt-1">
+                                                            {formatDate(o.createdAt)}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-lg font-bold text-gray-900">
+                                                        ₦{(o.paidAmount || 0).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                    </div>
+                )}
+
+                {/* ============ INVESTMENT TAB ============ */}
+
+                {activeTab === 'investment' && (
+                    <div className="space-y-6">
+                        {/* Stats */}
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium">Total Investors</p>
+                                        <p className="text-3xl font-bold text-gray-900 mt-1">{investmentStats?.totalInterests || 0}</p>
+                                    </div>
+                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-spark-50">
+                                        <svg className="w-6 h-6 text-spark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium">Total Potential</p>
+                                        <p className="text-3xl font-bold text-gray-900 mt-1">{formatCurrency(investmentStats?.totalAmount || 0)}</p>
+                                    </div>
+                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-spark-50">
+                                        <svg className="w-6 h-6 text-spark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium">New Leads</p>
+                                        <p className="text-3xl font-bold text-blue-600 mt-1">{investmentStats?.stats?.new || 0}</p>
+                                    </div>
+                                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium">Confirmed</p>
+                                        <p className="text-3xl font-bold text-green-600 mt-1">{investmentStats?.stats?.invested || 0}</p>
+                                    </div>
+                                    <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="rounded-2xl p-5 shadow-lg text-white bg-gradient-to-r from-spark-500 to-spark-700">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-white/80 font-medium">Avg Investment</p>
+                                        <p className="text-3xl font-bold text-white mt-1">
+                                            {investmentStats?.totalInterests > 0
+                                                ? formatCurrency(Math.round(investmentStats.totalAmount / investmentStats.totalInterests))
+                                                : formatCurrency(0)}
+                                        </p>
+                                    </div>
+                                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex justify-between items-center flex-wrap gap-4">
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-lg font-semibold text-gray-900">Investment Interests</h2>
+                                <span className="text-xs text-gray-400">
+                                    {investmentInterests.filter(i => i.userExists).length} registered / {investmentInterests.filter(i => !i.userExists).length} new
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <select
+                                    value={investmentFilter}
+                                    onChange={(e) => setInvestmentFilter(e.target.value)}
+                                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-spark-500 focus:border-transparent"
+                                >
+                                    <option value="all">All Status</option>
+                                    <option value="new">New</option>
+                                    <option value="contacted">Contacted</option>
+                                    <option value="invested">Invested</option>
+                                    <option value="not_interested">Not Interested</option>
+                                </select>
+                                <button
+                                    onClick={() => setShowGenerateModal(true)}
+                                    className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white text-sm font-medium rounded-xl transition-all"
+                                >
+                                    + Generate Access Code
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Investment List */}
+                        {investmentLoading ? (
+                            <div className="bg-white rounded-2xl p-12 text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-spark-500 mx-auto"></div>
+                                <p className="text-gray-500 mt-4">Loading investment interests...</p>
+                            </div>
+                        ) : investmentInterests.length === 0 ? (
+                            <div className="bg-white rounded-2xl p-12 text-center">
+                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-medium text-gray-900 mb-1">No Investment Interests</h3>
+                                <p className="text-gray-500">No one has expressed interest yet</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {investmentInterests
+                                    .filter(i => investmentFilter === 'all' || i.status === investmentFilter)
+                                    .map((interest) => {
+                                        const isUser = interest.userExists === true;
+                                        return (
+                                            <div key={interest.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+                                                <div className="p-6">
+                                                    <div className="flex items-start justify-between mb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isUser ? 'bg-green-50' : 'bg-spark-50'}`}>
+                                                                <span className="text-lg">{isUser ? '👤' : '🆕'}</span>
+                                                            </div>
+                                                            <div>
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <p className="font-semibold text-gray-900">{interest.fullName || 'Anonymous'}</p>
+                                                                    {getUserStatusBadge(interest.userExists, interest.userId)}
+                                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getInvestmentStatusColor(interest.status || 'new')}`}>
+                                                                        {interest.status || 'new'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <span className="text-xs text-gray-500">{interest.email}</span>
+                                                                    <button
+                                                                        onClick={() => copyToClipboard(interest.email)}
+                                                                        className="text-gray-400 hover:text-gray-600 text-xs"
+                                                                        title="Copy email"
+                                                                    >
+                                                                        📋
+                                                                    </button>
+                                                                </div>
+                                                                <p className="text-xs text-gray-500">{interest.phone}</p>
+                                                                <div className="flex items-center gap-3 mt-1">
+                                                                    <span className="text-xs text-gray-400">
+                                                                        {interest.createdAt ? formatDate(interest.createdAt) : 'N/A'}
+                                                                    </span>
+                                                                    {interest.ipAddress && (
+                                                                        <span className="text-xs text-gray-400">
+                                                                            🌐 {interest.ipAddress}
+                                                                        </span>
+                                                                    )}
+                                                                    {interest.emailSent && (
+                                                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                                                                            ✅ Email Sent
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2 flex-wrap">
+                                                            <button
+                                                                onClick={() => sendInvestorEmail(interest)}
+                                                                disabled={sendingEmail || interest.emailSent}
+                                                                className={`px-3 py-1.5 text-white text-sm font-medium rounded-xl transition-all ${interest.emailSent
+                                                                        ? 'bg-green-500 cursor-default'
+                                                                        : sendingEmail
+                                                                            ? 'bg-gray-400 cursor-not-allowed'
+                                                                            : 'bg-blue-500 hover:bg-blue-600'
+                                                                    }`}
+                                                                title={interest.emailSent ? 'Email already sent' : 'Send investment details email'}
+                                                            >
+                                                                {interest.emailSent ? '✅ Sent' : '📧 Send Email'}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedInvestmentDetails(interest);
+                                                                    setShowInvestmentDetailsModal(true);
+                                                                }}
+                                                                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-all"
+                                                            >
+                                                                View Details
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedInvestment(interest);
+                                                                    setInvestmentStatus(interest.status || 'new');
+                                                                    setInvestmentNote(interest.notes || '');
+                                                                    setShowInvestmentModal(true);
+                                                                }}
+                                                                className="px-3 py-1.5 bg-spark-500 hover:bg-spark-600 text-white text-sm font-medium rounded-xl transition-all"
+                                                            >
+                                                                Update Status
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                                                        <div className="bg-gray-50 rounded-xl p-3">
+                                                            <p className="text-xs text-gray-500">Investment Amount</p>
+                                                            <p className="text-lg font-bold text-gray-900">{formatCurrency(interest.investmentAmount || 0)}</p>
+                                                        </div>
+                                                        <div className="bg-gray-50 rounded-xl p-3">
+                                                            <p className="text-xs text-gray-500">Type</p>
+                                                            <p className="text-sm font-medium text-gray-900 capitalize">{interest.type || 'profit_sharing'}</p>
+                                                        </div>
+                                                        <div className="bg-gray-50 rounded-xl p-3">
+                                                            <p className="text-xs text-gray-500">Access Code</p>
+                                                            <p className="text-sm font-mono text-gray-900">{interest.accessCode || 'N/A'}</p>
+                                                        </div>
+                                                        <div className="bg-gray-50 rounded-xl p-3">
+                                                            <p className="text-xs text-gray-500">User ID</p>
+                                                            <p className="text-xs font-mono text-gray-500 truncate">
+                                                                {interest.userId || 'No Account'}
+                                                            </p>
+                                                        </div>
+                                                        <div className="bg-gray-50 rounded-xl p-3">
+                                                            <p className="text-xs text-gray-500">Agreed to Terms</p>
+                                                            <p className="text-lg font-bold text-gray-900">
+                                                                {interest.agreedToTerms ? '✅' : '❌'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    {interest.notes && (
+                                                        <div className="mt-3 p-3 bg-gray-50 rounded-xl">
+                                                            <p className="text-xs text-gray-500">Notes</p>
+                                                            <p className="text-sm text-gray-700">{interest.notes}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        )}
+
+                        {/* ============ ACCESS CODES SECTION ============ */}
+                        <div className="mt-8 pt-8 border-t border-gray-200">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-semibold text-gray-900">Access Codes</h3>
+                                <span className="text-sm text-gray-500">
+                                    {accessCodes.filter(c => {
+                                        const expiresDate = c.expiresAt ? new Date(c.expiresAt) : null;
+                                        const isExpired = expiresDate && expiresDate < new Date();
+                                        return !c.isUsed && !isExpired;
+                                    }).length} active of {accessCodes.length} total
+                                </span>
+                            </div>
+
+                            {accessCodesLoading ? (
+                                <div className="bg-white rounded-2xl p-8 text-center">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-4 border-gray-300 border-t-spark-500 mx-auto"></div>
+                                    <p className="text-gray-500 mt-3">Loading access codes...</p>
+                                </div>
+                            ) : accessCodes.length === 0 ? (
+                                <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
+                                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-gray-500">No access codes generated yet</p>
+                                    <p className="text-sm text-gray-400 mt-1">Click "Generate Access Code" to create one</p>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Investor</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expires</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Used By</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {accessCodes.map((code) => {
+                                                    const createdDate = code.createdAt ? new Date(code.createdAt) : null;
+                                                    const expiresDate = code.expiresAt ? new Date(code.expiresAt) : null;
+                                                    const now = new Date();
+                                                    const isExpired = expiresDate && expiresDate < now;
+
+                                                    const formatDateDisplay = (date) => {
+                                                        if (!date) return 'N/A';
+                                                        try {
+                                                            return date.toLocaleString('en-US', {
+                                                                month: 'short',
+                                                                day: 'numeric',
+                                                                year: 'numeric',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit'
+                                                            });
+                                                        } catch (e) {
+                                                            return 'Invalid Date';
+                                                        }
+                                                    };
+
+                                                    return (
+                                                        <tr key={code.id} className="hover:bg-gray-50">
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-mono text-sm font-bold text-gray-900">{code.code}</span>
+                                                                    {!code.isUsed && !isExpired && (
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                navigator.clipboard.writeText(code.code);
+                                                                                toast.success('Code copied!');
+                                                                            }}
+                                                                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                                                                            title="Copy code"
+                                                                        >
+                                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                            </svg>
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                                {code.investorName || 'N/A'}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${code.isUsed
+                                                                        ? 'bg-gray-100 text-gray-600'
+                                                                        : isExpired
+                                                                            ? 'bg-red-100 text-red-600'
+                                                                            : 'bg-green-100 text-green-600'
+                                                                    }`}>
+                                                                    {code.isUsed
+                                                                        ? '✅ Used'
+                                                                        : isExpired
+                                                                            ? '⏰ Expired'
+                                                                            : '🟢 Active'
+                                                                    }
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                {formatDateDisplay(createdDate)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                {formatDateDisplay(expiresDate)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                {code.usedBy || '-'}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ============ INVESTMENT DETAILS MODAL ============ */}
+                        {showInvestmentDetailsModal && selectedInvestmentDetails && (
+                            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => {
+                                setShowInvestmentDetailsModal(false);
+                                setSelectedInvestmentDetails(null);
+                            }}>
+                                <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+                                    <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-5">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-spark-50">
+                                                    <svg className="w-5 h-5 text-spark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-gray-900">Investment Details</h3>
+                                                    <p className="text-sm text-gray-500 mt-0.5">Full information about this investor</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => {
+                                                setShowInvestmentDetailsModal(false);
+                                                setSelectedInvestmentDetails(null);
+                                            }} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+                                                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
                                             </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-6 space-y-6">
+                                        {/* User Info */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="bg-gray-50 rounded-xl p-4">
+                                                <p className="text-xs text-gray-500">Full Name</p>
+                                                <p className="text-lg font-semibold text-gray-900">{selectedInvestmentDetails.fullName || 'N/A'}</p>
+                                            </div>
+                                            <div className="bg-gray-50 rounded-xl p-4">
+                                                <p className="text-xs text-gray-500">Email</p>
+                                                <p className="text-lg font-semibold text-gray-900 break-all">{selectedInvestmentDetails.email || 'N/A'}</p>
+                                            </div>
+                                            <div className="bg-gray-50 rounded-xl p-4">
+                                                <p className="text-xs text-gray-500">Phone</p>
+                                                <p className="text-lg font-semibold text-gray-900">{selectedInvestmentDetails.phone || 'N/A'}</p>
+                                            </div>
+                                            <div className="bg-gray-50 rounded-xl p-4">
+                                                <p className="text-xs text-gray-500">User Status</p>
+                                                <p className="text-lg font-semibold text-gray-900">
+                                                    {selectedInvestmentDetails.userExists ? '✅ Registered User' : '🆕 New Lead'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Investment Info */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="bg-spark-50 rounded-xl p-4 border border-spark-200">
+                                                <p className="text-xs text-gray-500">Investment Amount</p>
+                                                <p className="text-2xl font-bold text-spark-600">
+                                                    {formatCurrency(selectedInvestmentDetails.investmentAmount || 0)}
+                                                </p>
+                                            </div>
+                                            <div className="bg-gray-50 rounded-xl p-4">
+                                                <p className="text-xs text-gray-500">Status</p>
+                                                <span className={`inline-flex px-3 py-1 mt-1 rounded-full text-sm font-medium ${getInvestmentStatusColor(selectedInvestmentDetails.status || 'new')}`}>
+                                                    {selectedInvestmentDetails.status || 'new'}
+                                                </span>
+                                            </div>
+                                            <div className="bg-gray-50 rounded-xl p-4">
+                                                <p className="text-xs text-gray-500">Access Code</p>
+                                                <p className="text-lg font-mono font-bold text-gray-900">{selectedInvestmentDetails.accessCode || 'N/A'}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Security Info */}
+                                        <div className="bg-gray-50 rounded-xl p-4">
+                                            <h4 className="text-sm font-semibold text-gray-700 mb-3">🔒 Security Information</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div>
+                                                    <p className="text-xs text-gray-500">IP Address</p>
+                                                    <p className="text-sm font-mono text-gray-700">{selectedInvestmentDetails.ipAddress || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Device Fingerprint</p>
+                                                    <p className="text-xs font-mono text-gray-500 break-all">{selectedInvestmentDetails.deviceFingerprint || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Agreed to Terms</p>
+                                                    <p className="text-sm font-semibold text-gray-700">{selectedInvestmentDetails.agreedToTerms ? '✅ Yes' : '❌ No'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Submitted At</p>
+                                                    <p className="text-sm font-semibold text-gray-700">
+                                                        {selectedInvestmentDetails.createdAt ? formatDate(selectedInvestmentDetails.createdAt) : 'N/A'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Notes */}
+                                        {selectedInvestmentDetails.notes && (
+                                            <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
+                                                <p className="text-xs text-gray-500">📝 Notes</p>
+                                                <p className="text-sm text-gray-700 mt-1">{selectedInvestmentDetails.notes}</p>
+                                            </div>
+                                        )}
+
+                                        {/* Actions */}
+                                        <div className="flex gap-3 pt-4 border-t border-gray-100 flex-wrap">
+                                            {selectedInvestmentDetails.userId && (
+                                                <button
+                                                    onClick={() => viewUserDetails(selectedInvestmentDetails.userId)}
+                                                    className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white text-sm font-medium rounded-xl transition-all"
+                                                >
+                                                    View User Profile
+                                                </button>
+                                            )}
+
+                                            {/* ✅ Send Email Button */}
                                             <button
                                                 onClick={() => {
-                                                    setSelectedInvestmentDetails(interest);
-                                                    setShowInvestmentDetailsModal(true);
+                                                    if (selectedInvestmentDetails) {
+                                                        sendInvestorEmail(selectedInvestmentDetails);
+                                                    }
                                                 }}
-                                                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-all"
+                                                disabled={sendingEmail || selectedInvestmentDetails?.emailSent}
+                                                className={`px-4 py-2 text-white text-sm font-medium rounded-xl transition-all ${selectedInvestmentDetails?.emailSent
+                                                        ? 'bg-green-500 cursor-default'
+                                                        : sendingEmail
+                                                            ? 'bg-gray-400 cursor-not-allowed'
+                                                            : 'bg-blue-600 hover:bg-blue-700'
+                                                    }`}
                                             >
-                                                View Details
+                                                {selectedInvestmentDetails?.emailSent ? '✅ Email Sent' : '📧 Send Email'}
                                             </button>
+
                                             <button
                                                 onClick={() => {
-                                                    setSelectedInvestment(interest);
-                                                    setInvestmentStatus(interest.status || 'new');
-                                                    setInvestmentNote(interest.notes || '');
+                                                    copyToClipboard(selectedInvestmentDetails?.email);
+                                                }}
+                                                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-all"
+                                            >
+                                                📋 Copy Email
+                                            </button>
+
+                                            <button
+                                                onClick={() => {
+                                                    setShowInvestmentDetailsModal(false);
+                                                    setSelectedInvestment(selectedInvestmentDetails);
+                                                    setInvestmentStatus(selectedInvestmentDetails?.status || 'new');
+                                                    setInvestmentNote(selectedInvestmentDetails?.notes || '');
                                                     setShowInvestmentModal(true);
                                                 }}
-                                                className="px-3 py-1.5 bg-spark-500 hover:bg-spark-600 text-white text-sm font-medium rounded-xl transition-all"
+                                                className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white text-sm font-medium rounded-xl transition-all"
                                             >
                                                 Update Status
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                                        <div className="bg-gray-50 rounded-xl p-3">
-                                            <p className="text-xs text-gray-500">Investment Amount</p>
-                                            <p className="text-lg font-bold text-gray-900">{formatCurrency(interest.investmentAmount || 0)}</p>
-                                        </div>
-                                        <div className="bg-gray-50 rounded-xl p-3">
-                                            <p className="text-xs text-gray-500">Type</p>
-                                            <p className="text-sm font-medium text-gray-900 capitalize">{interest.type || 'profit_sharing'}</p>
-                                        </div>
-                                        <div className="bg-gray-50 rounded-xl p-3">
-                                            <p className="text-xs text-gray-500">Access Code</p>
-                                            <p className="text-sm font-mono text-gray-900">{interest.accessCode || 'N/A'}</p>
-                                        </div>
-                                        <div className="bg-gray-50 rounded-xl p-3">
-                                            <p className="text-xs text-gray-500">User ID</p>
-                                            <p className="text-xs font-mono text-gray-500 truncate">
-                                                {interest.userId || 'No Account'}
-                                            </p>
-                                        </div>
-                                        <div className="bg-gray-50 rounded-xl p-3">
-                                            <p className="text-xs text-gray-500">Agreed to Terms</p>
-                                            <p className="text-lg font-bold text-gray-900">
-                                                {interest.agreedToTerms ? '✅' : '❌'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {interest.notes && (
-                                        <div className="mt-3 p-3 bg-gray-50 rounded-xl">
-                                            <p className="text-xs text-gray-500">Notes</p>
-                                            <p className="text-sm text-gray-700">{interest.notes}</p>
-                                        </div>
-                                    )}
                                 </div>
-                            </div>
-                        );
-                    })}
-            </div>
-        )}
-
-        {/* ============ ACCESS CODES SECTION ============ */}
-        <div className="mt-8 pt-8 border-t border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Access Codes</h3>
-                <span className="text-sm text-gray-500">
-                    {accessCodes.filter(c => {
-                        const expiresDate = c.expiresAt ? new Date(c.expiresAt) : null;
-                        const isExpired = expiresDate && expiresDate < new Date();
-                        return !c.isUsed && !isExpired;
-                    }).length} active of {accessCodes.length} total
-                </span>
-            </div>
-            
-            {accessCodesLoading ? (
-                <div className="bg-white rounded-2xl p-8 text-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-4 border-gray-300 border-t-spark-500 mx-auto"></div>
-                    <p className="text-gray-500 mt-3">Loading access codes...</p>
-                </div>
-            ) : accessCodes.length === 0 ? (
-                <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                    </div>
-                    <p className="text-gray-500">No access codes generated yet</p>
-                    <p className="text-sm text-gray-400 mt-1">Click "Generate Access Code" to create one</p>
-                </div>
-            ) : (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Investor</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expires</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Used By</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {accessCodes.map((code) => {
-                                    const createdDate = code.createdAt ? new Date(code.createdAt) : null;
-                                    const expiresDate = code.expiresAt ? new Date(code.expiresAt) : null;
-                                    const now = new Date();
-                                    const isExpired = expiresDate && expiresDate < now;
-                                    
-                                    const formatDateDisplay = (date) => {
-                                        if (!date) return 'N/A';
-                                        try {
-                                            return date.toLocaleString('en-US', {
-                                                month: 'short',
-                                                day: 'numeric',
-                                                year: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            });
-                                        } catch (e) {
-                                            return 'Invalid Date';
-                                        }
-                                    };
-                                    
-                                    return (
-                                        <tr key={code.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-mono text-sm font-bold text-gray-900">{code.code}</span>
-                                                    {!code.isUsed && !isExpired && (
-                                                        <button
-                                                            onClick={() => {
-                                                                navigator.clipboard.writeText(code.code);
-                                                                toast.success('Code copied!');
-                                                            }}
-                                                            className="text-gray-400 hover:text-gray-600 transition-colors"
-                                                            title="Copy code"
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                            </svg>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                {code.investorName || 'N/A'}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                                    code.isUsed 
-                                                        ? 'bg-gray-100 text-gray-600' 
-                                                        : isExpired
-                                                            ? 'bg-red-100 text-red-600'
-                                                            : 'bg-green-100 text-green-600'
-                                                }`}>
-                                                    {code.isUsed 
-                                                        ? '✅ Used' 
-                                                        : isExpired
-                                                            ? '⏰ Expired'
-                                                            : '🟢 Active'
-                                                    }
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {formatDateDisplay(createdDate)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {formatDateDisplay(expiresDate)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {code.usedBy || '-'}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-        </div>
-
-        {/* ============ INVESTMENT DETAILS MODAL ============ */}
-        {showInvestmentDetailsModal && selectedInvestmentDetails && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => {
-                setShowInvestmentDetailsModal(false);
-                setSelectedInvestmentDetails(null);
-            }}>
-                <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-                    <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-5">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-spark-50">
-                                    <svg className="w-5 h-5 text-spark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-gray-900">Investment Details</h3>
-                                    <p className="text-sm text-gray-500 mt-0.5">Full information about this investor</p>
-                                </div>
-                            </div>
-                            <button onClick={() => {
-                                setShowInvestmentDetailsModal(false);
-                                setSelectedInvestmentDetails(null);
-                            }} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
-                                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div className="p-6 space-y-6">
-                        {/* User Info */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-gray-50 rounded-xl p-4">
-                                <p className="text-xs text-gray-500">Full Name</p>
-                                <p className="text-lg font-semibold text-gray-900">{selectedInvestmentDetails.fullName || 'N/A'}</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-xl p-4">
-                                <p className="text-xs text-gray-500">Email</p>
-                                <p className="text-lg font-semibold text-gray-900 break-all">{selectedInvestmentDetails.email || 'N/A'}</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-xl p-4">
-                                <p className="text-xs text-gray-500">Phone</p>
-                                <p className="text-lg font-semibold text-gray-900">{selectedInvestmentDetails.phone || 'N/A'}</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-xl p-4">
-                                <p className="text-xs text-gray-500">User Status</p>
-                                <p className="text-lg font-semibold text-gray-900">
-                                    {selectedInvestmentDetails.userExists ? '✅ Registered User' : '🆕 New Lead'}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Investment Info */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="bg-spark-50 rounded-xl p-4 border border-spark-200">
-                                <p className="text-xs text-gray-500">Investment Amount</p>
-                                <p className="text-2xl font-bold text-spark-600">
-                                    {formatCurrency(selectedInvestmentDetails.investmentAmount || 0)}
-                                </p>
-                            </div>
-                            <div className="bg-gray-50 rounded-xl p-4">
-                                <p className="text-xs text-gray-500">Status</p>
-                                <span className={`inline-flex px-3 py-1 mt-1 rounded-full text-sm font-medium ${getInvestmentStatusColor(selectedInvestmentDetails.status || 'new')}`}>
-                                    {selectedInvestmentDetails.status || 'new'}
-                                </span>
-                            </div>
-                            <div className="bg-gray-50 rounded-xl p-4">
-                                <p className="text-xs text-gray-500">Access Code</p>
-                                <p className="text-lg font-mono font-bold text-gray-900">{selectedInvestmentDetails.accessCode || 'N/A'}</p>
-                            </div>
-                        </div>
-
-                        {/* Security Info */}
-                        <div className="bg-gray-50 rounded-xl p-4">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3">🔒 Security Information</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                    <p className="text-xs text-gray-500">IP Address</p>
-                                    <p className="text-sm font-mono text-gray-700">{selectedInvestmentDetails.ipAddress || 'N/A'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500">Device Fingerprint</p>
-                                    <p className="text-xs font-mono text-gray-500 break-all">{selectedInvestmentDetails.deviceFingerprint || 'N/A'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500">Agreed to Terms</p>
-                                    <p className="text-sm font-semibold text-gray-700">{selectedInvestmentDetails.agreedToTerms ? '✅ Yes' : '❌ No'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500">Submitted At</p>
-                                    <p className="text-sm font-semibold text-gray-700">
-                                        {selectedInvestmentDetails.createdAt ? formatDate(selectedInvestmentDetails.createdAt) : 'N/A'}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Notes */}
-                        {selectedInvestmentDetails.notes && (
-                            <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
-                                <p className="text-xs text-gray-500">📝 Notes</p>
-                                <p className="text-sm text-gray-700 mt-1">{selectedInvestmentDetails.notes}</p>
                             </div>
                         )}
-
-                        {/* Actions */}
-                        <div className="flex gap-3 pt-4 border-t border-gray-100 flex-wrap">
-                            {selectedInvestmentDetails.userId && (
-                                <button
-                                    onClick={() => viewUserDetails(selectedInvestmentDetails.userId)}
-                                    className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white text-sm font-medium rounded-xl transition-all"
-                                >
-                                    View User Profile
-                                </button>
-                            )}
-                            
-                            {/* ✅ Send Email Button */}
-                            <button
-                                onClick={() => {
-                                    if (selectedInvestmentDetails) {
-                                        sendInvestorEmail(selectedInvestmentDetails);
-                                    }
-                                }}
-                                disabled={sendingEmail || selectedInvestmentDetails?.emailSent}
-                                className={`px-4 py-2 text-white text-sm font-medium rounded-xl transition-all ${
-                                    selectedInvestmentDetails?.emailSent 
-                                        ? 'bg-green-500 cursor-default' 
-                                        : sendingEmail 
-                                            ? 'bg-gray-400 cursor-not-allowed' 
-                                            : 'bg-blue-600 hover:bg-blue-700'
-                                }`}
-                            >
-                                {selectedInvestmentDetails?.emailSent ? '✅ Email Sent' : '📧 Send Email'}
-                            </button>
-                            
-                            <button
-                                onClick={() => {
-                                    copyToClipboard(selectedInvestmentDetails?.email);
-                                }}
-                                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-all"
-                            >
-                                📋 Copy Email
-                            </button>
-                            
-                            <button
-                                onClick={() => {
-                                    setShowInvestmentDetailsModal(false);
-                                    setSelectedInvestment(selectedInvestmentDetails);
-                                    setInvestmentStatus(selectedInvestmentDetails?.status || 'new');
-                                    setInvestmentNote(selectedInvestmentDetails?.notes || '');
-                                    setShowInvestmentModal(true);
-                                }}
-                                className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white text-sm font-medium rounded-xl transition-all"
-                            >
-                                Update Status
-                            </button>
-                        </div>
                     </div>
-                </div>
-            </div>
-        )}
-    </div>
-)}
+                )}
 
- {activeTab === 'marketplace' && (
+                {activeTab === 'marketplace' && (
                     <AdminProducts />
                 )}
 
- {activeTab === 'email-tracking' && (
-        // ✅ Email Tracking Component
-        <EmailTracking />
-    )}
+                {activeTab === 'email-tracking' && (
+                    // ✅ Email Tracking Component
+                    <EmailTracking />
+                )}
 
-     {activeTab === 'admin-stock-photos' && (
-        // ✅ Email Tracking Component
-        <AdminStockPhone />
-    )}
+                {activeTab === 'admin-stock-photos' && (
+                    // ✅ Email Tracking Component
+                    <AdminStockPhone />
+                )}
 
-     {activeTab === 'agent' && (
-                <AgentDashboard />
-            )}
+                {activeTab === 'agent' && (
+                    <AgentDashboard />
+                )}
 
-    
+
 
                 {/* ============ MODALS ============ */}
-                
+
                 {/* Rating Approval Modal */}
                 {showRatingModal && selectedStory && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => {
@@ -1864,7 +2316,7 @@ const sendInvestorEmail = async (interest) => {
                                     </button>
                                 </div>
                             </div>
-                            
+
                             <div className="p-6 space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-gray-50 rounded-xl p-5">
@@ -1879,7 +2331,7 @@ const sendInvestorEmail = async (interest) => {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div className="bg-gray-50 rounded-xl p-5 space-y-3">
                                     <div className="flex flex-col gap-1 pb-2 border-b border-gray-200">
                                         <span className="text-sm text-gray-500">Transaction Reference</span>
@@ -1894,7 +2346,7 @@ const sendInvestorEmail = async (interest) => {
                                         <span className="text-sm font-mono text-gray-900 break-all">{selectedFlagged.id}</span>
                                     </div>
                                 </div>
-                                
+
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Resolution Note <span className="text-red-500">*</span>
@@ -1902,7 +2354,7 @@ const sendInvestorEmail = async (interest) => {
                                     <textarea value={resolveNote} onChange={(e) => setResolveNote(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent transition-all resize-none" rows="4" placeholder="Provide detailed reason for this decision..." />
                                     <p className="text-xs text-gray-400 mt-2">This note will be permanently recorded for audit purposes</p>
                                 </div>
-                                
+
                                 <div className="flex gap-3 pt-4">
                                     <button onClick={() => resolveFlaggedDeposit(selectedFlagged.id, 'approve')} disabled={resolvingFlagged || !resolveNote} className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md">
                                         {resolvingFlagged ? 'Processing...' : '✓ Approve Transaction'}
@@ -1933,7 +2385,7 @@ const sendInvestorEmail = async (interest) => {
                                     </div>
                                     <h3 className="text-xl font-bold text-gray-900">Reverse Decision</h3>
                                 </div>
-                                
+
                                 <div className="mb-4 p-4 bg-gray-50 rounded-xl">
                                     <p className="text-sm text-gray-600">Deposit ID: <span className="font-mono text-xs break-all">{selectedFlagged.id}</span></p>
                                     <p className="text-sm text-gray-600 mt-2">Current Status: <span className="font-bold">{selectedFlagged.status}</span></p>
@@ -1942,12 +2394,12 @@ const sendInvestorEmail = async (interest) => {
                                         <p className="text-sm text-red-600 mt-3 font-medium">⚠️ This will deduct ₦{selectedFlagged.actualAmount?.toLocaleString()} from the user's balance.</p>
                                     )}
                                 </div>
-                                
+
                                 <div className="mb-6">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Reason for Reversal</label>
                                     <textarea value={reverseReason} onChange={(e) => setReverseReason(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent transition-all resize-none" rows="3" placeholder="Why are you reversing this decision?" required />
                                 </div>
-                                
+
                                 <div className="flex gap-3">
                                     <button onClick={() => reverseDecision(selectedFlagged.id)} disabled={reversingFlagged || !reverseReason} className="flex-1 text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-50 bg-spark-500 hover:bg-spark-600">
                                         {reversingFlagged ? 'Processing...' : 'Yes, Reverse Decision'}
@@ -1962,7 +2414,7 @@ const sendInvestorEmail = async (interest) => {
                 )}
 
                 {/* ============ INVESTMENT MODALS ============ */}
-                
+
                 {/* Generate Access Code Modal */}
                 {showGenerateModal && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => {
@@ -1980,11 +2432,11 @@ const sendInvestorEmail = async (interest) => {
                                     </div>
                                     <h3 className="text-xl font-bold text-gray-900">Generate Access Codes</h3>
                                 </div>
-                                
+
                                 <p className="text-sm text-gray-500 mb-4">
                                     Generate unique access codes for potential investors. Each code expires in 24 hours and can only be used once.
                                 </p>
-                                
+
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1999,7 +2451,7 @@ const sendInvestorEmail = async (interest) => {
                                             className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent"
                                         />
                                     </div>
-                                    
+
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Investor Name (Optional)
@@ -2014,7 +2466,7 @@ const sendInvestorEmail = async (interest) => {
                                         <p className="text-xs text-gray-400 mt-1">This name will appear when the investor uses the code</p>
                                     </div>
                                 </div>
-                                
+
                                 <div className="flex gap-3 mt-6">
                                     <button
                                         onClick={() => {
@@ -2029,9 +2481,8 @@ const sendInvestorEmail = async (interest) => {
                                     <button
                                         onClick={generateAccessCodes}
                                         disabled={generatingCodes}
-                                        className={`flex-1 text-white font-semibold py-3 rounded-xl transition-all ${
-                                            generatingCodes ? 'bg-gray-400 cursor-not-allowed' : 'bg-spark-500 hover:bg-spark-600'
-                                        }`}
+                                        className={`flex-1 text-white font-semibold py-3 rounded-xl transition-all ${generatingCodes ? 'bg-gray-400 cursor-not-allowed' : 'bg-spark-500 hover:bg-spark-600'
+                                            }`}
                                     >
                                         {generatingCodes ? 'Generating...' : 'Generate Codes'}
                                     </button>
@@ -2059,11 +2510,11 @@ const sendInvestorEmail = async (interest) => {
                                     </div>
                                     <h3 className="text-xl font-bold text-gray-900">Update Investment Status</h3>
                                 </div>
-                                
+
                                 <p className="text-sm text-gray-500 mb-4">
                                     Update status for <strong>{selectedInvestment.fullName}</strong>
                                 </p>
-                                
+
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -2080,7 +2531,7 @@ const sendInvestorEmail = async (interest) => {
                                             <option value="not_interested">Not Interested</option>
                                         </select>
                                     </div>
-                                    
+
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Notes
@@ -2094,7 +2545,7 @@ const sendInvestorEmail = async (interest) => {
                                         />
                                     </div>
                                 </div>
-                                
+
                                 <div className="flex gap-3 mt-6">
                                     <button
                                         onClick={() => {
@@ -2110,9 +2561,8 @@ const sendInvestorEmail = async (interest) => {
                                     <button
                                         onClick={updateInvestmentStatus}
                                         disabled={updatingInvestment}
-                                        className={`flex-1 text-white font-semibold py-3 rounded-xl transition-all ${
-                                            updatingInvestment ? 'bg-gray-400 cursor-not-allowed' : 'bg-spark-500 hover:bg-spark-600'
-                                        }`}
+                                        className={`flex-1 text-white font-semibold py-3 rounded-xl transition-all ${updatingInvestment ? 'bg-gray-400 cursor-not-allowed' : 'bg-spark-500 hover:bg-spark-600'
+                                            }`}
                                     >
                                         {updatingInvestment ? 'Updating...' : 'Update Status'}
                                     </button>
@@ -2121,6 +2571,114 @@ const sendInvestorEmail = async (interest) => {
                         </div>
                     </div>
                 )}
+
+               {/* ============ ✅ NEW: DELETE WITHDRAWAL MODAL (antd) ============ */}
+                <Modal
+                    open={showDeleteModal}
+                    onCancel={() => { setShowDeleteModal(false); setDeleteTarget(null); }}
+                    title={
+                        deleteMode === 'blocked'
+                            ? '⚠️ Cannot Delete This Withdrawal'
+                            : '🗑️ Delete This Withdrawal?'
+                    }
+                    width={520}
+                    footer={
+                        deleteMode === 'blocked'
+                            ? [
+                                <Button
+                                    key="cancel"
+                                    onClick={() => { setShowDeleteModal(false); setDeleteTarget(null); }}
+                                >
+                                    Cancel
+                                </Button>,
+                                <Button
+                                    key="retry"
+                                    type="primary"
+                                    onClick={() => {
+                                        const id = deleteTarget?.id;
+                                        setShowDeleteModal(false);
+                                        setDeleteTarget(null);
+                                        if (id) retryWithdrawal(id);
+                                    }}
+                                >
+                                    🔄 Retry Withdrawal Instead
+                                </Button>,
+                            ]
+                            : [
+                                <Button
+                                    key="cancel"
+                                    onClick={() => { setShowDeleteModal(false); setDeleteTarget(null); }}
+                                >
+                                    Cancel
+                                </Button>,
+                                <Button
+                                    key="delete"
+                                    type="primary"
+                                    danger
+                                    onClick={confirmDeleteWithdrawal}
+                                >
+                                    🗑️ Delete Withdrawal
+                                </Button>,
+                            ]
+                    }
+                >
+                    {deleteTarget && (
+                        <>
+                            <p className="text-sm text-gray-500 mb-4">
+                                {deleteMode === 'blocked'
+                                    ? 'This failed withdrawal was never refunded. Deleting it would hide the fact that the user is owed money.'
+                                    : 'This action cannot be undone. The withdrawal record will be soft-deleted from Firestore.'}
+                            </p>
+
+                            <Descriptions
+                                column={1}
+                                size="small"
+                                bordered
+                                labelStyle={{ width: 160 }}
+                            >
+                                <Descriptions.Item label="User">
+                                    {deleteTarget.userName && deleteTarget.userName !== 'Deleted User'
+                                        ? deleteTarget.userName
+                                        : deleteTarget.userId || 'Unknown'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Amount">
+                                    ₦{Number(deleteTarget.amount || 0).toLocaleString()}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Total Deduction">
+                                    ₦{Number(deleteTarget.totalDeduction || deleteTarget.amount || 0).toLocaleString()}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Status">
+                                    <Tag
+                                        color={
+                                            deleteTarget.status === 'failed' ? 'red' :
+                                            deleteTarget.status === 'pending' ? 'orange' :
+                                            deleteTarget.status === 'approved' ? 'green' :
+                                            deleteTarget.status === 'rejected' ? 'volcano' :
+                                            'default'
+                                        }
+                                    >
+                                        {(deleteTarget.status || 'pending').toUpperCase()}
+                                    </Tag>
+                                </Descriptions.Item>
+                                {deleteTarget.error && (
+                                    <Descriptions.Item label="Reason">
+                                        <span className="text-red-600 text-xs">{deleteTarget.error}</span>
+                                    </Descriptions.Item>
+                                )}
+                            </Descriptions>
+
+                            {deleteMode === 'blocked' && (
+                                <Alert
+                                    type="warning"
+                                    showIcon
+                                    className="mt-4"
+                                    message={`This user was never refunded ₦${Number(deleteTarget.totalDeduction || deleteTarget.amount || 0).toLocaleString()}`}
+                                    description="Retry the withdrawal or refund the user first. If you're sure, you can delete this doc directly from Firestore."
+                                />
+                            )}
+                        </>
+                    )}
+                </Modal>
             </div>
         </div>
     );
