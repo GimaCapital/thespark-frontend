@@ -1,3 +1,4 @@
+// C:\Users\HP\Desktop\TheSpark\thespark-frontend\src\components\Dashboard\TransactionHistory.jsx
 import React, { useState, useEffect } from 'react';
 import { api, setAuthToken } from '../../services/api';
 import { auth } from '../../services/firebase';
@@ -68,13 +69,17 @@ export default function TransactionHistory({ userId }) {
     });
     
     const getAmountClass = (type) => {
-        if (type === 'deposit' || type === 'interest') return 'transaction-amount-positive';
-        if (type === 'withdrawal') return 'transaction-amount-negative';
+        if (['deposit', 'interest', 'withdrawal_refund', 'referral'].includes(type)) {
+            return 'transaction-amount-positive';
+        }
+        if (['withdrawal', 'premium_plan_fee'].includes(type)) {
+            return 'transaction-amount-negative';
+        }
         return '';
     };
     
     const getAmountPrefix = (type) => {
-        if (type === 'withdrawal') return '-₦';
+        if (['withdrawal', 'premium_plan_fee'].includes(type)) return '-₦';
         return '+₦';
     };
     
@@ -83,6 +88,9 @@ export default function TransactionHistory({ userId }) {
             case 'deposit': return '📥';
             case 'withdrawal': return '📤';
             case 'interest': return '💰';
+            case 'withdrawal_refund': return '🔄';
+            case 'referral': return '🎁';
+            case 'premium_plan_fee': return '⭐';
             default: return '💳';
         }
     };
@@ -92,6 +100,9 @@ export default function TransactionHistory({ userId }) {
             case 'deposit': return 'Savings Deposit';
             case 'withdrawal': return 'Withdrawal';
             case 'interest': return 'Interest Earned';
+            case 'withdrawal_refund': return 'Withdrawal Refund';
+            case 'referral': return 'Referral Bonus';
+            case 'premium_plan_fee': return 'Premium Plan Fee';
             default: return 'Transaction';
         }
     };

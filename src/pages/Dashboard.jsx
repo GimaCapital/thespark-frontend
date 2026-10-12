@@ -122,14 +122,22 @@ export default function Dashboard() {
         }
     };
 
-    const getStatusBadge = (status) => {
+        const getStatusBadge = (status) => {
         switch (status) {
             case 'pending':
                 return { color: '#FF8A00', text: 'Pending', bg: '#FFF4E6' };
             case 'approved':
                 return { color: '#00B341', text: 'Approved', bg: '#E6F9EF' };
+            case 'completed':
+                return { color: '#00B341', text: 'Completed', bg: '#E6F9EF' };      // ✅ NEW
             case 'rejected':
                 return { color: '#FF3B30', text: 'Rejected', bg: '#FFEBEE' };
+            case 'failed':
+                return { color: '#FF3B30', text: 'Failed', bg: '#FFEBEE' };         // ✅ NEW
+            case 'refunded':
+                return { color: '#8B5CF6', text: 'Refunded', bg: '#F3E8FF' };       // ✅ NEW
+            case 'deleted':
+                return { color: '#6B7280', text: 'Deleted', bg: '#F3F4F6' };        // ✅ NEW
             default:
                 return { color: '#6B7280', text: 'Unknown', bg: '#F3F4F6' };
         }

@@ -386,7 +386,7 @@ export default function Layout({ children }) {
                                 }}
                             >
                                 <img 
-                                    src="/icons/thespark-logo-full-flame-512x512.png" 
+                                    src="/icons/thespark-logo-1024x1024.png" 
                                     
                                     alt="TheSpark" 
                                     className="logo-image"
