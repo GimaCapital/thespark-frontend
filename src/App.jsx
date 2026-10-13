@@ -32,7 +32,7 @@ import BankAccountPage from './pages/BankAccountPage';
 import Investor from './pages/thesparkprivateinvestment';
 import Marketplace from './pages/Marketplace';
 import Orders from './pages/Marketplace/Orders';
-import SellProduct from './pages/Marketplace/Sell';  
+import SellProduct from './pages/Marketplace/Sell';
 import ProductDetail from './pages/Marketplace/ProductDetail/index';
 import LogoDesigner from './pages/LogoDesigner';
 import AdminStockPhone from './components/Admin/AdminStockPhone';
@@ -88,6 +88,7 @@ function AppContent() {
                     <Route path="/referral" element={<Referral />} />
                     <Route path="/privacy" element={<Privacy />} />
                     <Route path="/terms" element={<Terms />} />
+                    <Route path="/premium" element={<PremiumPlans />} />
                     
                     {/* Marketplace Routes */}
                     <Route path="/marketplace" element={<Marketplace />} />
@@ -121,14 +122,6 @@ function AppContent() {
                         <PrivateRoute>
                             <BvnProtectedRoute>
                                 <Graduation />
-                            </BvnProtectedRoute>
-                        </PrivateRoute>
-                    } />
-                    
-                    <Route path="/premium" element={
-                        <PrivateRoute>
-                            <BvnProtectedRoute>
-                                <PremiumPlans />
                             </BvnProtectedRoute>
                         </PrivateRoute>
                     } />

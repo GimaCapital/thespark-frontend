@@ -11,16 +11,20 @@ export default function Layout({ children }) {
     const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
     const [isLegalDropdownOpen, setIsLegalDropdownOpen] = useState(false);
     const [isMarketDropdownOpen, setIsMarketDropdownOpen] = useState(false);
+    const [isLearnDropdownOpen, setIsLearnDropdownOpen] = useState(false);
+    const [isPlansDropdownOpen, setIsPlansDropdownOpen] = useState(false);
+    const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
+
     const navigate = useNavigate();
     const location = useLocation();
-    
+
     const isGraduated = userData?.currentCycle > 8 || userData?.graduationDate;
-    
-    // Helper function to scroll to top
+    const userPlan = userData?.premiumPlan || 'Basic';
+
     const scrollToTop = () => {
         window.scrollTo(0, 0);
     };
-    
+
     // Close dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -30,11 +34,26 @@ export default function Layout({ children }) {
             if (isMarketDropdownOpen && !event.target.closest('.market-dropdown')) {
                 setIsMarketDropdownOpen(false);
             }
+            if (isLearnDropdownOpen && !event.target.closest('.learn-dropdown')) {
+                setIsLearnDropdownOpen(false);
+            }
+            if (isPlansDropdownOpen && !event.target.closest('.plans-dropdown')) {
+                setIsPlansDropdownOpen(false);
+            }
+            if (isAccountDropdownOpen && !event.target.closest('.account-dropdown')) {
+                setIsAccountDropdownOpen(false);
+            }
         };
         document.addEventListener('click', handleClickOutside);
         return () => document.removeEventListener('click', handleClickOutside);
-    }, [isLegalDropdownOpen, isMarketDropdownOpen]);
-    
+    }, [
+        isLegalDropdownOpen,
+        isMarketDropdownOpen,
+        isLearnDropdownOpen,
+        isPlansDropdownOpen,
+        isAccountDropdownOpen,
+    ]);
+
     // Handle window resize
     useEffect(() => {
         const handleResize = () => {
@@ -43,7 +62,7 @@ export default function Layout({ children }) {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
-    
+
     // Handle scroll for top navbar
     useEffect(() => {
         const handleScroll = () => {
@@ -52,7 +71,7 @@ export default function Layout({ children }) {
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
-    
+
     // Handle body scroll when mobile menu is open
     useEffect(() => {
         if (isMobileMenuOpen) {
@@ -64,25 +83,79 @@ export default function Layout({ children }) {
             document.body.style.overflow = 'unset';
         };
     }, [isMobileMenuOpen]);
-    
+
     // Close menu when route changes
     useEffect(() => {
         setIsMobileMenuOpen(false);
         setIsLegalDropdownOpen(false);
         setIsMarketDropdownOpen(false);
+        setIsLearnDropdownOpen(false);
+        setIsPlansDropdownOpen(false);
+        setIsAccountDropdownOpen(false);
     }, [location.pathname]);
-    
+
     const handleLogout = async () => {
         await logout();
         setIsMobileMenuOpen(false);
         navigate('/');
         scrollToTop();
     };
-    
-    // Hide bottom nav on these pages
+
     const hideBottomNav = ['/login', '/register'].includes(location.pathname);
-    
-    // ============ BOTTOM TAB BAR (Mobile - 5 main tabs) ============
+    const isActive = (path) => location.pathname === path;
+
+    // ============ NAV GROUPS ============
+    const learnLinks = [
+        { path: '/about', label: '📖 About Us' },
+        { path: '/how-it-works', label: '📚 How It Works' },
+        { path: '/7-rules', label: '📚 7 Rules of Wealth' },
+        { path: '/success-stories', label: '🌟 Success Stories' },
+        { path: '/faq', label: '❓ FAQ' },
+    ];
+
+    const marketLinks = [
+        { path: '/marketplace', label: '🛒 Marketplace', showAlways: true },
+        { path: '/orders', label: '📦 My Orders', showWhen: !!user },
+    ];
+
+    const plansLinks = [
+        { path: '/premium', label: '💎 Pricing', showAlways: true },
+        {
+            path: '/premium',
+            label: '⬆️ Upgrade Plan',
+            showWhen: !!user && userPlan === 'Basic',
+        },
+        {
+            path: '/premium',
+            label: '💎 Manage Plan',
+            showWhen: !!user && userPlan !== 'Basic',
+        },
+    ];
+
+    const accountLinks = [
+        { path: '/dashboard', label: '📊 Dashboard', showWhen: !!user },
+        { path: '/profile', label: '👤 Profile', showWhen: !!user },
+        { path: '/orders', label: '📦 My Orders', showWhen: !!user },
+        { path: '/graduation', label: '🎓 Graduation', showWhen: !!user && isGraduated },
+    ];
+
+    const legalLinks = [
+        { path: '/privacy', label: '🔒 Privacy Policy' },
+        { path: '/terms', label: '📜 Terms of Service' },
+    ];
+
+    const adminLinks = [
+        { path: '/admin', label: '⚙️ Admin Dashboard' },
+        { path: '/admin-management', label: '👥 Manage Admins' },
+        { path: '/hybrid-lending', label: '💰 Hybrid Lending' },
+    ];
+
+    const isLearnActive = learnLinks.some((l) => isActive(l.path));
+    const isMarketActive = isActive('/marketplace') || isActive('/orders');
+    const isPlansActive = isActive('/premium');
+    const isAccountActive = accountLinks.some((l) => l.showWhen && isActive(l.path));
+
+    // ============ BOTTOM TAB BAR (Mobile) ============
     const bottomTabs = [
         { path: '/', icon: '🏠', label: 'Home', showAlways: true },
         { path: '/dashboard', icon: '📊', label: 'Dashboard', showWhen: !!user },
@@ -90,41 +163,12 @@ export default function Layout({ children }) {
         { path: '/marketplace', icon: '🛒', label: 'Market', showAlways: true },
         { path: '/profile', icon: '👤', label: 'Profile', showAlways: true },
     ];
-    
-    // Filter tabs that should show
-    const visibleTabs = bottomTabs.filter(tab => 
-        tab.showAlways || (tab.showWhen !== undefined && tab.showWhen)
+
+    const visibleTabs = bottomTabs.filter(
+        (tab) => tab.showAlways || (tab.showWhen !== undefined && tab.showWhen)
     );
-    
-    // ============ HAMBURGER MENU PAGES ============
-    const menuPages = [
-        { path: '/about', label: '📖 About Us', section: 'Main', showAlways: true },
-        { path: '/how-it-works', label: '📚 How It Works', section: 'Main', showAlways: true },
-        { path: '/7-rules', label: '📚 7 Rules of Wealth', section: 'Main', showAlways: true },
-        { path: '/success-stories', label: '🌟 Success Stories', section: 'Main', showAlways: true },
-        { path: '/faq', label: '❓ FAQ', section: 'Main', showAlways: true },
-        { path: '/graduation', label: '🎓 Graduation', section: 'Account', showWhen: !!user && isGraduated },
-        { path: '/orders', label: '📦 My Orders', section: 'Account', showWhen: !!user },
-        { path: '/privacy', label: '🔒 Privacy Policy', section: 'Legal', showAlways: true },
-        { path: '/terms', label: '📜 Terms of Service', section: 'Legal', showAlways: true },
-        { path: '/admin', label: '⚙️ Admin Dashboard', section: 'Admin', showWhen: !!isAdmin },
-        { path: '/admin-management', label: '👥 Manage Admins', section: 'Admin', showWhen: !!isAdmin },
-        { path: '/hybrid-lending', label: '💰 Hybrid Lending', section: 'Admin', showWhen: !!isAdmin },
-    ];
-    
-    const visibleMenuPages = menuPages.filter(page => 
-        page.showAlways || (page.showWhen !== undefined && page.showWhen)
-    );
-    
-    const mainMenuPages = visibleMenuPages.filter(p => p.section === 'Main');
-    const accountMenuPages = visibleMenuPages.filter(p => p.section === 'Account');
-    const legalMenuPages = visibleMenuPages.filter(p => p.section === 'Legal');
-    const adminMenuPages = visibleMenuPages.filter(p => p.section === 'Admin');
-    
-    const isActive = (path) => location.pathname === path;
-    const isMarketActive = isActive('/marketplace') || isActive('/orders');
-    
-    // Animation styles with active live background
+
+    // ============ ANIMATION STYLES ============
     const animationStyles = `
         @keyframes bounce {
             0%, 100% { transform: translateY(0); }
@@ -147,7 +191,6 @@ export default function Layout({ children }) {
             100% { text-shadow: 0 0 0px rgba(249, 115, 22, 0); }
         }
         
-        /* Active Link Animation - Pulsing Background */
         @keyframes activePulse {
             0% { background-color: rgba(234, 88, 12, 0.05); border-color: #ea580c; }
             50% { background-color: rgba(234, 88, 12, 0.15); border-color: #f97316; }
@@ -160,7 +203,6 @@ export default function Layout({ children }) {
             100% { box-shadow: 0 0 0px rgba(234, 88, 12, 0.3); }
         }
         
-        /* Desktop Active Nav Link */
         .nav-link-active {
             background: linear-gradient(135deg, rgba(234, 88, 12, 0.1), rgba(249, 115, 22, 0.05));
             border-bottom: 2px solid #ea580c;
@@ -179,7 +221,6 @@ export default function Layout({ children }) {
             animation: bounce 1s ease-in-out infinite;
         }
         
-        /* Mobile Active Menu Item */
         .mobile-menu-link-active {
             background: linear-gradient(90deg, rgba(234, 88, 12, 0.1), transparent);
             border-left: 3px solid #ea580c;
@@ -187,7 +228,6 @@ export default function Layout({ children }) {
             font-weight: 600;
         }
         
-        /* Bottom Tab Active */
         .bottom-tab-active {
             background: linear-gradient(135deg, #ea580c, #f97316);
             color: white !important;
@@ -251,26 +291,25 @@ export default function Layout({ children }) {
             animation: fireFlicker 2s ease-in-out infinite;
         }
         
-        /* Legal Dropdown Styles */
-        .legal-dropdown {
+        .nav-dropdown {
             position: relative;
         }
         
-        .legal-dropdown-menu {
+        .nav-dropdown-menu {
             position: absolute;
             top: 100%;
             right: 0;
             background: white;
             border-radius: 12px;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-            min-width: 200px;
+            min-width: 220px;
             overflow: hidden;
             z-index: 50;
             margin-top: 8px;
             border: 1px solid #e5e7eb;
         }
         
-        .legal-dropdown-item {
+        .nav-dropdown-item {
             display: block;
             padding: 10px 16px;
             color: #374151;
@@ -279,17 +318,23 @@ export default function Layout({ children }) {
             text-decoration: none;
         }
         
-        .legal-dropdown-item:hover {
+        .nav-dropdown-item:hover {
             background-color: #fef3f2;
             color: #ea580c;
         }
         
-        .legal-dropdown-item-active {
+        .nav-dropdown-item-active {
             background-color: #fef3f2;
             color: #ea580c;
             font-weight: 500;
             border-left: 3px solid #ea580c;
             animation: activePulse 2s ease-in-out infinite;
+        }
+        
+        .nav-dropdown-divider {
+            height: 1px;
+            background-color: #e5e7eb;
+            margin: 4px 12px;
         }
         
         .dropdown-arrow {
@@ -299,235 +344,212 @@ export default function Layout({ children }) {
         .dropdown-arrow.rotated {
             transform: rotate(180deg);
         }
-        
-        /* Market Dropdown Styles */
-        .market-dropdown {
-            position: relative;
-        }
-        
-        .market-dropdown-menu {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-            min-width: 200px;
-            overflow: hidden;
-            z-index: 50;
-            margin-top: 8px;
-            border: 1px solid #e5e7eb;
-        }
-        
-        .market-dropdown-item {
-            display: block;
-            padding: 10px 16px;
-            color: #374151;
-            font-size: 14px;
-            transition: all 0.2s ease;
-            text-decoration: none;
-        }
-        
-        .market-dropdown-item:hover {
-            background-color: #fef3f2;
-            color: #ea580c;
-        }
-        
-        .market-dropdown-item-active {
-            background-color: #fef3f2;
-            color: #ea580c;
-            font-weight: 500;
-            border-left: 3px solid #ea580c;
-            animation: activePulse 2s ease-in-out infinite;
-        }
-        
-        .market-dropdown-divider {
-            height: 1px;
-            background-color: #e5e7eb;
-            margin: 4px 12px;
-        }
     `;
-    
+
     // ============ DESKTOP TOP NAVBAR ============
     if (isDesktop) {
-        const desktopNavLinks = [
-            { path: '/about', label: 'About' },
-            { path: '/how-it-works', label: 'How It Works' },
-            { path: '/7-rules', label: '7 Rules' },
-            { path: '/success-stories', label: 'Stories' },
-            { path: '/faq', label: 'FAQ' },
-        ];
-        
-        const desktopAuthLinks = [
-            { path: '/dashboard', label: 'Dashboard' },
-            { path: '/profile', icon: '👤', label: 'Profile', showAlways: true },
-            ...(isGraduated ? [{ path: '/graduation', label: 'Graduate' }] : []),
-            { path: '/premium', label: 'Premium' },
-            ...(isAdmin ? [
-                { path: '/admin', label: 'Admin' },
-                { path: '/admin-management', label: 'Manage' },
-                { path: '/hybrid-lending', label: 'Lend' }
-            ] : [])
-        ];
-        
         return (
             <div className="min-h-screen bg-gray-50">
                 <style>{animationStyles}</style>
                 <nav className={`navbar ${scrolled ? 'navbar-scrolled' : 'navbar-default'}`}>
                     <div className="nav-container">
                         <div className="nav-flex">
-                            {/* Animated Logo with Full Image */}
-                            <Link 
-                                to="/" 
-                                className="logo-container group" 
-                                onClick={() => {
-                                    setIsMobileMenuOpen(false);
-                                    scrollToTop();
-                                }}
+                            <Link
+                                to="/"
+                                className="logo-container group"
+                                onClick={scrollToTop}
                             >
-                                <img 
-                                    src="/icons/thespark-logo-1024x1024.png" 
-                                    
-                                    alt="TheSpark" 
+                                <img
+                                    src="/icons/thespark-logo-1024x1024.png"
+                                    alt="TheSpark"
                                     className="logo-image"
                                 />
                                 <span className="logo-text text-xl font-bold bg-gradient-to-r from-spark-500 to-spark-700 bg-clip-text text-transparent">
                                     TheSpark
                                 </span>
                             </Link>
-                            
+
                             <div className="nav-desktop">
-                                {desktopNavLinks.map(link => (
-                                    <Link 
-                                        key={link.path} 
-                                        to={link.path} 
-                                        className={`nav-link ${isActive(link.path) ? 'nav-link-active' : ''}`}
-                                        onClick={scrollToTop}
+                                {/* Home */}
+                                <Link
+                                    to="/"
+                                    className={`nav-link ${isActive('/') ? 'nav-link-active' : ''}`}
+                                    onClick={scrollToTop}
+                                >
+                                    Home
+                                </Link>
+
+                                {/* Learn Dropdown */}
+                                <div className="nav-dropdown learn-dropdown">
+                                    <button
+                                        onClick={() => setIsLearnDropdownOpen(!isLearnDropdownOpen)}
+                                        className={`nav-link inline-flex items-center gap-1 ${isLearnActive ? 'nav-link-active' : ''}`}
                                     >
-                                        {link.label}
-                                    </Link>
-                                ))}
-                                
-                                {/* Market Dropdown - Marketplace & Orders */}
-                                <div className="market-dropdown relative inline-block">
+                                        Learn
+                                        <svg
+                                            className={`dropdown-arrow w-3 h-3 ${isLearnDropdownOpen ? 'rotated' : ''}`}
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                    {isLearnDropdownOpen && (
+                                        <div className="nav-dropdown-menu">
+                                            {learnLinks.map((link) => (
+                                                <Link
+                                                    key={link.path}
+                                                    to={link.path}
+                                                    className={`nav-dropdown-item ${isActive(link.path) ? 'nav-dropdown-item-active' : ''}`}
+                                                    onClick={() => {
+                                                        setIsLearnDropdownOpen(false);
+                                                        scrollToTop();
+                                                    }}
+                                                >
+                                                    {link.label}
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Market Dropdown */}
+                                <div className="nav-dropdown market-dropdown">
                                     <button
                                         onClick={() => setIsMarketDropdownOpen(!isMarketDropdownOpen)}
                                         className={`nav-link inline-flex items-center gap-1 ${isMarketActive ? 'nav-link-active' : ''}`}
                                     >
                                         Market
-                                        <svg 
+                                        <svg
                                             className={`dropdown-arrow w-3 h-3 ${isMarketDropdownOpen ? 'rotated' : ''}`}
-                                            fill="none" 
-                                            stroke="currentColor" 
+                                            fill="none"
+                                            stroke="currentColor"
                                             viewBox="0 0 24 24"
                                         >
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </button>
-                                    
                                     {isMarketDropdownOpen && (
-                                        <div className="market-dropdown-menu">
-                                            <Link 
-                                                to="/marketplace" 
-                                                className={`market-dropdown-item ${isActive('/marketplace') ? 'market-dropdown-item-active' : ''}`}
-                                                onClick={() => {
-                                                    setIsMarketDropdownOpen(false);
-                                                    scrollToTop();
-                                                }}
-                                            >
-                                                🛒 Marketplace
-                                            </Link>
-                                            {user && (
-                                                <>
-                                                    <div className="market-dropdown-divider"></div>
-                                                    <Link 
-                                                        to="/orders" 
-                                                        className={`market-dropdown-item ${isActive('/orders') ? 'market-dropdown-item-active' : ''}`}
+                                        <div className="nav-dropdown-menu">
+                                            {marketLinks
+                                                .filter((l) => l.showAlways || l.showWhen)
+                                                .map((link) => (
+                                                    <Link
+                                                        key={link.path}
+                                                        to={link.path}
+                                                        className={`nav-dropdown-item ${isActive(link.path) ? 'nav-dropdown-item-active' : ''}`}
                                                         onClick={() => {
                                                             setIsMarketDropdownOpen(false);
                                                             scrollToTop();
                                                         }}
                                                     >
-                                                        📦 My Orders
+                                                        {link.label}
                                                     </Link>
-                                                </>
-                                            )}
+                                                ))}
                                         </div>
                                     )}
                                 </div>
-                                
-                                {/* Legal Dropdown - Privacy & Terms */}
-                                <div className="legal-dropdown relative inline-block">
+
+                                {/* Plans Dropdown */}
+                                <div className="nav-dropdown plans-dropdown">
                                     <button
-                                        onClick={() => setIsLegalDropdownOpen(!isLegalDropdownOpen)}
-                                        className={`nav-link inline-flex items-center gap-1 ${isActive('/privacy') || isActive('/terms') ? 'nav-link-active' : ''}`}
+                                        onClick={() => setIsPlansDropdownOpen(!isPlansDropdownOpen)}
+                                        className={`nav-link inline-flex items-center gap-1 ${isPlansActive ? 'nav-link-active' : ''}`}
                                     >
-                                        Legal
-                                        <svg 
-                                            className={`dropdown-arrow w-3 h-3 ${isLegalDropdownOpen ? 'rotated' : ''}`}
-                                            fill="none" 
-                                            stroke="currentColor" 
+                                        Plans
+                                        <svg
+                                            className={`dropdown-arrow w-3 h-3 ${isPlansDropdownOpen ? 'rotated' : ''}`}
+                                            fill="none"
+                                            stroke="currentColor"
                                             viewBox="0 0 24 24"
                                         >
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </button>
-                                    
-                                    {isLegalDropdownOpen && (
-                                        <div className="legal-dropdown-menu">
-                                            <Link 
-                                                to="/privacy" 
-                                                className={`legal-dropdown-item ${isActive('/privacy') ? 'legal-dropdown-item-active' : ''}`}
-                                                onClick={() => {
-                                                    setIsLegalDropdownOpen(false);
-                                                    scrollToTop();
-                                                }}
-                                            >
-                                                🔒 Privacy Policy
-                                            </Link>
-                                            <Link 
-                                                to="/terms" 
-                                                className={`legal-dropdown-item ${isActive('/terms') ? 'legal-dropdown-item-active' : ''}`}
-                                                onClick={() => {
-                                                    setIsLegalDropdownOpen(false);
-                                                    scrollToTop();
-                                                }}
-                                            >
-                                                📜 Terms of Service
-                                            </Link>
+                                    {isPlansDropdownOpen && (
+                                        <div className="nav-dropdown-menu">
+                                            {plansLinks
+                                                .filter((l) => l.showAlways || l.showWhen)
+                                                .map((link, i) => (
+                                                    <Link
+                                                        key={`${link.path}-${i}`}
+                                                        to={link.path}
+                                                        className={`nav-dropdown-item ${isActive(link.path) ? 'nav-dropdown-item-active' : ''}`}
+                                                        onClick={() => {
+                                                            setIsPlansDropdownOpen(false);
+                                                            scrollToTop();
+                                                        }}
+                                                    >
+                                                        {link.label}
+                                                    </Link>
+                                                ))}
                                         </div>
                                     )}
                                 </div>
-                                
+
                                 {user ? (
-                                    <div className="nav-buttons flex items-center gap-2">
-                                        {desktopAuthLinks.map(link => (
-                                            <Link 
-                                                key={link.path} 
-                                                to={link.path} 
-                                                className={`nav-link ${isActive(link.path) ? 'nav-link-active' : ''}`}
-                                                onClick={scrollToTop}
+                                    <>
+                                        {/* Account Dropdown */}
+                                        <div className="nav-dropdown account-dropdown">
+                                            <button
+                                                onClick={() => setIsAccountDropdownOpen(!isAccountDropdownOpen)}
+                                                className={`nav-link inline-flex items-center gap-1 ${isAccountActive ? 'nav-link-active' : ''}`}
                                             >
-                                                {link.label}
-                                            </Link>
-                                        ))}
-                                        <button onClick={handleLogout} className="nav-link-danger">
-                                            Logout
-                                        </button>
+                                                Account
+                                                <svg
+                                                    className={`dropdown-arrow w-3 h-3 ${isAccountDropdownOpen ? 'rotated' : ''}`}
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+                                            {isAccountDropdownOpen && (
+                                                <div className="nav-dropdown-menu">
+                                                    {accountLinks
+                                                        .filter((l) => l.showWhen)
+                                                        .map((link) => (
+                                                            <Link
+                                                                key={link.path}
+                                                                to={link.path}
+                                                                className={`nav-dropdown-item ${isActive(link.path) ? 'nav-dropdown-item-active' : ''}`}
+                                                                onClick={() => {
+                                                                    setIsAccountDropdownOpen(false);
+                                                                    scrollToTop();
+                                                                }}
+                                                            >
+                                                                {link.label}
+                                                            </Link>
+                                                        ))}
+                                                    <div className="nav-dropdown-divider"></div>
+                                                    <button
+                                                        onClick={handleLogout}
+                                                        className="nav-dropdown-item text-red-600 hover:bg-red-50 w-full text-left"
+                                                    >
+                                                        🚪 Logout
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+
                                         {/* Notification Bell */}
-                                        <NotificationBell />
-                                    </div>
+                                        <div className="ml-2 flex items-center">
+                                            <NotificationBell />
+                                        </div>
+                                    </>
                                 ) : (
                                     <div className="nav-buttons">
-                                        <Link 
-                                            to="/login" 
+                                        <Link
+                                            to="/login"
                                             className={`nav-link ${isActive('/login') ? 'nav-link-active' : ''}`}
                                             onClick={scrollToTop}
                                         >
                                             Login
                                         </Link>
-                                        <Link 
-                                            to="/register" 
+                                        <Link
+                                            to="/register"
                                             className="signup-btn"
                                             onClick={scrollToTop}
                                         >
@@ -536,7 +558,7 @@ export default function Layout({ children }) {
                                     </div>
                                 )}
                             </div>
-                            
+
                             <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                                 className="mobile-menu-btn"
@@ -548,13 +570,14 @@ export default function Layout({ children }) {
                         </div>
                     </div>
                 </nav>
-                
+
                 {isMobileMenuOpen && (
                     <div className="mobile-menu-overlay" onClick={() => setIsMobileMenuOpen(false)}>
                         <div className="mobile-menu-content" onClick={(e) => e.stopPropagation()}>
+                            {/* Learn */}
                             <div className="mobile-menu-section">
-                                <p className="mobile-menu-title">Menu</p>
-                                {desktopNavLinks.map(link => (
+                                <p className="mobile-menu-title">Learn</p>
+                                {learnLinks.map((link) => (
                                     <Link
                                         key={link.path}
                                         to={link.path}
@@ -567,58 +590,14 @@ export default function Layout({ children }) {
                                         {link.label}
                                     </Link>
                                 ))}
-                                <Link
-                                    to="/marketplace"
-                                    onClick={() => {
-                                        setIsMobileMenuOpen(false);
-                                        scrollToTop();
-                                    }}
-                                    className={`mobile-menu-link ${isActive('/marketplace') ? 'mobile-menu-link-active' : ''}`}
-                                >
-                                    🛒 Marketplace
-                                </Link>
-                                {user && (
-                                    <Link
-                                        to="/orders"
-                                        onClick={() => {
-                                            setIsMobileMenuOpen(false);
-                                            scrollToTop();
-                                        }}
-                                        className={`mobile-menu-link ${isActive('/orders') ? 'mobile-menu-link-active' : ''}`}
-                                    >
-                                        📦 My Orders
-                                    </Link>
-                                )}
                             </div>
-                            
+
+                            {/* Market */}
                             <div className="mobile-menu-section">
-                                <p className="mobile-menu-title">Legal</p>
-                                <Link
-                                    to="/privacy"
-                                    onClick={() => {
-                                        setIsMobileMenuOpen(false);
-                                        scrollToTop();
-                                    }}
-                                    className={`mobile-menu-link ${isActive('/privacy') ? 'mobile-menu-link-active' : ''}`}
-                                >
-                                    🔒 Privacy Policy
-                                </Link>
-                                <Link
-                                    to="/terms"
-                                    onClick={() => {
-                                        setIsMobileMenuOpen(false);
-                                        scrollToTop();
-                                    }}
-                                    className={`mobile-menu-link ${isActive('/terms') ? 'mobile-menu-link-active' : ''}`}
-                                >
-                                    📜 Terms of Service
-                                </Link>
-                            </div>
-                            
-                            {user ? (
-                                <div>
-                                    <p className="mobile-menu-title">Account</p>
-                                    {desktopAuthLinks.map(link => (
+                                <p className="mobile-menu-title">Market</p>
+                                {marketLinks
+                                    .filter((l) => l.showAlways || l.showWhen)
+                                    .map((link) => (
                                         <Link
                                             key={link.path}
                                             to={link.path}
@@ -631,28 +610,113 @@ export default function Layout({ children }) {
                                             {link.label}
                                         </Link>
                                     ))}
+                            </div>
+
+                            {/* Plans */}
+                            <div className="mobile-menu-section">
+                                <p className="mobile-menu-title">Plans</p>
+                                {plansLinks
+                                    .filter((l) => l.showAlways || l.showWhen)
+                                    .map((link, i) => (
+                                        <Link
+                                            key={`${link.path}-${i}`}
+                                            to={link.path}
+                                            onClick={() => {
+                                                setIsMobileMenuOpen(false);
+                                                scrollToTop();
+                                            }}
+                                            className={`mobile-menu-link ${isActive(link.path) ? 'mobile-menu-link-active' : ''}`}
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    ))}
+                            </div>
+
+                            {/* Account (only if logged in) */}
+                            {user && (
+                                <div className="mobile-menu-section">
+                                    <p className="mobile-menu-title">Account</p>
+                                    {accountLinks
+                                        .filter((l) => l.showWhen)
+                                        .map((link) => (
+                                            <Link
+                                                key={link.path}
+                                                to={link.path}
+                                                onClick={() => {
+                                                    setIsMobileMenuOpen(false);
+                                                    scrollToTop();
+                                                }}
+                                                className={`mobile-menu-link ${isActive(link.path) ? 'mobile-menu-link-active' : ''}`}
+                                            >
+                                                {link.label}
+                                            </Link>
+                                        ))}
+                                </div>
+                            )}
+
+                            {/* Legal */}
+                            <div className="mobile-menu-section">
+                                <p className="mobile-menu-title">Legal</p>
+                                {legalLinks.map((link) => (
+                                    <Link
+                                        key={link.path}
+                                        to={link.path}
+                                        onClick={() => {
+                                            setIsMobileMenuOpen(false);
+                                            scrollToTop();
+                                        }}
+                                        className={`mobile-menu-link ${isActive(link.path) ? 'mobile-menu-link-active' : ''}`}
+                                    >
+                                        {link.label}
+                                    </Link>
+                                ))}
+                            </div>
+
+                            {/* Admin */}
+                            {isAdmin && (
+                                <div className="mobile-menu-section">
+                                    <p className="mobile-menu-title">Admin</p>
+                                    {adminLinks.map((link) => (
+                                        <Link
+                                            key={link.path}
+                                            to={link.path}
+                                            onClick={() => {
+                                                setIsMobileMenuOpen(false);
+                                                scrollToTop();
+                                            }}
+                                            className={`mobile-menu-link ${isActive(link.path) ? 'mobile-menu-link-active' : ''}`}
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Auth */}
+                            {user ? (
+                                <div className="mobile-menu-section">
                                     <button onClick={handleLogout} className="mobile-menu-logout">
-                                        Logout
+                                        🚪 Logout
                                     </button>
                                 </div>
                             ) : (
                                 <div className="mobile-menu-auth">
-                                    <Link 
-                                        to="/login" 
+                                    <Link
+                                        to="/login"
                                         onClick={() => {
                                             setIsMobileMenuOpen(false);
                                             scrollToTop();
-                                        }} 
+                                        }}
                                         className={`mobile-menu-login ${isActive('/login') ? 'mobile-menu-link-active' : ''}`}
                                     >
                                         Login
                                     </Link>
-                                    <Link 
-                                        to="/register" 
+                                    <Link
+                                        to="/register"
                                         onClick={() => {
                                             setIsMobileMenuOpen(false);
                                             scrollToTop();
-                                        }} 
+                                        }}
                                         className="mobile-menu-signup"
                                     >
                                         Sign Up
@@ -662,23 +726,23 @@ export default function Layout({ children }) {
                         </div>
                     </div>
                 )}
-                
+
                 <main className="main-content">
                     {children}
                 </main>
-                
+
                 <Footer />
             </div>
         );
     }
-    
-    // ============ MOBILE BOTTOM TAB BAR + HAMBURGER MENU ============
+
+    // ============ MOBILE ============
     return (
         <div className="min-h-screen bg-gray-50 pb-16">
             <style>{animationStyles}</style>
-            {/* Top Bar with Hamburger Menu */}
+
+            {/* Top bar with hamburger */}
             <div className="bg-white shadow-sm py-3 px-4 fixed top-0 left-0 right-0 z-40 flex justify-between items-center">
-                {/* Hamburger Menu Button */}
                 <button
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                     className="w-10 h-10 flex flex-col justify-center items-center space-y-1.5 focus:outline-none"
@@ -687,44 +751,38 @@ export default function Layout({ children }) {
                     <span className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`}></span>
                     <span className={`w-5 h-0.5 bg-gray-800 transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
                 </button>
-                
-                {/* Animated Logo with Full Image - Centered */}
-                <Link 
-                    to="/" 
-                    className="flex items-center gap-1 absolute left-1/2 transform -translate-x-1/2 group" 
-                    onClick={() => {
-                        setIsMobileMenuOpen(false);
-                        scrollToTop();
-                    }}
+
+                <Link
+                    to="/"
+                    className="flex items-center gap-1 absolute left-1/2 transform -translate-x-1/2 group"
+                    onClick={scrollToTop}
                 >
-                    <img 
-                        src="/icons/thespark-logo-1024x1024.png" 
-                        alt="TheSpark" 
+                    <img
+                        src="/icons/thespark-logo-1024x1024.png"
+                        alt="TheSpark"
                         className="logo-image-mobile"
                     />
                     <span className="logo-text text-lg font-bold bg-gradient-to-r from-spark-500 to-spark-700 bg-clip-text text-transparent">
                         TheSpark
                     </span>
-                    
                 </Link>
-                
-                {/* Notification Bell for Mobile */}
+
                 <div className="w-10 flex items-center justify-center">
                     <NotificationBell />
                 </div>
             </div>
-            
-            {/* Hamburger Menu Drawer */}
+
+            {/* Mobile drawer */}
             {isMobileMenuOpen && (
                 <>
-                    <div 
+                    <div
                         className="fixed inset-0 z-30 bg-black bg-opacity-50 transition-opacity duration-300"
                         onClick={() => setIsMobileMenuOpen(false)}
                     />
-                    
+
                     <div className="fixed top-0 left-0 bottom-0 z-30 w-80 bg-white shadow-xl transform transition-transform duration-300 overflow-y-auto">
                         <div className="pt-16 pb-6">
-                            {/* User Profile Section */}
+                            {/* User profile */}
                             {user ? (
                                 <div className="px-6 pb-4 border-b border-gray-100">
                                     <div className="flex items-center gap-3">
@@ -740,9 +798,9 @@ export default function Layout({ children }) {
                             ) : (
                                 <div className="px-6 pb-4 border-b border-gray-100">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <img 
-                                            src="/icons/thespark-logo-192x192.png" 
-                                            alt="TheSpark" 
+                                        <img
+                                            src="/icons/thespark-logo-192x192.png"
+                                            alt="TheSpark"
                                             className="h-8 w-auto"
                                         />
                                         <p className="text-gray-700 font-semibold">TheSpark</p>
@@ -772,95 +830,133 @@ export default function Layout({ children }) {
                                     </div>
                                 </div>
                             )}
-                            
-                            {/* Main Menu Section */}
-                            {mainMenuPages.length > 0 && (
-                                <div className="px-4 py-2">
-                                    <p className="text-xs text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Main Menu</p>
-                                    {mainMenuPages.map(page => (
+
+                            {/* Learn */}
+                            <div className="px-4 py-2">
+                                <p className="text-xs text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Learn</p>
+                                {learnLinks.map((link) => (
+                                    <Link
+                                        key={link.path}
+                                        to={link.path}
+                                        onClick={() => {
+                                            setIsMobileMenuOpen(false);
+                                            scrollToTop();
+                                        }}
+                                        className={`block px-3 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition ${isActive(link.path) ? 'mobile-menu-link-active' : ''}`}
+                                    >
+                                        {link.label}
+                                    </Link>
+                                ))}
+                            </div>
+
+                            {/* Market */}
+                            <div className="px-4 py-2">
+                                <p className="text-xs text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Market</p>
+                                {marketLinks
+                                    .filter((l) => l.showAlways || l.showWhen)
+                                    .map((link) => (
                                         <Link
-                                            key={page.path}
-                                            to={page.path}
+                                            key={link.path}
+                                            to={link.path}
                                             onClick={() => {
                                                 setIsMobileMenuOpen(false);
                                                 scrollToTop();
                                             }}
-                                            className={`block px-3 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition ${isActive(page.path) ? 'mobile-menu-link-active' : ''}`}
+                                            className={`block px-3 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition ${isActive(link.path) ? 'mobile-menu-link-active' : ''}`}
                                         >
-                                            {page.label}
+                                            {link.label}
                                         </Link>
                                     ))}
-                                </div>
-                            )}
-                            
-                            {/* Legal Section */}
-                            {legalMenuPages.length > 0 && (
-                                <div className="px-4 py-2">
-                                    <p className="text-xs text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Legal</p>
-                                    {legalMenuPages.map(page => (
+                            </div>
+
+                            {/* Plans */}
+                            <div className="px-4 py-2">
+                                <p className="text-xs text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Plans</p>
+                                {plansLinks
+                                    .filter((l) => l.showAlways || l.showWhen)
+                                    .map((link, i) => (
                                         <Link
-                                            key={page.path}
-                                            to={page.path}
+                                            key={`${link.path}-${i}`}
+                                            to={link.path}
                                             onClick={() => {
                                                 setIsMobileMenuOpen(false);
                                                 scrollToTop();
                                             }}
-                                            className={`block px-3 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition ${isActive(page.path) ? 'mobile-menu-link-active' : ''}`}
+                                            className={`block px-3 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition ${isActive(link.path) ? 'mobile-menu-link-active' : ''}`}
                                         >
-                                            {page.label}
+                                            {link.label}
                                         </Link>
                                     ))}
-                                </div>
-                            )}
-                            
-                            {/* Account Section */}
-                            {accountMenuPages.length > 0 && (
+                            </div>
+
+                            {/* Account */}
+                            {user && (
                                 <div className="px-4 py-2">
                                     <p className="text-xs text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Account</p>
-                                    {accountMenuPages.map(page => (
-                                        <Link
-                                            key={page.path}
-                                            to={page.path}
-                                            onClick={() => {
-                                                setIsMobileMenuOpen(false);
-                                                scrollToTop();
-                                            }}
-                                            className={`block px-3 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition ${isActive(page.path) ? 'mobile-menu-link-active' : ''}`}
-                                        >
-                                            {page.label}
-                                        </Link>
-                                    ))}
+                                    {accountLinks
+                                        .filter((l) => l.showWhen)
+                                        .map((link) => (
+                                            <Link
+                                                key={link.path}
+                                                to={link.path}
+                                                onClick={() => {
+                                                    setIsMobileMenuOpen(false);
+                                                    scrollToTop();
+                                                }}
+                                                className={`block px-3 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition ${isActive(link.path) ? 'mobile-menu-link-active' : ''}`}
+                                            >
+                                                {link.label}
+                                            </Link>
+                                        ))}
                                 </div>
                             )}
-                            
-                            {/* Admin Section */}
-                            {adminMenuPages.length > 0 && (
+
+                            {/* Legal */}
+                            <div className="px-4 py-2">
+                                <p className="text-xs text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Legal</p>
+                                {legalLinks.map((link) => (
+                                    <Link
+                                        key={link.path}
+                                        to={link.path}
+                                        onClick={() => {
+                                            setIsMobileMenuOpen(false);
+                                            scrollToTop();
+                                        }}
+                                        className={`block px-3 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition ${isActive(link.path) ? 'mobile-menu-link-active' : ''}`}
+                                    >
+                                        {link.label}
+                                    </Link>
+                                ))}
+                            </div>
+
+                            {/* Admin */}
+                            {isAdmin && (
                                 <div className="px-4 py-2">
                                     <p className="text-xs text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">Admin</p>
-                                    {adminMenuPages.map(page => (
+                                    {adminLinks.map((link) => (
                                         <Link
-                                            key={page.path}
-                                            to={page.path}
+                                            key={link.path}
+                                            to={link.path}
                                             onClick={() => {
                                                 setIsMobileMenuOpen(false);
                                                 scrollToTop();
                                             }}
-                                            className={`block px-3 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition ${isActive(page.path) ? 'mobile-menu-link-active' : ''}`}
+                                            className={`block px-3 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition ${isActive(link.path) ? 'mobile-menu-link-active' : ''}`}
                                         >
-                                            {page.label}
+                                            {link.label}
                                         </Link>
                                     ))}
                                 </div>
                             )}
-                            
-                            {/* Logout button */}
+
+                            {/* Logout */}
                             {user && (
                                 <div className="px-6 pt-4 border-t border-gray-100 mt-4">
                                     <button
                                         onClick={handleLogout}
                                         className="w-full text-left px-3 py-3 text-red-600 hover:bg-gray-100 rounded-lg transition"
                                     >
-                                        Logout
+                                        🚪 Logout
                                     </button>
                                 </div>
                             )}
@@ -868,25 +964,24 @@ export default function Layout({ children }) {
                     </div>
                 </>
             )}
-            
-            {/* Main Content */}
+
             <main className="pt-16 pb-2">
                 {children}
             </main>
-             
+
             <Footer />
-            
-            {/* Bottom Tab Bar with Active Animation */}
+
+            {/* Bottom tab bar */}
             {!hideBottomNav && (
                 <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center py-2 z-50">
-                    {visibleTabs.map(tab => (
+                    {visibleTabs.map((tab) => (
                         <Link
                             key={tab.path}
                             to={tab.path}
                             onClick={scrollToTop}
                             className={`flex flex-col items-center py-1 px-3 rounded-lg transition ${
-                                isActive(tab.path) 
-                                    ? 'bottom-tab-active' 
+                                isActive(tab.path)
+                                    ? 'bottom-tab-active'
                                     : 'text-gray-500'
                             }`}
                         >

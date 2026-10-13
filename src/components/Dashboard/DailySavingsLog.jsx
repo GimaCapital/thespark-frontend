@@ -419,7 +419,6 @@
 //         </>
 //     );
 // }
-
 // src/components/Dashboard/DailySavingsLog.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { api, setAuthToken } from '../../services/api';
@@ -567,16 +566,21 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
     const [intendedAmount, setIntendedAmount] = useState(null);
     const [totalWithFee, setTotalWithFee] = useState(null);
     const [accountDetails, setAccountDetails] = useState(null);
-    const [planLimits, setPlanLimits] = useState({ min: 100, max: 2000 });
+
+    // ✅ CHANGED: no fake default — null means "we don't know yet"
+    const [planLimits, setPlanLimits] = useState(null);
+    const [limitsLoading, setLimitsLoading] = useState(true);
+    const [limitsError, setLimitsError] = useState(null);
+
     const [depositConfirmed, setDepositConfirmed] = useState(false);
     const [feeBreakdown, setFeeBreakdown] = useState(null);
     const [isCalculatingFee, setIsCalculatingFee] = useState(false);
     const [showFeePopover, setShowFeePopover] = useState(false);
     const debounceTimerRef = useRef(null);
 
-    // ✅ NEW: track today's saved amount and remaining allowance
+    // ✅ CHANGED: userRemaining starts at 0 (unknown), not a hardcoded number
     const [userSavedToday, setUserSavedToday] = useState(0);
-    const [userRemaining, setUserRemaining] = useState(2000);
+    const [userRemaining, setUserRemaining] = useState(0);
 
     useEffect(() => {
         const fetchPlanLimits = async () => {
@@ -590,13 +594,16 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
                 const limits = getPlanLimits(plan);
                 setPlanLimits(limits);
 
-                // ✅ NEW: read today's progress
+                // ✅ Read today's progress
                 const lastDay = user.lastDepositDay;
                 const todaysDeposit = lastDay === user.currentDay ? (user.todaysDeposit || 0) : 0;
                 setUserSavedToday(todaysDeposit);
                 setUserRemaining(Math.max(0, limits.max - todaysDeposit));
             } catch (error) {
                 console.error('Failed to fetch plan limits:', error);
+                setLimitsError('Could not load your plan limits. Please refresh the page.');
+            } finally {
+                setLimitsLoading(false);
             }
         };
         
@@ -676,14 +683,17 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
                             });
                         }
 
-                        // ✅ NEW: refresh user data to update "saved today" display
+                        // ✅ Refresh user data to update "saved today" display
                         try {
                             const userResponse = await api.get('/users/me');
                             const freshUser = userResponse.data;
                             const freshLastDay = freshUser.lastDepositDay;
                             const freshToday = freshLastDay === freshUser.currentDay ? (freshUser.todaysDeposit || 0) : 0;
                             setUserSavedToday(freshToday);
-                            setUserRemaining(Math.max(0, planLimits.max - freshToday));
+                            // ✅ Guard against planLimits being null (should never happen here, but safe)
+                            if (planLimits) {
+                                setUserRemaining(Math.max(0, planLimits.max - freshToday));
+                            }
                         } catch (err) {
                             console.error('Failed to refresh user after deposit:', err);
                         }
@@ -706,9 +716,15 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [waitingForDeposit, depositConfirmed, onSave, planLimits.max]);
+    }, [waitingForDeposit, depositConfirmed, onSave, planLimits]);
 
     const handleSaveClick = async () => {
+        // ✅ Guard: never run validation against null limits
+        if (!planLimits) {
+            toast.error('Plan limits still loading. Please wait a moment.');
+            return;
+        }
+
         const numAmount = parseFloat(amount);
         
         if (isNaN(numAmount) || numAmount < planLimits.min || numAmount > planLimits.max) {
@@ -788,8 +804,38 @@ export default function DailySavingsLog({ currentCycle, currentDay, onSave, user
         toast.success(`${label} copied!`);
     };
 
-    const dailyLimitReached = userRemaining <= 0;
+    // ✅ These can only be computed after limits are known — guard at usage site
+    const dailyLimitReached = planLimits ? userRemaining <= 0 : false;
 
+    // ✅ NEW: Loading state — show skeleton, never a wrong number
+    if (limitsLoading) {
+        return (
+            <div className="p-4 daily-savings-section">
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900">💰 Daily Savings</h3>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1 h-10 bg-gray-100 rounded-lg animate-pulse" />
+                    <div className="w-full sm:w-32 h-10 bg-gray-100 rounded-lg animate-pulse" />
+                </div>
+                <div className="h-4 bg-gray-100 rounded mt-3 w-2/3 animate-pulse" />
+            </div>
+        );
+    }
+
+    // ✅ NEW: Error state — don't render a broken form
+    if (limitsError || !planLimits) {
+        return (
+            <div className="p-4 daily-savings-section">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">💰 Daily Savings</h3>
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {limitsError || 'Unable to load plan limits.'}
+                </div>
+            </div>
+        );
+    }
+
+    // From here down, planLimits is guaranteed non-null
     return (
         <>
             <div className="p-4 daily-savings-section">

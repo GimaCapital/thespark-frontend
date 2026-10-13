@@ -4,15 +4,28 @@ import { api, setAuthToken } from '../services/api';
 import { auth, db } from '../services/firebase';
 import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { formatDate, getFullDate } from '../utils/dateUtils';
+import { computeDiscount as computePlanDiscount } from '../utils/planLimits';
 import NotificationBell from '../components/NotificationBell';
 import toast from 'react-hot-toast';
-import { Modal, Button, Descriptions, Alert, Tag } from 'antd';
 import { Link } from 'react-router-dom';
 import EmailTracking from '../components/Admin/EmailTracking';
 import AdminProducts from '../components/Admin/AdminProducts';
 import AdminStockPhone from '../components/Admin/AdminStockPhone';
 import AgentDashboard from '../components/Admin/AgentDashboard';
-
+import { Modal, Button, Descriptions, Alert, Tag } from 'antd';
+import {
+    LayoutDashboard,
+    Banknote,
+    Users,
+    BookOpen,
+    AlertTriangle,
+    Wallet,
+    Tag as TagIcon, 
+    Mail,
+    ShoppingCart,
+    Image as ImageIcon,
+    Headphones,
+} from 'lucide-react';
 
 
 export default function AdminDashboard() {
@@ -32,7 +45,7 @@ export default function AdminDashboard() {
     const [processingWithdrawal, setProcessingWithdrawal] = useState(null);
     const [retryingWithdrawal, setRetryingWithdrawal] = useState(null);
 
-        // ✅ NEW: delete withdrawal modal
+    // ✅ NEW: delete withdrawal modal
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleteMode, setDeleteMode] = useState('confirm');
@@ -58,7 +71,7 @@ export default function AdminDashboard() {
     const [flwBalanceLoading, setFlwBalanceLoading] = useState(false);
     const [flwBalanceError, setFlwBalanceError] = useState(null);
 
-        // ✅ NEW: Withdrawal settings
+    // ✅ NEW: Withdrawal settings
     const [minWithdrawalAmount, setMinWithdrawalAmount] = useState('');
     const [autoApproveThreshold, setAutoApproveThreshold] = useState('');
     const [withdrawalSettingsLoading, setWithdrawalSettingsLoading] = useState(false);
@@ -87,8 +100,45 @@ export default function AdminDashboard() {
     const [selectedInvestmentDetails, setSelectedInvestmentDetails] = useState(null);
     const [investmentFilter, setInvestmentFilter] = useState('all');
 
+    // ============ PLAN CONFIGS ============
+    const [planConfigs, setPlanConfigs] = useState([]);
+    const [plansOriginal, setPlansOriginal] = useState([]);
+    const [plansLoading, setPlansLoading] = useState(false);
+    const [plansSaving, setPlansSaving] = useState({});  // { Basic: true, Premium: false, ... }
+    const [plansSeeding, setPlansSeeding] = useState(false);
+
     // ============ EMAIL SENDING ============
     const [sendingEmail, setSendingEmail] = useState(false);
+
+    // ============ ✅ NEW: CONFIRM MODALS (replace window.confirm) ============
+
+    // 1) Welcome email (single)
+    const [showWelcomeEmailModal, setShowWelcomeEmailModal] = useState(false);
+    const [welcomeEmailUserId, setWelcomeEmailUserId] = useState(null);
+    const [welcomeEmailSending, setWelcomeEmailSending] = useState(false);
+
+    // 2) Welcome emails (bulk)
+    const [showBulkWelcomeModal, setShowBulkWelcomeModal] = useState(false);
+    const [bulkWelcomeSending, setBulkWelcomeSending] = useState(false);
+
+    // 3) Reject story
+    const [showRejectStoryModal, setShowRejectStoryModal] = useState(false);
+    const [rejectStoryTarget, setRejectStoryTarget] = useState(null);
+    const [rejectStoryProcessing, setRejectStoryProcessing] = useState(false);
+
+    // 4) Admin action (make / remove admin)
+    const [showAdminActionModal, setShowAdminActionModal] = useState(false);
+    const [adminActionType, setAdminActionType] = useState('make'); // 'make' | 'remove'
+    const [adminActionTarget, setAdminActionTarget] = useState(null); // { userId, fullName }
+    const [adminActionProcessing, setAdminActionProcessing] = useState(false);
+
+    // 5) Send investor email
+    const [showSendInvestorEmailModal, setShowSendInvestorEmailModal] = useState(false);
+    const [sendInvestorEmailTarget, setSendInvestorEmailTarget] = useState(null);
+
+    // 6) Seed plans
+    const [showSeedModal, setShowSeedModal] = useState(false);
+    const [seedResult, setSeedResult] = useState(null);
 
     useEffect(() => {
         if (user) {
@@ -110,6 +160,10 @@ export default function AdminDashboard() {
             loadInvestmentInterests();
             loadAccessCodes();
             loadInvestmentStats();
+        }
+        // ✅ NEW
+        if (activeTab === 'plans') {
+            loadPlanConfigs();
         }
     }, [activeTab]);
 
@@ -183,7 +237,7 @@ export default function AdminDashboard() {
         }
     };
 
-        // ✅ NEW: Load withdrawal settings
+    // ✅ NEW: Load withdrawal settings
     const loadWithdrawalSettings = async () => {
         setWithdrawalSettingsLoading(true);
         try {
@@ -329,50 +383,65 @@ export default function AdminDashboard() {
         }
     };
 
-    const rejectStory = async (storyId) => {
-        if (!window.confirm('Reject this story? The user will need to resubmit.')) return;
+    // ✅ CHANGED: now opens an Ant modal instead of window.confirm
+    const requestRejectStory = (story) => {
+        setRejectStoryTarget(story);
+        setShowRejectStoryModal(true);
+    };
 
+    const confirmRejectStory = async () => {
+        if (!rejectStoryTarget) return;
+        setRejectStoryProcessing(true);
         try {
-            await updateDoc(doc(db, 'successStories', storyId), {
+            await updateDoc(doc(db, 'successStories', rejectStoryTarget.id), {
                 status: 'rejected',
                 rejectedAt: new Date(),
                 rejectedBy: user.uid
             });
             toast.success('Story rejected');
             loadPendingStories();
+            setShowRejectStoryModal(false);
+            setRejectStoryTarget(null);
         } catch (error) {
             // console.error('Failed to reject story:', error);
             toast.error('Failed to reject story');
+        } finally {
+            setRejectStoryProcessing(false);
         }
     };
 
+    const cancelRejectStory = () => {
+        if (rejectStoryProcessing) return;
+        setShowRejectStoryModal(false);
+        setRejectStoryTarget(null);
+    };
 
-    // Add these functions in AdminDashboard.jsx - inside the component
-
-    // Send single welcome email
     // ============ EMAIL FUNCTIONS ============
 
-    // ✅ Send single welcome email
-    const sendSingleWelcomeEmail = async (userId) => {
+    // ✅ CHANGED: now opens an Ant modal instead of window.confirm
+    const requestSendSingleWelcomeEmail = (userId) => {
         if (!userId) {
             toast.error('No user selected');
             return;
         }
+        setWelcomeEmailUserId(userId);
+        setShowWelcomeEmailModal(true);
+    };
 
-        if (!window.confirm('Send welcome email to this user?')) {
-            return;
-        }
-
-        setLoading(true);
+    const confirmSendSingleWelcomeEmail = async () => {
+        if (!welcomeEmailUserId) return;
+        setWelcomeEmailSending(true);
         try {
             const idToken = await user.getIdToken();
             setAuthToken(idToken);
 
-            const response = await api.post('/users/resend-welcome-email', { userId });
+            const response = await api.post('/users/resend-welcome-email', { userId: welcomeEmailUserId });
 
             if (response.data.success) {
                 toast.success('✅ Welcome email sent successfully!');
                 loadAdminData(); // Refresh user list
+                setShowWelcomeEmailModal(false);
+                setWelcomeEmailUserId(null);
             } else {
                 toast.error(response.data.message || 'Failed to send email');
             }
@@ -380,17 +449,23 @@ export default function AdminDashboard() {
             // console.error('Error sending email:', error);
             toast.error(error.response?.data?.error || 'Failed to send email');
         } finally {
-            setLoading(false);
+            setWelcomeEmailSending(false);
         }
     };
 
-    // ✅ Send bulk welcome emails
-    const sendBulkWelcomeEmails = async () => {
-        if (!window.confirm('Send welcome email to ALL customers who haven\'t received one?')) {
-            return;
-        }
+    const cancelSendSingleWelcomeEmail = () => {
+        if (welcomeEmailSending) return;
+        setShowWelcomeEmailModal(false);
+        setWelcomeEmailUserId(null);
+    };
 
-        setLoading(true);
+    // ✅ CHANGED: now opens an Ant modal instead of window.confirm
+    const requestSendBulkWelcomeEmails = () => {
+        setShowBulkWelcomeModal(true);
+    };
+
+    const confirmSendBulkWelcomeEmails = async () => {
+        setBulkWelcomeSending(true);
         try {
             const idToken = await user.getIdToken();
             setAuthToken(idToken);
@@ -400,6 +475,7 @@ export default function AdminDashboard() {
             if (response.data.success) {
                 toast.success(`✅ ${response.data.sentCount} welcome emails sent! ${response.data.failedCount || 0} failed.`);
                 loadAdminData(); // Refresh user list
+                setShowBulkWelcomeModal(false);
             } else {
                 toast.error(response.data.message || 'Failed to send bulk emails');
             }
@@ -407,8 +483,13 @@ export default function AdminDashboard() {
             // console.error('Error sending bulk emails:', error);
             toast.error(error.response?.data?.error || 'Failed to send bulk emails');
         } finally {
-            setLoading(false);
+            setBulkWelcomeSending(false);
         }
+    };
+
+    const cancelSendBulkWelcomeEmails = () => {
+        if (bulkWelcomeSending) return;
+        setShowBulkWelcomeModal(false);
     };
 
     // ============ WITHDRAWAL FUNCTIONS ============
@@ -459,8 +540,7 @@ export default function AdminDashboard() {
         }
     };
 
-    // Add this function in the WITHDRAWAL FUNCTIONS section
-         // Opens the delete modal. Decides mode based on the row data.
+    // Opens the delete modal. Decides mode based on the row data.
     const openDeleteModal = (withdrawal) => {
         const isBlocked = withdrawal.status === 'failed' && withdrawal.debitedAt != null && withdrawal.refunded !== true;
         setDeleteTarget(withdrawal);
@@ -496,37 +576,54 @@ export default function AdminDashboard() {
     };
 
     // ============ ADMIN MANAGEMENT FUNCTIONS ============
-    const makeAdmin = async (userId, fullName) => {
-        if (!window.confirm(`Make ${fullName} an admin?`)) return;
 
-        try {
-            const idToken = await user.getIdToken();
-            setAuthToken(idToken);
-            await api.post(`/admin/make-admin/${userId}`);
-            toast.success(`${fullName} is now an admin`);
-            loadAdminData();
-        } catch (error) {
-            toast.error('Failed to make admin');
-        }
+    // ✅ CHANGED: now opens an Ant modal instead of window.confirm
+    const requestMakeAdmin = (userId, fullName) => {
+        setAdminActionType('make');
+        setAdminActionTarget({ userId, fullName });
+        setShowAdminActionModal(true);
     };
 
-    const removeAdmin = async (userId, fullName) => {
+    // ✅ CHANGED: now opens an Ant modal instead of window.confirm
+    const requestRemoveAdmin = (userId, fullName) => {
         if (userId === user?.uid) {
             toast.error('You cannot remove your own admin role');
             return;
         }
+        setAdminActionType('remove');
+        setAdminActionTarget({ userId, fullName });
+        setShowAdminActionModal(true);
+    };
 
-        if (!window.confirm(`Remove ${fullName} from admin?`)) return;
-
+    const confirmAdminAction = async () => {
+        if (!adminActionTarget) return;
+        setAdminActionProcessing(true);
         try {
             const idToken = await user.getIdToken();
             setAuthToken(idToken);
-            await api.post(`/admin/remove-admin/${userId}`);
-            toast.success(`${fullName} is no longer an admin`);
+
+            if (adminActionType === 'make') {
+                await api.post(`/admin/make-admin/${adminActionTarget.userId}`);
+                toast.success(`${adminActionTarget.fullName} is now an admin`);
+            } else {
+                await api.post(`/admin/remove-admin/${adminActionTarget.userId}`);
+                toast.success(`${adminActionTarget.fullName} is no longer an admin`);
+            }
+
             loadAdminData();
+            setShowAdminActionModal(false);
+            setAdminActionTarget(null);
         } catch (error) {
-            toast.error('Failed to remove admin');
+            toast.error(`Failed to ${adminActionType === 'make' ? 'make admin' : 'remove admin'}`);
+        } finally {
+            setAdminActionProcessing(false);
         }
+    };
+
+    const cancelAdminAction = () => {
+        if (adminActionProcessing) return;
+        setShowAdminActionModal(false);
+        setAdminActionTarget(null);
     };
 
     const isUserAdmin = (userId) => {
@@ -658,16 +755,22 @@ export default function AdminDashboard() {
         u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.phone?.includes(searchTerm)
     );
+
     // ============ SEND INVESTOR EMAIL ============
-    const sendInvestorEmail = async (interest) => {
+
+    // ✅ CHANGED: now opens an Ant modal instead of window.confirm
+    const requestSendInvestorEmail = (interest) => {
         if (!interest.email) {
             toast.error('No email address found for this investor');
             return;
         }
+        setSendInvestorEmailTarget(interest);
+        setShowSendInvestorEmailModal(true);
+    };
 
-        if (!window.confirm(`Send investment details email to ${interest.email}?`)) {
-            return;
-        }
+    const confirmSendInvestorEmail = async () => {
+        if (!sendInvestorEmailTarget) return;
+        const interest = sendInvestorEmailTarget;
 
         setSendingEmail(true);
         try {
@@ -686,6 +789,8 @@ export default function AdminDashboard() {
                 toast.success('✅ Email sent successfully!');
                 // ✅ Refresh the investment list to show updated emailSent status
                 loadInvestmentInterests();
+                setShowSendInvestorEmailModal(false);
+                setSendInvestorEmailTarget(null);
             }
         } catch (error) {
             // console.error('Error sending email:', error);
@@ -693,6 +798,185 @@ export default function AdminDashboard() {
         } finally {
             setSendingEmail(false);
         }
+    };
+
+    const cancelSendInvestorEmail = () => {
+        if (sendingEmail) return;
+        setShowSendInvestorEmailModal(false);
+        setSendInvestorEmailTarget(null);
+    };
+
+    // ============ PLAN CONFIG FUNCTIONS ============
+    const loadPlanConfigs = async () => {
+        setPlansLoading(true);
+        try {
+            const idToken = await user.getIdToken();
+            setAuthToken(idToken);
+            const response = await api.get('/admin/plans');
+            setPlanConfigs(response.data);
+            // ✅ Save a pristine snapshot for dirty-check
+            setPlansOriginal(JSON.parse(JSON.stringify(response.data)));
+        } catch (error) {
+            console.error('Failed to load plan configs:', error);
+            toast.error('Failed to load plan configs');
+        } finally {
+            setPlansLoading(false);
+        }
+    };
+
+    const updatePlanField = (planName, field, value) => {
+        setPlanConfigs(prev =>
+            prev.map(p => (p.name === planName ? { ...p, [field]: value } : p))
+        );
+    };
+
+    // ✅ NEW: returns true if any field differs from the pristine snapshot
+    const isPlanDirty = (plan) => {
+        const original = plansOriginal.find(p => p.name === plan.name);
+        if (!original) return true; // if we have no baseline, assume dirty
+
+        // Fields we care about (exclude transient UI fields like __targetDiscount)
+        const fields = ['min', 'max', 'monthlyFee', 'yearlyFee', 'interestRate', 'dailySaveMax', 'icon', 'bestFor'];
+
+        for (const f of fields) {
+            const a = plan[f];
+            const b = original[f];
+
+            // Normalize numbers — "" vs 0 vs undefined should be treated the same
+            const na = f === 'icon' || f === 'bestFor' ? String(a ?? '') : Number(a ?? 0);
+            const nb = f === 'icon' || f === 'bestFor' ? String(b ?? '') : Number(b ?? 0);
+
+            if (na !== nb) return true;
+        }
+
+        // Compare features array
+        const aFeat = JSON.stringify(plan.features || []);
+        const bFeat = JSON.stringify(original.features || []);
+        if (aFeat !== bFeat) return true;
+
+        return false;
+    };
+
+    const savePlanConfig = async (plan) => {
+        setPlansSaving(s => ({ ...s, [plan.name]: true }));
+        try {
+            const idToken = await user.getIdToken();
+            setAuthToken(idToken);
+
+            const payload = {
+                min: Number(plan.min) || 0,
+                max: Number(plan.max) || 0,
+                monthlyFee: Number(plan.monthlyFee) || 0,
+                yearlyFee: Number(plan.yearlyFee) || 0,
+                interestRate: Number(plan.interestRate) || 0,
+                dailySaveMax: Number(plan.dailySaveMax) || 0,
+                icon: plan.icon || '',
+                bestFor: plan.bestFor || '',
+                features: Array.isArray(plan.features) ? plan.features : [],
+            };
+
+            const response = await api.put(`/admin/plans/${plan.name}`, payload);
+            toast.success(response.data.message || `${plan.name} plan saved ✅`);
+
+            // ✅ Update BOTH the current state and the pristine snapshot
+            // using the NORMALIZED values we just sent (not the raw form values)
+            const normalized = {
+                ...plan,
+                min: Number(plan.min) || 0,
+                max: Number(plan.max) || 0,
+                monthlyFee: Number(plan.monthlyFee) || 0,
+                yearlyFee: Number(plan.yearlyFee) || 0,
+                interestRate: Number(plan.interestRate) || 0,
+                dailySaveMax: Number(plan.dailySaveMax) || 0,
+                icon: plan.icon || '',
+                bestFor: plan.bestFor || '',
+                features: Array.isArray(plan.features) ? plan.features : [],
+            };
+            delete normalized.__targetDiscount;
+
+            // 1. Normalize the live plan so its fields match what the server stored
+            setPlanConfigs(prev =>
+                prev.map(p => (p.name === plan.name ? { ...normalized } : p))
+            );
+
+            // 2. Update the pristine snapshot for this plan
+            setPlansOriginal(prev => {
+                const next = JSON.parse(JSON.stringify(prev));
+                const idx = next.findIndex(p => p.name === plan.name);
+                if (idx !== -1) {
+                    next[idx] = JSON.parse(JSON.stringify(normalized));
+                } else {
+                    next.push(JSON.parse(JSON.stringify(normalized)));
+                }
+                return next;
+            });
+        } catch (error) {
+            console.error('Save plan error:', error);
+            toast.error(error.response?.data?.error || 'Failed to save plan');
+        } finally {
+            setPlansSaving(s => ({ ...s, [plan.name]: false }));
+        }
+    };
+
+    // ✅ CHANGED: now opens an Ant modal instead of window.confirm
+    const requestSeedPlanConfigs = () => {
+        setSeedResult(null);
+        setShowSeedModal(true);
+    };
+
+    const confirmSeedPlanConfigs = async () => {
+        setPlansSeeding(true);
+        try {
+            const idToken = await user.getIdToken();
+            setAuthToken(idToken);
+            const response = await api.post('/admin/plans/seed');
+            const results = response.data.results || {};
+            setSeedResult(results);
+            toast.success('Plans seeded successfully');
+            await loadPlanConfigs();
+            // Keep modal open briefly to show the summary, then close
+            setTimeout(() => {
+                setShowSeedModal(false);
+                setSeedResult(null);
+            }, 1800);
+        } catch (error) {
+            console.error('Seed error:', error);
+            toast.error(error.response?.data?.error || 'Failed to seed plans');
+            setShowSeedModal(false);
+        } finally {
+            setPlansSeeding(false);
+        }
+    };
+
+    const cancelSeedPlanConfigs = () => {
+        if (plansSeeding) return;
+        setShowSeedModal(false);
+        setSeedResult(null);
+    };
+
+    // ✅ NEW: Apply a target discount % by auto-computing the yearly fee
+    const applyTargetDiscount = (planName) => {
+        const plan = planConfigs.find(p => p.name === planName);
+        if (!plan) return;
+
+        const target = Number(plan.__targetDiscount);
+        const monthly = Number(plan.monthlyFee) || 0;
+
+        if (!target || monthly <= 0) return;
+
+        const fullYear = monthly * 12;
+        const clamped = Math.max(0, Math.min(99, target));
+        const rawYearly = fullYear * (1 - clamped / 100);
+        // Round to nearest ₦100 to keep numbers clean
+        const rounded = Math.round(rawYearly / 100) * 100;
+
+        updatePlanField(planName, 'yearlyFee', rounded);
+        updatePlanField(planName, '__targetDiscount', '');
+    };
+
+    const updatePlanFeaturesFromText = (planName, text) => {
+        const features = text.split('\n').map(l => l.trim()).filter(Boolean);
+        updatePlanField(planName, 'features', features);
     };
 
     if (loading) {
@@ -726,34 +1010,33 @@ export default function AdminDashboard() {
                 {/* Navigation Tabs */}
 
                 <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-200">
-                    {[
-                        { id: 'stats', label: 'Overview', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-                        { id: 'withdrawals', label: 'Withdrawals', count: pendingWithdrawals.filter(w => w.status === 'pending').length, icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z' },
-                        { id: 'users', label: 'Customers', count: users.length, icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
-                        { id: 'stories', label: 'Stories', count: pendingStories.length, icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z' },
-                        { id: 'flagged', label: 'Flagged', count: flaggedDeposits.filter(f => f.status === 'review_needed' || !f.status).length, icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
-                        { id: 'investment', label: 'Investment', count: investmentInterests.filter(i => i.status === 'new' || !i.status).length, icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-                        { id: 'email-tracking', label: 'Email Tracking', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
-                        { id: 'marketplace', label: 'Marketplace', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
-                        { id: 'admin-stock-photos', label: '🖼️ Stock Photos', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
-                        { id: 'agent', label: '👤 Agent Support', icon: 'M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z' }
-                    ].map(tab => (
+                      {[
+                        { id: 'stats', label: 'Overview', Icon: LayoutDashboard },
+                        { id: 'withdrawals', label: 'Withdrawals', count: pendingWithdrawals.filter(w => w.status === 'pending').length, Icon: Banknote },
+                        { id: 'users', label: 'Customers', count: users.length, Icon: Users },
+                        { id: 'stories', label: 'Stories', count: pendingStories.length, Icon: BookOpen },
+                        { id: 'flagged', label: 'Flagged', count: flaggedDeposits.filter(f => f.status === 'review_needed' || !f.status).length, Icon: AlertTriangle },
+                        { id: 'investment', label: 'Investment', count: investmentInterests.filter(i => i.status === 'new' || !i.status).length, Icon: Wallet },
+                        { id: 'plans', label: 'Plans pricing', Icon: TagIcon  },
+                        { id: 'email-tracking', label: 'Email Tracking', Icon: Mail },
+                        { id: 'marketplace', label: 'Marketplace', Icon: ShoppingCart },
+                        { id: 'admin-stock-photos', label: 'Stock Photos', Icon: ImageIcon },
+                        { id: 'agent', label: 'Agent Support', Icon: Headphones },
+                      ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-t-xl transition-all ${activeTab === tab.id
-                                    ? 'bg-white text-spark-500 border-b-2 border-spark-500'
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                ? 'bg-white text-spark-500 border-b-2 border-spark-500'
+                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                                 }`}
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
-                            </svg>
+                           <tab.Icon className="w-4 h-4" />
                             {tab.label}
                             {tab.count > 0 && (
                                 <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id
-                                        ? 'bg-spark-50 text-spark-600'
-                                        : 'bg-gray-200 text-gray-700'
+                                    ? 'bg-spark-50 text-spark-600'
+                                    : 'bg-gray-200 text-gray-700'
                                     }`}>
                                     {tab.count}
                                 </span>
@@ -762,7 +1045,7 @@ export default function AdminDashboard() {
                     ))}
                 </div>
 
-                                {/* ============ STATS / OVERVIEW TAB ============ */}
+                {/* ============ STATS / OVERVIEW TAB ============ */}
                 {activeTab === 'stats' && stats && (
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -1069,7 +1352,7 @@ export default function AdminDashboard() {
 
                     </div>
                 )}
-                
+
                 {/* ============ WITHDRAWALS TAB ============ */}
                 {activeTab === 'withdrawals' && (
                     <div className="space-y-4">
@@ -1121,9 +1404,9 @@ export default function AdminDashboard() {
                                                     </p>
                                                     <p className="text-xs text-gray-500 mt-0.5">Request ID: {w.id}</p>
                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${w.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                            w.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                                                w.status === 'failed' ? 'bg-red-100 text-red-800' :
-                                                                    'bg-gray-100 text-gray-800'
+                                                        w.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                                            w.status === 'failed' ? 'bg-red-100 text-red-800' :
+                                                                'bg-gray-100 text-gray-800'
                                                         }`}>
                                                         {w.status || 'pending'}
                                                     </span>
@@ -1158,7 +1441,7 @@ export default function AdminDashboard() {
                                                     >
                                                         {retryingWithdrawal === w.id ? 'Retrying...' : '🔄 Retry'}
                                                     </button>
-                                                                                                        <button
+                                                    <button
                                                         onClick={() => openDeleteModal(w)}
                                                         className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-xl transition-all"
                                                     >
@@ -1210,11 +1493,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold text-gray-900">👥 Customers</h3>
                             <button
-                                onClick={() => {
-                                    if (window.confirm('Send welcome email to ALL customers who haven\'t received one?')) {
-                                        sendBulkWelcomeEmails();
-                                    }
-                                }}
+                                onClick={requestSendBulkWelcomeEmails}
                                 className="px-4 py-2 bg-spark-500 hover:bg-spark-600 text-white rounded-lg text-sm font-medium transition"
                             >
                                 📧 Send to All
@@ -1249,19 +1528,19 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.welcomeEmailSent
-                                                            ? 'bg-green-100 text-green-700'
-                                                            : 'bg-red-100 text-red-700'
+                                                        ? 'bg-green-100 text-green-700'
+                                                        : 'bg-red-100 text-red-700'
                                                         }`}>
                                                         {user.welcomeEmailSent ? '✅ Sent' : '❌ Not Sent'}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <button
-                                                        onClick={() => sendSingleWelcomeEmail(user.id || user.userId)}
+                                                        onClick={() => requestSendSingleWelcomeEmail(user.id || user.userId)}
                                                         disabled={user.welcomeEmailSent}
                                                         className={`px-3 py-1 rounded-lg text-xs font-medium transition ${user.welcomeEmailSent
-                                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                                : 'bg-spark-500 hover:bg-spark-600 text-white'
+                                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                            : 'bg-spark-500 hover:bg-spark-600 text-white'
                                                             }`}
                                                     >
                                                         {user.welcomeEmailSent ? 'Sent' : 'Send Email'}
@@ -1333,7 +1612,7 @@ export default function AdminDashboard() {
                                                         Approve & Publish
                                                     </button>
                                                     <button
-                                                        onClick={() => rejectStory(story.id)}
+                                                        onClick={() => requestRejectStory(story)}
                                                         className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all"
                                                     >
                                                         Reject
@@ -1466,8 +1745,8 @@ export default function AdminDashboard() {
                                             <div className="flex items-start justify-between mb-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${deposit.status === 'approved' ? 'bg-green-100' :
-                                                            deposit.status === 'rejected' ? 'bg-red-100' :
-                                                                'bg-yellow-100'
+                                                        deposit.status === 'rejected' ? 'bg-red-100' :
+                                                            'bg-yellow-100'
                                                         }`}>
                                                         {deposit.status === 'approved' ? '✅' :
                                                             deposit.status === 'rejected' ? '❌' :
@@ -1481,9 +1760,9 @@ export default function AdminDashboard() {
                                                             Transaction: {deposit.flwReference || deposit.id}
                                                         </p>
                                                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${deposit.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                                                deposit.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                                                    deposit.status === 'review_needed' ? 'bg-yellow-100 text-yellow-800' :
-                                                                        'bg-gray-100 text-gray-800'
+                                                            deposit.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                                deposit.status === 'review_needed' ? 'bg-yellow-100 text-yellow-800' :
+                                                                    'bg-gray-100 text-gray-800'
                                                             }`}>
                                                             {deposit.status || 'review_needed'}
                                                         </span>
@@ -1682,7 +1961,7 @@ export default function AdminDashboard() {
                                                         </p>
                                                         {o.createdAt && (
                                                             <p className="text-xs text-gray-400 mt-1">
-                                                            {formatDate(o.createdAt)}
+                                                                {formatDate(o.createdAt)}
                                                             </p>
                                                         )}
                                                     </div>
@@ -1876,13 +2155,13 @@ export default function AdminDashboard() {
                                                         </div>
                                                         <div className="flex gap-2 flex-wrap">
                                                             <button
-                                                                onClick={() => sendInvestorEmail(interest)}
+                                                                onClick={() => requestSendInvestorEmail(interest)}
                                                                 disabled={sendingEmail || interest.emailSent}
                                                                 className={`px-3 py-1.5 text-white text-sm font-medium rounded-xl transition-all ${interest.emailSent
-                                                                        ? 'bg-green-500 cursor-default'
-                                                                        : sendingEmail
-                                                                            ? 'bg-gray-400 cursor-not-allowed'
-                                                                            : 'bg-blue-500 hover:bg-blue-600'
+                                                                    ? 'bg-green-500 cursor-default'
+                                                                    : sendingEmail
+                                                                        ? 'bg-gray-400 cursor-not-allowed'
+                                                                        : 'bg-blue-500 hover:bg-blue-600'
                                                                     }`}
                                                                 title={interest.emailSent ? 'Email already sent' : 'Send investment details email'}
                                                             >
@@ -2039,10 +2318,10 @@ export default function AdminDashboard() {
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap">
                                                                 <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${code.isUsed
-                                                                        ? 'bg-gray-100 text-gray-600'
-                                                                        : isExpired
-                                                                            ? 'bg-red-100 text-red-600'
-                                                                            : 'bg-green-100 text-green-600'
+                                                                    ? 'bg-gray-100 text-gray-600'
+                                                                    : isExpired
+                                                                        ? 'bg-red-100 text-red-600'
+                                                                        : 'bg-green-100 text-green-600'
                                                                     }`}>
                                                                     {code.isUsed
                                                                         ? '✅ Used'
@@ -2193,15 +2472,15 @@ export default function AdminDashboard() {
                                             <button
                                                 onClick={() => {
                                                     if (selectedInvestmentDetails) {
-                                                        sendInvestorEmail(selectedInvestmentDetails);
+                                                        requestSendInvestorEmail(selectedInvestmentDetails);
                                                     }
                                                 }}
                                                 disabled={sendingEmail || selectedInvestmentDetails?.emailSent}
                                                 className={`px-4 py-2 text-white text-sm font-medium rounded-xl transition-all ${selectedInvestmentDetails?.emailSent
-                                                        ? 'bg-green-500 cursor-default'
-                                                        : sendingEmail
-                                                            ? 'bg-gray-400 cursor-not-allowed'
-                                                            : 'bg-blue-600 hover:bg-blue-700'
+                                                    ? 'bg-green-500 cursor-default'
+                                                    : sendingEmail
+                                                        ? 'bg-gray-400 cursor-not-allowed'
+                                                        : 'bg-blue-600 hover:bg-blue-700'
                                                     }`}
                                             >
                                                 {selectedInvestmentDetails?.emailSent ? '✅ Email Sent' : '📧 Send Email'}
@@ -2232,6 +2511,248 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ============ PLANS TAB ============ */}
+                {activeTab === 'plans' && (
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between flex-wrap gap-3">
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-900">Plan Configuration</h2>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Edit fees, limits, and features. Changes apply immediately to new upgrades and renewals.
+                                </p>
+                            </div>
+                            <button
+                                onClick={requestSeedPlanConfigs}
+                                disabled={plansSeeding || plansLoading}
+                                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-all disabled:opacity-50"
+                            >
+                                {plansSeeding ? 'Seeding…' : '🌱 Seed from defaults'}
+                            </button>
+                        </div>
+
+                        {plansLoading ? (
+                            <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
+                                <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-spark-500 mx-auto"></div>
+                                <p className="text-gray-500 mt-4">Loading plan configs…</p>
+                            </div>
+                        ) : planConfigs.length === 0 ? (
+                            <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
+                                <p className="text-gray-500">No plans loaded. Click "Seed from defaults" to initialize.</p>
+                            </div>
+                        ) : (
+                            planConfigs.map(plan => {
+                                const actualDiscount = computePlanDiscount(plan);
+                                const isSaving = plansSaving[plan.name];
+
+                                return (
+                                    <div key={plan.name} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                        {/* Card header */}
+                                        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="text-3xl">{plan.icon || '📦'}</div>
+                                                <div>
+                                                    <h3 className="font-bold text-gray-900 text-lg">{plan.name}</h3>
+                                                    <p className="text-xs text-gray-500">{plan.bestFor}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs bg-gray-50 rounded-lg px-3 py-1.5 border border-gray-200">
+                                                Actual savings: <strong>{actualDiscount}%</strong> off monthly × 12
+                                            </div>
+                                        </div>
+
+                                        {/* Card body */}
+                                        <div className="p-5 space-y-4">
+                                            {/* Grid of numeric fields */}
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                <label className="block">
+                                                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Icon</span>
+                                                    <input
+                                                        type="text"
+                                                        value={plan.icon || ''}
+                                                        onChange={(e) => updatePlanField(plan.name, 'icon', e.target.value)}
+                                                        disabled={isSaving}
+                                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                        placeholder="⭐"
+                                                    />
+                                                </label>
+
+                                                <label className="block">
+                                                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Min deposit (₦)</span>
+                                                    <input
+                                                        type="number"
+                                                        value={plan.min ?? 0}
+                                                        onChange={(e) => updatePlanField(plan.name, 'min', e.target.value)}
+                                                        disabled={isSaving}
+                                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                    />
+                                                </label>
+
+                                                <label className="block">
+                                                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Max deposit (₦)</span>
+                                                    <input
+                                                        type="number"
+                                                        value={plan.max ?? 0}
+                                                        onChange={(e) => updatePlanField(plan.name, 'max', e.target.value)}
+                                                        disabled={isSaving}
+                                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                    />
+                                                </label>
+
+                                                <label className="block">
+                                                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Daily save goal (₦)</span>
+                                                    <input
+                                                        type="number"
+                                                        value={plan.dailySaveMax ?? 0}
+                                                        onChange={(e) => updatePlanField(plan.name, 'dailySaveMax', e.target.value)}
+                                                        disabled={isSaving}
+                                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                    />
+                                                </label>
+
+                                                <label className="block">
+                                                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Monthly fee (₦)</span>
+                                                    <input
+                                                        type="number"
+                                                        value={plan.monthlyFee ?? 0}
+                                                        onChange={(e) => updatePlanField(plan.name, 'monthlyFee', e.target.value)}
+                                                        disabled={isSaving}
+                                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                    />
+                                                </label>
+
+                                                <label className="block">
+                                                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Yearly fee (₦)</span>
+                                                    <input
+                                                        type="number"
+                                                        value={plan.yearlyFee ?? 0}
+                                                        onChange={(e) => updatePlanField(plan.name, 'yearlyFee', e.target.value)}
+                                                        disabled={isSaving}
+                                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                    />
+                                                </label>
+
+                                                <div>
+                                                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                                                        Discount %
+                                                    </span>
+                                                    <div className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-xl bg-gray-50 text-sm flex items-center justify-between">
+                                                        <span className="font-semibold text-gray-700">{actualDiscount}%</span>
+                                                        <span className="text-[10px] uppercase tracking-wide text-gray-400">auto</span>
+                                                    </div>
+                                                </div>
+
+                                                <label className="block">
+                                                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Interest rate (%)</span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.1"
+                                                        value={plan.interestRate ?? 0}
+                                                        onChange={(e) => updatePlanField(plan.name, 'interestRate', e.target.value)}
+                                                        disabled={isSaving}
+                                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                    />
+                                                </label>
+                                            </div>
+
+                                            {/* ✅ NEW: Yearly discount helper */}
+                                    <div className="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-3 flex flex-wrap items-end justify-between gap-3">
+                                        <div className="flex-1 min-w-[220px]">
+                                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                                                Yearly discount
+                                            </div>
+                                            <div className="text-sm text-gray-700">
+                                                Currently shows <strong className="text-spark-600">{actualDiscount}%</strong> off
+                                                {Number(plan.monthlyFee) > 0 && (
+                                                    <span className="text-gray-400">
+                                                        {' '}(₦{Number(plan.yearlyFee || 0).toLocaleString()}/yr vs ₦
+                                                        {(Number(plan.monthlyFee) * 12).toLocaleString()})
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                Enter a target percentage (0-99) and click Apply to auto-compute the yearly fee.
+                                            </p>
+                                        </div>
+                                        <div className="flex items-end gap-2">
+                                            <label className="block">
+                                                <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                                                    Set %
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="99"
+                                                    step="1"
+                                                    value={plan.__targetDiscount ?? ''}
+                                                    placeholder="e.g. 0-99"
+                                                    disabled={isSaving || Number(plan.monthlyFee) <= 0}
+                                                    onChange={(e) => updatePlanField(plan.name, '__targetDiscount', e.target.value)}
+                                                    className="w-40 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                                />
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => applyTargetDiscount(plan.name)}
+                                                disabled={isSaving || !plan.__targetDiscount || Number(plan.monthlyFee) <= 0}
+                                                className="px-4 py-2 text-sm font-medium rounded-xl bg-spark-500 text-white hover:bg-spark-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                                            >
+                                                Apply
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                            {/* Tagline */}
+                                            <label className="block">
+                                                <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Tagline</span>
+                                                <input
+                                                    type="text"
+                                                    value={plan.bestFor || ''}
+                                                    onChange={(e) => updatePlanField(plan.name, 'bestFor', e.target.value)}
+                                                    disabled={isSaving}
+                                                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent text-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                    placeholder="Perfect for beginners"
+                                                />
+                                            </label>
+
+                                            {/* Features */}
+                                            <label className="block">
+                                                <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                                                    Features (one per line)
+                                                </span>
+                                                <textarea
+                                                    rows={6}
+                                                    value={(plan.features || []).join('\n')}
+                                                    onChange={(e) => updatePlanFeaturesFromText(plan.name, e.target.value)}
+                                                    disabled={isSaving}
+                                                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-spark-500 focus:border-transparent text-sm font-mono disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                />
+                                            </label>
+
+                                            {/* Save button */}
+                                            <div className="flex justify-end pt-2">
+                                                <button
+                                                    onClick={() => savePlanConfig(plan)}
+                                                    disabled={isSaving || !isPlanDirty(plan)}
+                                                    className={`px-6 py-2 text-white font-semibold rounded-xl transition-all ${isSaving || !isPlanDirty(plan)
+                                                        ? 'bg-gray-300 cursor-not-allowed'
+                                                        : 'bg-spark-500 hover:bg-spark-600'
+                                                        }`}
+                                                >
+                                                    {isSaving
+                                                        ? 'Saving…'
+                                                        : !isPlanDirty(plan)
+                                                            ? 'No changes'
+                                                            : `Save ${plan.name}`}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
                         )}
                     </div>
                 )}
@@ -2572,7 +3093,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-               {/* ============ ✅ NEW: DELETE WITHDRAWAL MODAL (antd) ============ */}
+                {/* ============ ✅ NEW: DELETE WITHDRAWAL MODAL (antd) ============ */}
                 <Modal
                     open={showDeleteModal}
                     onCancel={() => { setShowDeleteModal(false); setDeleteTarget(null); }}
@@ -2651,10 +3172,10 @@ export default function AdminDashboard() {
                                     <Tag
                                         color={
                                             deleteTarget.status === 'failed' ? 'red' :
-                                            deleteTarget.status === 'pending' ? 'orange' :
-                                            deleteTarget.status === 'approved' ? 'green' :
-                                            deleteTarget.status === 'rejected' ? 'volcano' :
-                                            'default'
+                                                deleteTarget.status === 'pending' ? 'orange' :
+                                                    deleteTarget.status === 'approved' ? 'green' :
+                                                        deleteTarget.status === 'rejected' ? 'volcano' :
+                                                            'default'
                                         }
                                     >
                                         {(deleteTarget.status || 'pending').toUpperCase()}
@@ -2676,6 +3197,284 @@ export default function AdminDashboard() {
                                     description="Retry the withdrawal or refund the user first. If you're sure, you can delete this doc directly from Firestore."
                                 />
                             )}
+                        </>
+                    )}
+                </Modal>
+
+                {/* ============ ✅ NEW: SEND SINGLE WELCOME EMAIL MODAL ============ */}
+                <Modal
+                    open={showWelcomeEmailModal}
+                    onCancel={cancelSendSingleWelcomeEmail}
+                    title="📧 Send Welcome Email?"
+                    width={480}
+                    footer={[
+                        <Button
+                            key="cancel"
+                            onClick={cancelSendSingleWelcomeEmail}
+                            disabled={welcomeEmailSending}
+                        >
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="send"
+                            type="primary"
+                            onClick={confirmSendSingleWelcomeEmail}
+                            loading={welcomeEmailSending}
+                        >
+                            📧 Send Email
+                        </Button>,
+                    ]}
+                >
+                    <p className="text-sm text-gray-600">
+                        Send the welcome email to this user? They'll receive onboarding instructions by email.
+                    </p>
+                </Modal>
+
+                {/* ============ ✅ NEW: SEND BULK WELCOME EMAILS MODAL ============ */}
+                <Modal
+                    open={showBulkWelcomeModal}
+                    onCancel={cancelSendBulkWelcomeEmails}
+                    title="📧 Send Welcome Emails to All?"
+                    width={520}
+                    footer={[
+                        <Button
+                            key="cancel"
+                            onClick={cancelSendBulkWelcomeEmails}
+                            disabled={bulkWelcomeSending}
+                        >
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="send"
+                            type="primary"
+                            onClick={confirmSendBulkWelcomeEmails}
+                            loading={bulkWelcomeSending}
+                        >
+                            📧 Send to All
+                        </Button>,
+                    ]}
+                >
+                    <p className="text-sm text-gray-600 mb-3">
+                        Send a welcome email to <strong>all customers who haven't received one yet</strong>.
+                    </p>
+                    <Alert
+                        type="info"
+                        showIcon
+                        message="Customers who already received the welcome email will be skipped."
+                    />
+                </Modal>
+
+                {/* ============ ✅ NEW: REJECT STORY MODAL ============ */}
+                <Modal
+                    open={showRejectStoryModal}
+                    onCancel={cancelRejectStory}
+                    title="❌ Reject This Story?"
+                    width={480}
+                    footer={[
+                        <Button
+                            key="cancel"
+                            onClick={cancelRejectStory}
+                            disabled={rejectStoryProcessing}
+                        >
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="reject"
+                            type="primary"
+                            danger
+                            onClick={confirmRejectStory}
+                            loading={rejectStoryProcessing}
+                        >
+                            ❌ Reject Story
+                        </Button>,
+                    ]}
+                >
+                    {rejectStoryTarget && (
+                        <>
+                            <p className="text-sm text-gray-600 mb-3">
+                                Reject the story from <strong>{rejectStoryTarget.name}</strong>?
+                            </p>
+                            <Alert
+                                type="warning"
+                                showIcon
+                                message="The user will need to resubmit their story."
+                            />
+                        </>
+                    )}
+                </Modal>
+
+                {/* ============ ✅ NEW: ADMIN ACTION MODAL (make/remove) ============ */}
+                <Modal
+                    open={showAdminActionModal}
+                    onCancel={cancelAdminAction}
+                    title={
+                        adminActionType === 'make'
+                            ? '👑 Make Admin?'
+                            : '⚠️ Remove Admin?'
+                    }
+                    width={480}
+                    footer={[
+                        <Button
+                            key="cancel"
+                            onClick={cancelAdminAction}
+                            disabled={adminActionProcessing}
+                        >
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="confirm"
+                            type="primary"
+                            danger={adminActionType === 'remove'}
+                            onClick={confirmAdminAction}
+                            loading={adminActionProcessing}
+                        >
+                            {adminActionType === 'make' ? '👑 Make Admin' : '⚠️ Remove Admin'}
+                        </Button>,
+                    ]}
+                >
+                    {adminActionTarget && (
+                        <>
+                            <p className="text-sm text-gray-600 mb-3">
+                                {adminActionType === 'make' ? (
+                                    <>Give <strong>{adminActionTarget.fullName}</strong> admin access to the platform?</>
+                                ) : (
+                                    <>Remove <strong>{adminActionTarget.fullName}</strong> from admins?</>
+                                )}
+                            </p>
+                            {adminActionType === 'make' ? (
+                                <Alert
+                                    type="info"
+                                    showIcon
+                                    message="Admins can manage users, withdrawals, plans, and other critical settings."
+                                />
+                            ) : (
+                                <Alert
+                                    type="warning"
+                                    showIcon
+                                    message="They will lose all admin privileges immediately."
+                                />
+                            )}
+                        </>
+                    )}
+                </Modal>
+
+                {/* ============ ✅ NEW: SEND INVESTOR EMAIL MODAL ============ */}
+                <Modal
+                    open={showSendInvestorEmailModal}
+                    onCancel={cancelSendInvestorEmail}
+                    title="📧 Send Investment Details Email?"
+                    width={520}
+                    footer={[
+                        <Button
+                            key="cancel"
+                            onClick={cancelSendInvestorEmail}
+                            disabled={sendingEmail}
+                        >
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="send"
+                            type="primary"
+                            onClick={confirmSendInvestorEmail}
+                            loading={sendingEmail}
+                        >
+                            📧 Send Email
+                        </Button>,
+                    ]}
+                >
+                    {sendInvestorEmailTarget && (
+                        <>
+                            <p className="text-sm text-gray-600 mb-3">
+                                Send investment details email to:
+                            </p>
+                            <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Name</span>
+                                    <span className="font-semibold text-gray-900">
+                                        {sendInvestorEmailTarget.fullName || 'N/A'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Email</span>
+                                    <span className="font-semibold text-gray-900 break-all">
+                                        {sendInvestorEmailTarget.email}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Investment amount</span>
+                                    <span className="font-semibold text-gray-900">
+                                        {formatCurrency(sendInvestorEmailTarget.investmentAmount || 0)}
+                                    </span>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </Modal>
+
+                {/* ============ ✅ NEW: SEED PLANS CONFIRMATION MODAL ============ */}
+                <Modal
+                    open={showSeedModal}
+                    onCancel={cancelSeedPlanConfigs}
+                    title="🌱 Seed Plan Configs?"
+                    width={520}
+                    footer={
+                        seedResult
+                            ? [
+                                <Button key="ok" type="primary" onClick={cancelSeedPlanConfigs}>
+                                    Got it
+                                </Button>
+                            ]
+                            : [
+                                <Button
+                                    key="cancel"
+                                    onClick={cancelSeedPlanConfigs}
+                                    disabled={plansSeeding}
+                                >
+                                    Cancel
+                                </Button>,
+                                <Button
+                                    key="seed"
+                                    type="primary"
+                                    onClick={confirmSeedPlanConfigs}
+                                    loading={plansSeeding}
+                                >
+                                    🌱 Seed Now
+                                </Button>,
+                            ]
+                    }
+                >
+                    {!seedResult ? (
+                        <>
+                            <p className="text-sm text-gray-600 mb-3">
+                                This will write the default plan configurations (Basic, Premium, Investor) to Firestore.
+                            </p>
+                            <ul className="text-sm text-gray-600 space-y-1.5 list-disc pl-5">
+                                <li><strong>Plans that already exist</strong> in Firestore will be skipped — your existing values stay safe.</li>
+                                <li><strong>Missing plans</strong> will be created from the built-in defaults.</li>
+                                <li>You can edit any value afterward — nothing here is final.</li>
+                            </ul>
+                            <Alert
+                                type="info"
+                                showIcon
+                                className="mt-4"
+                                message="Safe to run anytime"
+                                description="Running this multiple times does not overwrite existing plans."
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-sm text-gray-600 mb-3">
+                                Done. Here's what happened:
+                            </p>
+                            <Descriptions column={1} size="small" bordered>
+                                {Object.entries(seedResult).map(([planName, status]) => (
+                                    <Descriptions.Item key={planName} label={planName}>
+                                        <Tag color={status.startsWith('created') ? 'green' : 'default'}>
+                                            {status}
+                                        </Tag>
+                                    </Descriptions.Item>
+                                ))}
+                            </Descriptions>
                         </>
                     )}
                 </Modal>
