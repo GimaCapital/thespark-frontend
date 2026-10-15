@@ -1,3 +1,4 @@
+// C:\Users\HP\Desktop\TheSpark\thespark-frontend\src\pages\HowItWorks.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 // import HeaderMissionCard from '../components/Common/HeaderMissionCard';

@@ -1,3 +1,4 @@
+// src/pages/SuccessStories.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,46 +20,59 @@ export default function SuccessStories() {
     const [newRating, setNewRating] = useState(5);
     const [hoverRating, setHoverRating] = useState(0);
 
-  // Add this state at the top of your component
-const [typedTitle, setTypedTitle] = useState('');
-const [isDeleting, setIsDeleting] = useState(false);
-const fullTitle = "Success Stories";
+    // track which cards are expanded
+    const [expandedStories, setExpandedStories] = useState({});
 
-// Add this useEffect for continuous typing animation
-useEffect(() => {
-    let i = 0;
-    let direction = 1; // 1 = typing, -1 = deleting
-    
-    const typingInterval = setInterval(() => {
-        if (direction === 1) {
-            // Typing forward
-            if (i <= fullTitle.length) {
-                setTypedTitle(fullTitle.substring(0, i));
-                i++;
+    // Typing animation
+    const [typedTitle, setTypedTitle] = useState('');
+    const fullTitle = "Success Stories";
+
+    useEffect(() => {
+        let i = 0;
+        let direction = 1;
+        const typingInterval = setInterval(() => {
+            if (direction === 1) {
+                if (i <= fullTitle.length) {
+                    setTypedTitle(fullTitle.substring(0, i));
+                    i++;
+                } else {
+                    direction = -1;
+                }
             } else {
-                direction = -1; // Start deleting
+                if (i >= 0) {
+                    setTypedTitle(fullTitle.substring(0, i));
+                    i--;
+                } else {
+                    direction = 1;
+                    i = 1;
+                }
             }
-        } else {
-            // Deleting backward
-            if (i >= 0) {
-                setTypedTitle(fullTitle.substring(0, i));
-                i--;
-            } else {
-                direction = 1; // Start typing again
-                i = 1;
-            }
-        }
-    }, 150); // Adjust speed here (150ms for natural feel)
-    
-    return () => clearInterval(typingInterval);
-}, []);
-
-
+        }, 150);
+        return () => clearInterval(typingInterval);
+    }, []);
 
     useEffect(() => {
         loadStories();
         if (user) loadUserStory();
     }, [user]);
+
+    // ✅ Auto-open the submit form + scroll if URL has #submit
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        if (window.location.hash !== '#submit') return;
+        if (!user) return;
+        if (loading) return;      // wait for data to load first
+        if (userStory) return;    // already has a story — don't auto-open
+
+        // Auto-open the form
+        setShowSubmitForm(true);
+
+        // Scroll after the DOM settles
+        setTimeout(() => {
+            const el = document.getElementById('submit');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+    }, [user, userStory, loading]);
 
     const loadStories = async () => {
         try {
@@ -86,12 +100,10 @@ useEffect(() => {
         }
     };
 
-    // Generate a consistent profile image URL using UI Avatars service
     const getProfileImage = (name) => {
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=EA580C&color=fff&rounded=true&bold=true&size=80`;
     };
 
-    // Get gradient for badge banner based on badge level
     const getBadgeGradient = (badgeLevel) => {
         const gradients = {
             6: 'from-purple-600 to-purple-700',
@@ -158,9 +170,9 @@ useEffect(() => {
         try {
             const idToken = await auth.currentUser.getIdToken();
             setAuthToken(idToken);
-            await api.post('/success-stories/submit', { 
+            await api.post('/success-stories/submit', {
                 story: newStory.trim(),
-                rating: newRating 
+                rating: newRating
             });
             toast.success('Story submitted for admin approval!');
             setShowSubmitForm(false);
@@ -180,9 +192,9 @@ useEffect(() => {
         try {
             const idToken = await auth.currentUser.getIdToken();
             setAuthToken(idToken);
-            await api.put(`/success-stories/update/${userStory.id}`, { 
+            await api.put(`/success-stories/update/${userStory.id}`, {
                 story: editText.trim(),
-                rating: editRating 
+                rating: editRating
             });
             toast.success('Story updated and resubmitted for approval');
             setIsEditing(false);
@@ -218,42 +230,34 @@ useEffect(() => {
 
     return (
         <div className="bg-gradient-to-br from-spark-50 via-white to-spark-50 min-h-screen">
-            {/* <HeaderMissionCard /> */}
-            
             {/* Hero Section */}
-        {/* Hero Section - Fully Visible Image */}
-{/* Hero Section - Full Screen Height */}
-<div className="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
-    <div className="absolute inset-0">
-        <img 
-            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=2000&h=1000&fit=crop"
-            alt="Success Stories"
-            className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/50"></div>
-    </div>
-    <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-sm mb-6 border border-gray-200">
-            <span className="text-2xl">🌟</span>
-            <span className="text-gray-700 text-sm font-semibold">REAL SUCCESS STORIES</span>
-        </div>
-        {/* <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-4 tracking-tight drop-shadow-lg">
-            Success Stories
-        </h1> */}
-         <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-4 tracking-tight drop-shadow-lg">
-            {typedTitle}
-            <span className="inline-block w-1 h-12 bg-white ml-1 animate-pulse"></span>
-        </h1>
-        <div className="w-24 h-1 bg-gradient-to-r from-spark-400 to-orange-400 mx-auto rounded-full mb-6"></div>
-        <p className="text-xl text-white/90 max-w-2xl mx-auto drop-shadow-md">
-            Real people. Real savings. Real transformation.
-        </p>
-    </div>
-</div>
+            <div className="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
+                <div className="absolute inset-0">
+                    <img
+                        src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=2000&h=1000&fit=crop"
+                        alt="Success Stories"
+                        className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/50"></div>
+                </div>
+                <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-sm mb-6 border border-gray-200">
+                        <span className="text-2xl">🌟</span>
+                        <span className="text-gray-700 text-sm font-semibold">REAL SUCCESS STORIES</span>
+                    </div>
+                    <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-4 tracking-tight drop-shadow-lg">
+                        {typedTitle}
+                        <span className="inline-block w-1 h-12 bg-white ml-1 animate-pulse"></span>
+                    </h1>
+                    <div className="w-24 h-1 bg-gradient-to-r from-spark-400 to-orange-400 mx-auto rounded-full mb-6"></div>
+                    <p className="text-xl text-white/90 max-w-2xl mx-auto drop-shadow-md">
+                        Real people. Real savings. Real transformation.
+                    </p>
+                </div>
+            </div>
 
             <div className="max-w-6xl mx-auto px-4 py-12">
-                
-                {/* Featured Stories - Grid Layout with Badge Banner (Icon + Text) */}
+                {/* Featured Stories */}
                 <div className="mb-16">
                     <div className="flex items-center justify-between mb-8">
                         <div>
@@ -280,10 +284,11 @@ useEffect(() => {
                                 const badgeIcon = story.badgeIcon || badgeStyle.icon;
                                 const badgeDisplayText = story.badgeText || 'Verified Saver';
                                 const profileImage = getProfileImage(story.name);
-                                
+                                const isExpanded = !!expandedStories[story.id];
+                                const isLong = (story.story || '').length > 150;
+
                                 return (
-                                    <div key={story.id} className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100">
-                                        {/* Banner with Badge Icon + Badge Text */}
+                                    <div key={story.id} className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 flex flex-col">
                                         <div className={`relative h-24 bg-gradient-to-r ${badgeGradient} flex flex-col items-center justify-center`}>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-3xl">{badgeIcon}</span>
@@ -293,19 +298,18 @@ useEffect(() => {
                                             </div>
                                             <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition"></div>
                                         </div>
-                                        
-                                        {/* Avatar - Overlapping the banner */}
+
                                         <div className="relative px-5">
                                             <div className="absolute -top-8 left-5">
-                                                <img 
+                                                <img
                                                     src={profileImage}
                                                     alt={story.name}
                                                     className="w-14 h-14 rounded-full border-4 border-white shadow-md object-cover bg-white"
                                                 />
                                             </div>
                                         </div>
-                                        
-                                        <div className="p-5 pt-10">
+
+                                        <div className="p-5 pt-10 flex-1 flex flex-col">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div>
                                                     <h3 className="font-bold text-gray-800 text-lg">{story.name}</h3>
@@ -313,16 +317,31 @@ useEffect(() => {
                                                         {renderStars(story.rating || 5)}
                                                     </div>
                                                 </div>
-                                                {/* Original Badge Position - Kept as is */}
                                                 <span className={`${badgeStyle.color} text-xs px-2 py-1 rounded-full inline-flex items-center gap-1`}>
-                                                    <span>{badgeStyle.icon}</span>
-                                                    <span>{story.badgeText || 'Verified Saver'}</span>
+                                                    <span>{badgeIcon}</span>
+                                                    <span>L{story.badgeLevel} · {badgeDisplayText}</span>
                                                 </span>
                                             </div>
-                                            <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 mt-3 mb-3">
+
+                                            <p className={`text-gray-600 text-sm leading-relaxed mt-3 mb-2 flex-1 ${
+                                                isExpanded ? '' : 'line-clamp-3'
+                                            }`}>
                                                 "{story.story}"
                                             </p>
-                                            <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+
+                                            {isLong && (
+                                                <button
+                                                    onClick={() => setExpandedStories(prev => ({
+                                                        ...prev,
+                                                        [story.id]: !prev[story.id]
+                                                    }))}
+                                                    className="text-spark-600 text-xs font-semibold hover:underline text-left mb-3"
+                                                >
+                                                    {isExpanded ? 'Show less ▲' : 'Read more ▼'}
+                                                </button>
+                                            )}
+
+                                            <div className="flex justify-between items-center pt-3 border-t border-gray-100 mt-auto">
                                                 <span className="text-xs text-gray-400">Graduate</span>
                                                 <span className="text-sm font-semibold text-spark-600">₦{story.saved?.toLocaleString()}</span>
                                             </div>
@@ -334,11 +353,11 @@ useEffect(() => {
                     )}
                 </div>
 
-                {/* User's Story Section */}
+                {/* User's Story Section — ✅ anchor target */}
                 {user && (
-                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-12">
+                    <div id="submit" className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-12">
                         <div className="flex items-center gap-3 mb-6 pb-3 border-b border-gray-100">
-                            <img 
+                            <img
                                 src={getProfileImage(user.email || user.displayName || 'User')}
                                 alt="Your avatar"
                                 className="w-10 h-10 rounded-full object-cover"
@@ -348,26 +367,26 @@ useEffect(() => {
                                 <p className="text-xs text-gray-500">Share your journey with the community</p>
                             </div>
                         </div>
-                        
+
                         {userStory ? (
                             isEditing ? (
                                 <div>
                                     <div className="mb-4">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Rate your experience</label>
-                                        <StarRating 
-                                            rating={editRating} 
-                                            setRating={setEditRating} 
+                                        <StarRating
+                                            rating={editRating}
+                                            setRating={setEditRating}
                                             hoverRating={0}
                                             setHoverRating={() => {}}
                                             size="text-2xl"
                                         />
                                     </div>
-                                    <textarea 
-                                        value={editText} 
-                                        onChange={(e) => setEditText(e.target.value)} 
+                                    <textarea
+                                        value={editText}
+                                        onChange={(e) => setEditText(e.target.value)}
                                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-spark-500 focus:ring-2 focus:ring-spark-200 transition mb-4"
-                                        rows="4" 
-                                        placeholder="Share your wealth journey..." 
+                                        rows="4"
+                                        placeholder="Share your wealth journey..."
                                     />
                                     <div className="flex gap-3">
                                         <button onClick={updateStory} className="px-5 py-2 bg-spark-600 text-white rounded-xl font-medium hover:bg-spark-700 transition">
@@ -407,9 +426,9 @@ useEffect(() => {
                             <div>
                                 <div className="mb-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Rate your experience</label>
-                                    <StarRating 
-                                        rating={newRating} 
-                                        setRating={setNewRating} 
+                                    <StarRating
+                                        rating={newRating}
+                                        setRating={setNewRating}
                                         hoverRating={hoverRating}
                                         setHoverRating={setHoverRating}
                                         size="text-2xl"
@@ -422,12 +441,12 @@ useEffect(() => {
                                         {newRating === 1 && "😞 Very disappointed"}
                                     </p>
                                 </div>
-                                <textarea 
-                                    value={newStory} 
-                                    onChange={(e) => setNewStory(e.target.value)} 
+                                <textarea
+                                    value={newStory}
+                                    onChange={(e) => setNewStory(e.target.value)}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-spark-500 focus:ring-2 focus:ring-spark-200 transition mb-4"
-                                    rows="4" 
-                                    placeholder="Tell us how TheSpark changed your life..." 
+                                    rows="4"
+                                    placeholder="Tell us how TheSpark changed your life..."
                                 />
                                 <div className="flex gap-3">
                                     <button onClick={submitStory} className="px-5 py-2 bg-spark-600 text-white rounded-xl font-medium hover:bg-spark-700 transition">
@@ -445,7 +464,7 @@ useEffect(() => {
                 {/* Call to Action */}
                 <div className="relative rounded-2xl overflow-hidden">
                     <div className="absolute inset-0">
-                        <img 
+                        <img
                             src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&h=300&fit=crop"
                             alt="Community"
                             className="w-full h-full object-cover"
@@ -456,8 +475,8 @@ useEffect(() => {
                         <div className="text-5xl mb-4">🌟</div>
                         <h3 className="text-2xl font-bold mb-2">Your Story Could Be Next</h3>
                         <p className="text-white/80 max-w-md mx-auto">
-                            {user 
-                                ? "Share your wealth journey above. Your story will inspire thousands!" 
+                            {user
+                                ? "Share your wealth journey above. Your story will inspire thousands!"
                                 : "Join TheSpark today. Build consistent habits. Graduate in 6 months. Then share your success story!"}
                         </p>
                         {!user && (

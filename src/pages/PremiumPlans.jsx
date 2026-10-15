@@ -101,9 +101,6 @@ export default function PremiumPlans() {
         setModalOpen(true);
     };
 
-    // ============================================================
-    // ✅ UPDATED: idempotencyKey + 429 rate-limit handling
-    // ============================================================
     const confirmPlanChange = async () => {
         if (!pendingPlan) return;
         setModalOpen(false);
@@ -112,7 +109,6 @@ export default function PremiumPlans() {
             const idToken = await auth.currentUser.getIdToken();
             setAuthToken(idToken);
 
-            // Unique per click. Backend dedupes on this key.
             const idempotencyKey = `${pendingPlan.name}-${billingInterval}-${Date.now()}`;
 
             const { data } = await api.post('/graduation/premium/upgrade', {
@@ -162,16 +158,27 @@ export default function PremiumPlans() {
     const pendingDiscount = computeDiscount(pendingPlan);
     const pendingSavings = computeSavings(pendingPlan);
 
+    // ============================================================
+    // MODAL TITLE + OK TEXT — clear and honest about downgrades
+    // ============================================================
     const modalTitle =
         isUpgrade ? `Upgrade to ${pendingPlan?.name}?`
-        : isPaidChange ? `Switch to ${pendingPlan?.name}?`
-        : isFreeDowngrade ? `Downgrade to ${pendingPlan?.name}?`
+        : isDowngrade ? `Downgrade to ${pendingPlan?.name}?`
         : `Switch to ${pendingPlan?.name}?`;
 
     const modalOkText =
-        isPaidChange ? `Pay ${money(modalFee)}`
-        : isFreeDowngrade ? 'Confirm Downgrade'
+        isDowngrade ? 'Downgrade Anyway'
+        : isPaidChange ? `Pay ${money(modalFee)}`
         : 'Confirm';
+
+    // Downgrades show a red OK button (destructive action)
+    const okIsDangerous = isDowngrade;
+
+    // Does the user have time left on a paid plan?
+    const hasRemainingPaidTime =
+        currentPlan !== 'Basic' &&
+        renewalDate &&
+        renewalDate.getTime() > Date.now();
 
     const normalizeFeature = (raw) => {
         if (!raw || typeof raw !== 'string') return '';
@@ -575,7 +582,8 @@ export default function PremiumPlans() {
                 cancelText="Cancel"
                 okButtonProps={{
                     disabled: upgrading || (isPaidChange && !hasEnoughBalance),
-                    style: isPaidChange
+                    danger: okIsDangerous,
+                    style: !okIsDangerous && isPaidChange
                         ? { background: 'linear-gradient(to right, #f97316, #ea580c)', border: 'none' }
                         : undefined,
                 }}
@@ -584,11 +592,87 @@ export default function PremiumPlans() {
             >
                 {pendingPlan && (
                     <div className="space-y-3 pt-2">
-                        {isPaidChange && (
+                        {/* ============================================ */}
+                        {/* DOWNGRADE — with hard warning                */}
+                        {/* ============================================ */}
+                        {isDowngrade && (
                             <>
                                 <p className="text-gray-700">
-                                    You're {isUpgrade ? 'upgrading' : 'switching'} from{' '}
-                                    <strong>{currentPlan}</strong> to <strong>{pendingPlan.name}</strong> on{' '}
+                                    You're downgrading from <strong>{currentPlan}</strong> to{' '}
+                                    <strong>{pendingPlan.name}</strong>.
+                                </p>
+
+                                {hasRemainingPaidTime && (
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                                        <div className="font-semibold mb-1 flex items-center gap-1.5">
+                                            <span>⚠️</span>
+                                            <span>You'll lose your remaining {currentPlan} time</span>
+                                        </div>
+                                        <div>
+                                            You're paid through{' '}
+                                            <strong>{renewalDate.toLocaleDateString()}</strong>.
+                                            Downgrading now forfeits that time.{' '}
+                                            <strong>No refund will be issued.</strong>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {isPaidChange && (
+                                    <p className="text-sm text-gray-600">
+                                        Your new <strong>{pendingPlan.name}</strong> plan starts
+                                        immediately and costs{' '}
+                                        <strong>{money(modalFee)}</strong> for the first{' '}
+                                        {billingInterval} period.
+                                    </p>
+                                )}
+
+                                {isFreeDowngrade && (
+                                    <p className="text-sm text-gray-600">
+                                        You'll be moved to the free <strong>Basic</strong> plan
+                                        immediately. Your daily save limit will drop to{' '}
+                                        <strong>{money(pendingPlan.dailySaveMax)}</strong>.
+                                    </p>
+                                )}
+
+                                {premiumPlan && currentPlan !== 'Premium' && currentLevel > (planMap['Premium']?.level ?? 0) && (
+                                    <div className="bg-spark-50 border border-spark-200 rounded-lg p-3 text-sm text-spark-800">
+                                        <div className="font-semibold mb-1">
+                                            💡 Before you go — Premium might be a better fit
+                                        </div>
+                                        <div className="mb-2">
+                                            Keep most of what you love on <strong>Premium</strong> for just{' '}
+                                            <strong>{money(premiumPlan.monthlyFee)}/month</strong>:
+                                        </div>
+                                        <ul className="text-xs space-y-1 mb-3 pl-4 list-disc text-spark-700">
+                                            <li>Daily goal limit up to {money(premiumPlan.dailySaveMax)}</li>
+                                            <li>Priority support within 12 hours</li>
+                                            <li>Private Premium WhatsApp community</li>
+                                            <li>Weekly live coaching calls</li>
+                                        </ul>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPendingPlan(premiumPlan)}
+                                            className="text-xs font-semibold text-spark-700 underline hover:text-spark-900"
+                                        >
+                                            Switch to Premium instead →
+                                        </button>
+                                    </div>
+                                )}
+
+                                <p className="text-xs text-gray-500 font-medium">
+                                    This action cannot be undone.
+                                </p>
+                            </>
+                        )}
+
+                        {/* ============================================ */}
+                        {/* UPGRADE — normal flow                        */}
+                        {/* ============================================ */}
+                        {isUpgrade && isPaidChange && (
+                            <>
+                                <p className="text-gray-700">
+                                    You're upgrading from <strong>{currentPlan}</strong> to{' '}
+                                    <strong>{pendingPlan.name}</strong> on{' '}
                                     <strong>{billingInterval}</strong> billing.
                                 </p>
 
@@ -613,7 +697,8 @@ export default function PremiumPlans() {
 
                                 <p className="text-xs text-gray-500">
                                     Your plan renews automatically every{' '}
-                                    {billingInterval === 'yearly' ? '12 months' : '30 days'} from your balance. Cancel anytime.
+                                    {billingInterval === 'yearly' ? '12 months' : '30 days'} from
+                                    your balance. Cancel anytime.
                                 </p>
 
                                 {billingInterval === 'monthly' && pendingDiscount > 0 && pendingSavings > 0 && (
@@ -640,42 +725,6 @@ export default function PremiumPlans() {
                                         Insufficient balance. Top up at least{' '}
                                         {money(modalFee - currentBalance)} to continue.
                                     </p>
-                                )}
-                            </>
-                        )}
-
-                        {isFreeDowngrade && (
-                            <>
-                                <p className="text-gray-700">
-                                    You're downgrading from <strong>{currentPlan}</strong> to{' '}
-                                    <strong>{pendingPlan.name}</strong>.
-                                </p>
-                                <p className="text-sm text-gray-500">
-                                    You'll lose access to premium features immediately. Your daily goal limit will drop to{' '}
-                                    <strong>{money(pendingPlan.dailySaveMax)}</strong>.
-                                </p>
-
-                                {premiumPlan && currentPlan !== 'Premium' && (
-                                    <div className="bg-spark-50 border border-spark-200 rounded-lg p-3 text-sm text-spark-800">
-                                        <div className="font-semibold mb-1">💡 Before you drop to Basic...</div>
-                                        <div className="mb-2">
-                                            Keep most of what you love on <strong>Premium</strong> for just{' '}
-                                            <strong>{money(premiumPlan.monthlyFee)}/month</strong>:
-                                        </div>
-                                        <ul className="text-xs space-y-1 mb-3 pl-4 list-disc text-spark-700">
-                                            <li>Daily goal limit up to {money(premiumPlan.dailySaveMax)}</li>
-                                            <li>Priority support within 12 hours</li>
-                                            <li>Private Premium WhatsApp community</li>
-                                            <li>Weekly live coaching calls</li>
-                                        </ul>
-                                        <button
-                                            type="button"
-                                            onClick={() => setPendingPlan(premiumPlan)}
-                                            className="text-xs font-semibold text-spark-700 underline hover:text-spark-900"
-                                        >
-                                            Switch to Premium instead →
-                                        </button>
-                                    </div>
                                 )}
                             </>
                         )}

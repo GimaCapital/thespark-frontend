@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../services/firebase';
 import { api, setAuthToken } from '../services/api';
@@ -10,6 +10,13 @@ export default function Register() {
     const { signInWithGoogle, refreshUserData, user } = useAuth();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // ✅ NEW: where to go after signup
+    const redirectAfterSignup =
+        location.state?.redirectTo ||
+        searchParams.get('redirect') ||
+        '/dashboard';
     
     const [method, setMethod] = useState('google');
     const [referralCode, setReferralCode] = useState('');
@@ -101,10 +108,10 @@ export default function Register() {
                 localStorage.removeItem(REFERRAL_TIMESTAMP_KEY);
                 localStorage.removeItem('referralFailed');
                 // Redirect to dashboard after successful signup
-                navigate('/dashboard');
+                navigate(redirectAfterSignup);
             } else if (result && result.success) {
                 // ✅ Signup successful, but no referral
-                navigate('/dashboard');
+                navigate(redirectAfterSignup);
             }
         } catch (error) {
             // console.error('Signup failed, keeping referral code for retry:', error);
@@ -153,14 +160,14 @@ export default function Register() {
                 localStorage.removeItem(REFERRAL_TIMESTAMP_KEY);
                 localStorage.removeItem('referralFailed');
                 await refreshUserData();
-                navigate('/dashboard');
+                navigate(redirectAfterSignup);
             } else if (data.alreadyReferred) {
                 toast.info('You already have a referrer');
                 setReferralFailed(false);
                 localStorage.removeItem(REFERRAL_STORAGE_KEY);
                 localStorage.removeItem(REFERRAL_TIMESTAMP_KEY);
                 localStorage.removeItem('referralFailed');
-                navigate('/dashboard');
+                navigate(redirectAfterSignup);
             } else {
                 toast.error(data.error || 'Failed to process referral');
             }

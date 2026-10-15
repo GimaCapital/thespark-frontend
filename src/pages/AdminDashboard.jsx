@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api, setAuthToken } from '../services/api';
 import { auth, db } from '../services/firebase';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { formatDate, getFullDate } from '../utils/dateUtils';
 import { computeDiscount as computePlanDiscount } from '../utils/planLimits';
 import NotificationBell from '../components/NotificationBell';
@@ -317,21 +316,37 @@ export default function AdminDashboard() {
     };
 
     // ============ STORIES FUNCTIONS ============
-    const loadPendingStories = async () => {
+    // const loadPendingStories = async () => {
+    //     setStoriesLoading(true);
+    //     try {
+    //         const storiesRef = collection(db, 'successStories');
+    //         const q = query(storiesRef, where('status', '==', 'pending'));
+    //         const snapshot = await getDocs(q);
+
+    //         const stories = [];
+    //         snapshot.forEach(doc => {
+    //             stories.push({ id: doc.id, ...doc.data() });
+    //         });
+    //         setPendingStories(stories);
+    //     } catch (error) {
+    //         // console.error('Failed to load pending stories:', error);
+    //         toast.error('Failed to load pending stories');
+    //     } finally {
+    //         setStoriesLoading(false);
+    //     }
+    // };
+
+        const loadPendingStories = async () => {
         setStoriesLoading(true);
         try {
-            const storiesRef = collection(db, 'successStories');
-            const q = query(storiesRef, where('status', '==', 'pending'));
-            const snapshot = await getDocs(q);
+            const idToken = await user.getIdToken();
+            setAuthToken(idToken);
 
-            const stories = [];
-            snapshot.forEach(doc => {
-                stories.push({ id: doc.id, ...doc.data() });
-            });
-            setPendingStories(stories);
+            const response = await api.get('/success-stories/admin/pending');
+            setPendingStories(response.data || []);
         } catch (error) {
-            // console.error('Failed to load pending stories:', error);
-            toast.error('Failed to load pending stories');
+            console.error('Failed to load pending stories:', error);
+            toast.error(error.response?.data?.error || 'Failed to load pending stories');
         } finally {
             setStoriesLoading(false);
         }
@@ -362,24 +377,42 @@ export default function AdminDashboard() {
         );
     };
 
-    const approveStory = async (storyId, rating) => {
+    // const approveStory = async (storyId, rating) => {
+    //     try {
+    //         const updateData = {
+    //             status: 'approved',
+    //             approvedAt: new Date(),
+    //             approvedBy: user.uid
+    //         };
+
+    //         if (rating) {
+    //             updateData.rating = rating;
+    //         }
+
+    //         await updateDoc(doc(db, 'successStories', storyId), updateData);
+    //         toast.success('Story approved and published');
+    //         loadPendingStories();
+    //     } catch (error) {
+    //         // console.error('Failed to approve story:', error);
+    //         toast.error('Failed to approve story');
+    //     }
+    // };
+
+        const approveStory = async (storyId, rating) => {
         try {
-            const updateData = {
-                status: 'approved',
-                approvedAt: new Date(),
-                approvedBy: user.uid
-            };
+            const idToken = await user.getIdToken();
+            setAuthToken(idToken);
 
-            if (rating) {
-                updateData.rating = rating;
-            }
+            const response = await api.post(
+                `/success-stories/admin/approve/${storyId}`,
+                { rating }
+            );
 
-            await updateDoc(doc(db, 'successStories', storyId), updateData);
-            toast.success('Story approved and published');
+            toast.success(response.data?.message || 'Story approved and published');
             loadPendingStories();
         } catch (error) {
-            // console.error('Failed to approve story:', error);
-            toast.error('Failed to approve story');
+            console.error('Failed to approve story:', error);
+            toast.error(error.response?.data?.error || 'Failed to approve story');
         }
     };
 
@@ -389,22 +422,45 @@ export default function AdminDashboard() {
         setShowRejectStoryModal(true);
     };
 
-    const confirmRejectStory = async () => {
+    // const confirmRejectStory = async () => {
+    //     if (!rejectStoryTarget) return;
+    //     setRejectStoryProcessing(true);
+    //     try {
+    //         await updateDoc(doc(db, 'successStories', rejectStoryTarget.id), {
+    //             status: 'rejected',
+    //             rejectedAt: new Date(),
+    //             rejectedBy: user.uid
+    //         });
+    //         toast.success('Story rejected');
+    //         loadPendingStories();
+    //         setShowRejectStoryModal(false);
+    //         setRejectStoryTarget(null);
+    //     } catch (error) {
+    //         // console.error('Failed to reject story:', error);
+    //         toast.error('Failed to reject story');
+    //     } finally {
+    //         setRejectStoryProcessing(false);
+    //     }
+    // };
+
+        const confirmRejectStory = async () => {
         if (!rejectStoryTarget) return;
         setRejectStoryProcessing(true);
         try {
-            await updateDoc(doc(db, 'successStories', rejectStoryTarget.id), {
-                status: 'rejected',
-                rejectedAt: new Date(),
-                rejectedBy: user.uid
-            });
-            toast.success('Story rejected');
+            const idToken = await user.getIdToken();
+            setAuthToken(idToken);
+
+            const response = await api.post(
+                `/success-stories/admin/reject/${rejectStoryTarget.id}`
+            );
+
+            toast.success(response.data?.message || 'Story rejected');
             loadPendingStories();
             setShowRejectStoryModal(false);
             setRejectStoryTarget(null);
         } catch (error) {
-            // console.error('Failed to reject story:', error);
-            toast.error('Failed to reject story');
+            console.error('Failed to reject story:', error);
+            toast.error(error.response?.data?.error || 'Failed to reject story');
         } finally {
             setRejectStoryProcessing(false);
         }
