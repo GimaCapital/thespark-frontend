@@ -425,8 +425,9 @@ export default function Home() {
                 </div>
 
                 {/* ===== QUICK NAV ===== */}
+                {/* ===== QUICK NAV — MOBILE (sticky, unchanged) ===== */}
                 <div className="md:hidden sticky top-16 z-30 bg-white/95 backdrop-blur-md border-y border-gray-100 py-3 shadow-sm">
-                   <div className="max-w-6xl mx-auto px-4 relative">
+                    <div className="max-w-6xl mx-auto px-4 relative">
                         {!quickNavAtEnd && (
                             <div className="md:hidden pointer-events-none absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white via-white/90 to-transparent z-10 flex items-center justify-end pr-3">
                                 <span className="text-spark-500 text-lg animate-pulse">→</span>
@@ -461,6 +462,37 @@ export default function Home() {
                                 </Link>
                             )}
                             <div className="md:hidden w-8 flex-shrink-0" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* ===== QUICK NAV — DESKTOP (static, scrolls with page) ===== */}
+                <div className="hidden md:block bg-white border-y border-gray-100 py-4">
+                    <div className="max-w-6xl mx-auto px-4">
+                        <div className="flex items-center justify-center gap-2">
+                            {[
+                                { id: 'crisis', label: 'The Crisis' },
+                                { id: 'how-it-works', label: 'How It Works' },
+                                { id: 'stories', label: 'Success Stories' },
+                                { id: 'team', label: 'The Team' },
+                                { id: 'rules', label: 'The 7 Rules' },
+                            ].map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => scrollToSection(item.id)}
+                                    className="whitespace-nowrap px-4 py-2 text-sm font-medium text-gray-600 hover:text-spark-600 hover:bg-spark-50 rounded-full transition-all duration-200"
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                            {!user && (
+                                <Link
+                                    to="/register"
+                                    className="whitespace-nowrap px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-spark-500 to-spark-600 rounded-full shadow-md hover:shadow-lg transition-all"
+                                >
+                                    Start Free →
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1072,7 +1104,7 @@ export default function Home() {
 
             {/* ===== STICKY CTA BAR ===== */}
             {showStickyCTA && !user && (
-               <div className="hidden md:block fixed bottom-0 left-0 right-0 z-[60] bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl py-3 px-4 transition-transform duration-300">
+                <div className="hidden md:block fixed bottom-0 left-0 right-0 z-[60] bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl py-3 px-4 transition-transform duration-300">
                     <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
                         <div className="hidden sm:block">
                             <p className="text-sm font-semibold text-gray-800">Start your wealth journey today</p>
