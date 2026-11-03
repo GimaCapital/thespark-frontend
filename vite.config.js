@@ -5,7 +5,6 @@
 // export default defineConfig({
 //   plugins: [react()],
 // })
-
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -18,12 +17,14 @@ export default defineConfig({
             includeAssets: ['favicon.svg', 'icons/*.png', 'screenshots/*.png'],
             manifest: false,
             workbox: {
-                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,xml,txt}'],
                 maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
                 navigateFallback: '/index.html',
                 navigateFallbackDenylist: [
                     /^\/api\//,
                     /^\/firebase-cloud-messaging-push-scope\//,
+                    /^\/sitemap\.xml$/,
+                    /^\/robots\.txt$/,
                 ],
                 runtimeCaching: [
                     {
