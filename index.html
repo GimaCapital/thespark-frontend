@@ -33,55 +33,70 @@
     <meta name="twitter:description" content="Financial literacy education based on principles from The Richest Man in Babylon." />
     <meta name="twitter:image" content="https://thespark.cash/icons/thespark-logo-full-flame-512x512.png" />
 
-    <!-- ===== ORGANIZATION SCHEMA ===== -->
+    <!-- ===== COMBINED ENTITY GRAPH (Organization + WebSite) ===== -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "Organization",
-      "@id": "https://thespark.cash/#organization",
-      "name": "TheSpark",
-      "alternateName": "The Spark",
-      "url": "https://thespark.cash/",
-      "logo": "https://thespark.cash/icons/thespark-logo-full-flame-512x512.png",
-      "description": "TheSpark is a wealth-building education platform teaching financial literacy based on principles from The Richest Man in Babylon.",
-      "parentOrganization": {
-        "@type": "Organization",
-        "name": "Gimablockchain",
-        "identifier": "CAC BN 3091833"
-      },
-      "foundingLocation": {
-        "@type": "Place",
-        "address": {
-          "@type": "PostalAddress",
-          "addressLocality": "Port Harcourt",
-          "addressCountry": "NG"
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://thespark.cash/#organization",
+          "name": "TheSpark",
+          "alternateName": "The Spark",
+          "url": "https://thespark.cash/",
+          "logo": "https://thespark.cash/icons/thespark-logo-full-flame-512x512.png",
+          "description": "TheSpark is a wealth-building education platform teaching financial literacy based on principles from The Richest Man in Babylon.",
+          "foundingDate": "2026",
+          "founder": {
+            "@type": "Person",
+            "@id": "https://thespark.cash/#founder",
+            "name": "Gideon Gideon",
+            "jobTitle": "Founder & Financial Educator",
+            "worksFor": { "@id": "https://thespark.cash/#organization" }
+          },
+          "knowsAbout": [
+            "Financial Literacy",
+            "Wealth Building",
+            "Personal Finance",
+            "Money Management",
+            "Savings Habits",
+            "The Richest Man in Babylon"
+          ],
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+2348029955942",
+            "contactType": "customer support",
+            "email": "support@thespark.cash",
+            "areaServed": "NG",
+            "availableLanguage": ["English"]
+          },
+          "parentOrganization": {
+            "@type": "Organization",
+            "name": "Gimablockchain"
+          },
+          "foundingLocation": {
+            "@type": "Place",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Port Harcourt",
+              "addressCountry": "NG"
+            }
+          },
+          "sameAs": [
+            "https://www.linkedin.com/company/thespark-cash",
+            "https://www.crunchbase.com/organization/thespark-48fb"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://thespark.cash/#website",
+          "url": "https://thespark.cash/",
+          "name": "TheSpark",
+          "description": "Wealth-building education platform teaching financial literacy based on principles from The Richest Man in Babylon.",
+          "inLanguage": "en-NG",
+          "publisher": { "@id": "https://thespark.cash/#organization" }
         }
-      },
-      "sameAs": [
-        "https://www.linkedin.com/company/thespark-cash",
-        "https://www.crunchbase.com/organization/thespark-cash",
-        "https://www.producthunt.com/products/thespark"
-      ],
-      "hasPart": [
-        { "@type": "WebPage", "url": "https://thespark.cash/about", "name": "About TheSpark" },
-        { "@type": "WebPage", "url": "https://thespark.cash/faq", "name": "TheSpark FAQ" },
-        { "@type": "WebPage", "url": "https://thespark.cash/how-it-works", "name": "How TheSpark Works" },
-        { "@type": "WebPage", "url": "https://thespark.cash/7-rules", "name": "The 7 Rules of Wealth" }
       ]
-    }
-    </script>
-
-    <!-- ===== WEBSITE SCHEMA ===== -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "@id": "https://thespark.cash/#website",
-      "url": "https://thespark.cash/",
-      "name": "TheSpark",
-      "description": "Wealth-building education platform teaching financial literacy based on principles from The Richest Man in Babylon.",
-      "inLanguage": "en-NG",
-      "publisher": { "@id": "https://thespark.cash/#organization" }
     }
     </script>
 

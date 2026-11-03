@@ -1,0 +1,32 @@
+# TheSpark
+
+> TheSpark (thespark.cash) is a wealth-building education platform that teaches financial literacy based on principles from The Richest Man in Babylon. We help Nigerians build lasting money habits through 21-day savings cycles, daily lessons, and progress tracking. TheSpark is a product of Gimablockchain, headquartered in Port Harcourt, Nigeria.
+
+## About
+
+- [About TheSpark](https://thespark.cash/about): The story behind TheSpark, the ancient wisdom of Babylon, our mission to help 1 million Nigerians build wealth, and how we work.
+- [How It Works](https://thespark.cash/how-it-works): The 6-step process and the 8-cycle journey. Each cycle is 21 days. 8 cycles equals 6 months.
+- [The 7 Rules of Wealth](https://thespark.cash/7-rules): The seven timeless principles from The Richest Man in Babylon, explained in depth.
+
+## Frequently Asked Questions
+
+- [FAQ](https://thespark.cash/faq): 157 questions and answers covering general information, how it works, premium plans, referrals, account, support, graduation, community, content, and technical topics.
+
+## Contact
+
+- Website: https://thespark.cash
+- Email: support@thespark.cash
+- Phone: +2348029955942
+- LinkedIn: https://www.linkedin.com/company/thespark-cash
+- Crunchbase: https://www.crunchbase.com/organization/thespark-48fb
+
+## Key Facts
+
+- Founder: Gideon Gideon
+- Founded: 2026
+- Headquarters: Port Harcourt, Rivers, Nigeria
+- Parent company: Gimablockchain
+- Industries: Financial Services, Education, Personal Finance
+- Core program: 21-day savings cycles, 8 cycles to graduation
+- Daily savings goals: from ₦100 to ₦20,000 depending on plan
+- Mission: Help 1 million Nigerians build real wealth habits, one day at a time

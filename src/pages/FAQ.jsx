@@ -381,7 +381,7 @@ const faqs = [
     {
         category: "account",
         question: "🔒 Can I delete my account?",
-        answer: "Yes, you can request account deletion by contacting support@thespark.money"
+        answer: "Yes, you can request account deletion by contacting support@thespark.cash"
     },
     {
         category: "account",
@@ -421,7 +421,7 @@ const faqs = [
     {
         category: "support",
         question: "📞 How do I contact support?",
-        answer: "Email support@thespark.money or message your dedicated Coach on WhatsApp."
+        answer: "Email support@thespark.cash or message your dedicated Coach on WhatsApp."
     },
     {
         category: "support",
@@ -481,17 +481,17 @@ const faqs = [
     {
         category: "support",
         question: "📞 How do I report a problem?",
-        answer: "Email support@thespark.money with details of the issue. Our team will investigate promptly."
+        answer: "Email support@thespark.cash with details of the issue. Our team will investigate promptly."
     },
     {
         category: "support",
         question: "💬 Is there a complaint process?",
-        answer: "Yes, email complaints to support@thespark.money. All complaints are addressed within 3 business days."
+        answer: "Yes, email complaints to support@thespark.cash. All complaints are addressed within 3 business days."
     },
     {
         category: "support",
         question: "📱 Can I suggest new features?",
-        answer: "Absolutely! We welcome feedback and suggestions from our community. Email your ideas to support@thespark.money",
+        answer: "Absolutely! We welcome feedback and suggestions from our community. Email your ideas to support@thespark.cash",
     },
     {
         category: "graduation",
@@ -761,7 +761,7 @@ const faqs = [
     {
         category: "technical",
         question: "🔧 What if I see an error message?",
-        answer: "Take a screenshot and send it to support@thespark.money with a description of what happened."
+        answer: "Take a screenshot and send it to support@thespark.cash with a description of what happened."
     },
     {
         category: "technical",
@@ -791,7 +791,7 @@ const faqs = [
     {
         category: "technical",
         question: "🔧 What if I have a technical issue not listed?",
-        answer: "Contact support@thespark.money. Our team will investigate and resolve the issue promptly.",
+        answer: "Contact support@thespark.cash. Our team will investigate and resolve the issue promptly.",
     }
 ];
 
@@ -1054,8 +1054,8 @@ export default function FAQ() {
                         <div className="text-5xl mb-3">📧</div>
                         <h3 className="text-xl font-bold text-gray-800 mb-2">Email Support</h3>
                         <p className="text-gray-600 text-sm mb-4">We respond within 24-48 hours</p>
-                        <a href="mailto:support@thespark.money" className="inline-block bg-spark-600 text-white px-6 py-2 rounded-full text-sm font-semibold hover:bg-spark-700 transition">
-                            support@thespark.money →
+                        <a href="mailto:support@thespark.cash" className="inline-block bg-spark-600 text-white px-6 py-2 rounded-full text-sm font-semibold hover:bg-spark-700 transition">
+                            support@thespark.cash →
                         </a>
                     </div>
                 </div>
