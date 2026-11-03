@@ -19,7 +19,8 @@ export default defineConfig({
             workbox: {
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,xml,txt}'],
                 maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-                navigateFallback: '/index.html',
+                // navigateFallback: '/index.html',
+                navigateFallback: null,
                 navigateFallbackDenylist: [
                     /^\/api\//,
                     /^\/firebase-cloud-messaging-push-scope\//,
