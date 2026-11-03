@@ -344,18 +344,20 @@ export default function Home() {
                             TheSpark
                         </h1>
                         <p className="text-xl sm:text-2xl md:text-3xl text-white/90 mb-4 font-light tracking-wide">
-                            wealth-building platform
+                            wealth-building education platform
                         </p>
                         <div className="w-24 h-0.5 bg-spark-500 mx-auto rounded-full mb-6"></div>
                         <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">
                             {typedSpark}
                             <span className="inline-block w-1 h-8 bg-white ml-1 animate-pulse"></span>
                         </p>
-                        <p className="text-base sm:text-lg md:text-xl text-white/80 mb-6">
+                        <p className="text-base sm:text-lg md:text-xl text-white/80 mb-4">
                             One spark. One fire. One wealthy Nigeria.
                         </p>
-                        <p className="text-xs sm:text-sm text-white/60 max-w-md mx-auto mb-8">
-                            Teaching timeless wealth principles to reduce poverty in Nigeria
+                        <p className="text-sm sm:text-base text-white/75 max-w-xl mx-auto mb-8 leading-relaxed">
+                            <strong>TheSpark</strong> (thespark.cash) is a wealth-building education platform
+                            that teaches financial literacy based on principles from <em>The Richest Man in Babylon</em>.
+                            We help Nigerians build lasting money habits, one day, one 21-day cycle at a time.
                         </p>
                         {!user ? (
                             <Link to="/register" className="inline-block bg-gradient-to-r from-spark-500 to-spark-600 text-white px-8 sm:px-10 md:px-12 py-3 sm:py-4 rounded-full font-bold text-sm sm:text-base md:text-lg shadow-2xl hover:shadow-xl transition-all hover:scale-105">
@@ -425,7 +427,6 @@ export default function Home() {
                 </div>
 
                 {/* ===== QUICK NAV ===== */}
-                {/* ===== QUICK NAV — MOBILE (sticky, unchanged) ===== */}
                 <div className="md:hidden sticky top-16 z-30 bg-white/95 backdrop-blur-md border-y border-gray-100 py-3 shadow-sm">
                     <div className="max-w-6xl mx-auto px-4 relative">
                         {!quickNavAtEnd && (
@@ -935,7 +936,7 @@ export default function Home() {
                                         </div>
 
                                         <div className="mb-4">
-                                            <h3 className="text-xl font-bold text-slate-900 mb-0.5">Nsima Owoedem</h3>
+                                            <h3 className="text-xl font-bold text-slate-900 mb-0.5">Obot Owoidem</h3>
                                             <p className="text-sm text-spark-600 font-medium">Chief Marketing Officer</p>
                                         </div>
 
@@ -1059,7 +1060,7 @@ export default function Home() {
                             <img src="/icons/thespark-logo-512x512.png" alt="TheSpark" loading="lazy" className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto drop-shadow-2xl" />
                         </div>
                         <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Ready to Start Your Journey?</h2>
-                        <p className="text-base sm:text-lg text-white/80 mb-8">Join thousands of Nigerians building better financial habits</p>
+                        <p className="text-base sm:text-lg text-white/80 mb-8">Join Nigerians building better financial habits</p>
 
                         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
                             <div className="bg-white/10 rounded-xl p-4 text-left flex-1 backdrop-blur-sm">
@@ -1096,7 +1097,7 @@ export default function Home() {
                 {/* ===== 9. FOOTER ===== */}
                 <div className="bg-gray-900 py-12 px-4">
                     <div className="max-w-6xl mx-auto text-center">
-                        <p className="text-gray-400 text-sm mb-2">TheSpark — One spark. One fire. One wealthy Nigeria.</p>
+                        <p className="text-gray-400 text-sm mb-2">TheSpark, One spark. One fire. One wealthy Nigeria.</p>
                         <p className="text-gray-500 text-xs mb-6">Teaching timeless wealth principles to reduce poverty in Nigeria.</p>
                     </div>
                 </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import HeaderMissionCard from '../components/Common/HeaderMissionCard';
 
@@ -800,50 +800,78 @@ export default function FAQ() {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState('all');
 
+    // ===== FAQPage schema injection for AI search =====
+    useEffect(() => {
+        if (!faqs || faqs.length === 0) return;
+
+        const faqSchema = {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": faqs.map(item => ({
+                "@type": "Question",
+                "name": item.question.replace(/^[\p{Emoji}\s]+/u, '').trim(),
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": item.answer
+                }
+            }))
+        };
+
+        const old = document.getElementById('faq-schema');
+        if (old) old.remove();
+
+        const script = document.createElement('script');
+        script.type = 'application/ld+json';
+        script.id = 'faq-schema';
+        script.text = JSON.stringify(faqSchema);
+        document.head.appendChild(script);
+
+        return () => {
+            const s = document.getElementById('faq-schema');
+            if (s) s.remove();
+        };
+    }, []);
+
     const toggleFAQ = (index) => {
         setOpenIndex(openIndex === index ? null : index);
     };
 
-    // Filter FAQs based on search term AND category
     const getFilteredFaqs = () => {
         let filtered = faqs;
-        
-        // Filter by category
+
         if (activeCategory !== 'all') {
             filtered = filtered.filter(faq => faq.category === activeCategory);
         }
-        
-        // Filter by search term
+
         if (searchTerm.trim() !== '') {
             filtered = filtered.filter(faq =>
                 faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 faq.answer.toLowerCase().includes(searchTerm.toLowerCase())
             );
         }
-        
+
         return filtered;
     };
 
     const filteredFaqs = getFilteredFaqs();
 
-    // Category button click handler
     const handleCategoryClick = (category) => {
         setActiveCategory(category);
-        setSearchTerm(''); // Clear search when changing category
-        setOpenIndex(null); // Close all open FAQs
+        setSearchTerm('');
+        setOpenIndex(null);
     };
+
+    const lastUpdated = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
     return (
         <div className="bg-gradient-to-br from-spark-50 via-white to-spark-50 min-h-screen">
             {/* <HeaderMissionCard /> */}
-            
+
             {/* FULL WIDTH HERO SECTION WITH IMAGE */}
             <div className="relative h-[400px] sm:h-[500px] flex items-center justify-center overflow-hidden">
                 <div className="absolute inset-0 z-0">
-                    <img 
-                        // src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=250&q=80"
-                        // src="https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800&h=500&fit=crop" 
-                          src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=800&h=500&fit=crop"             
+                    <img
+                        src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=800&h=500&fit=crop"
                         alt="Frequently Asked Questions"
                         className="w-full h-full object-cover"
                     />
@@ -855,14 +883,19 @@ export default function FAQ() {
                     </div>
                     <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4">Frequently Asked Questions</h1>
                     <div className="w-24 h-1 bg-spark-500 mx-auto rounded-full mb-6"></div>
-                    <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto">
-                        Everything you need to know about TheSpark — your wealth-building accountability platform
+                    <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto mb-4">
+                        Everything you need to know about TheSpark, your wealth-building accountability platform
+                    </p>
+                    <p className="text-sm sm:text-base text-white/75 max-w-2xl mx-auto leading-relaxed">
+                        <strong>TheSpark</strong> (thespark.cash) is a wealth-building education platform that
+                        teaches financial literacy based on principles from <em>The Richest Man in Babylon</em>.
+                        Browse answers on pricing, cycles, graduation, referrals, and more.
                     </p>
                 </div>
             </div>
 
             <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
-                
+
                 {/* Search Bar Section with Icon */}
                 <div className="bg-white rounded-2xl shadow-lg p-6 mb-10">
                     <div className="flex items-center gap-3 mb-4">
@@ -871,7 +904,7 @@ export default function FAQ() {
                     </div>
                     <input
                         type="text"
-                        placeholder="Search 120+ questions..."
+                        placeholder="Search 157 questions..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full px-5 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-spark-500 focus:ring-2 focus:ring-spark-200 transition"
@@ -880,77 +913,77 @@ export default function FAQ() {
                         📚 {filteredFaqs.length} of {faqs.length} questions shown
                     </p>
                 </div>
-                
-                {/* Category Quick Links - NOW WORKING! */}
+
+                {/* Category Quick Links */}
                 <div className="flex flex-wrap gap-2 justify-center mb-10">
-                    <button 
-                        onClick={() => handleCategoryClick('all')} 
+                    <button
+                        onClick={() => handleCategoryClick('all')}
                         className={`px-4 py-2 rounded-full text-sm shadow-sm transition ${activeCategory === 'all' ? 'bg-gradient-to-r from-spark-500 to-spark-600 text-white' : 'bg-white text-gray-600 hover:bg-spark-100'}`}
                     >
                         ✨ All Questions
                     </button>
-                    <button 
-                        onClick={() => handleCategoryClick('general')} 
+                    <button
+                        onClick={() => handleCategoryClick('general')}
                         className={`px-4 py-2 rounded-full text-sm shadow-sm transition ${activeCategory === 'general' ? 'bg-gradient-to-r from-spark-500 to-spark-600 text-white' : 'bg-white text-gray-600 hover:bg-spark-100'}`}
                     >
                         📌 General
                     </button>
-                    <button 
-                        onClick={() => handleCategoryClick('how-it-works')} 
+                    <button
+                        onClick={() => handleCategoryClick('how-it-works')}
                         className={`px-4 py-2 rounded-full text-sm shadow-sm transition ${activeCategory === 'how-it-works' ? 'bg-gradient-to-r from-spark-500 to-spark-600 text-white' : 'bg-white text-gray-600 hover:bg-spark-100'}`}
                     >
                         ⚙️ How It Works
                     </button>
-                    <button 
-                        onClick={() => handleCategoryClick('premium')} 
+                    <button
+                        onClick={() => handleCategoryClick('premium')}
                         className={`px-4 py-2 rounded-full text-sm shadow-sm transition ${activeCategory === 'premium' ? 'bg-gradient-to-r from-spark-500 to-spark-600 text-white' : 'bg-white text-gray-600 hover:bg-spark-100'}`}
                     >
                         ⭐ Premium Plans
                     </button>
-                    <button 
-                        onClick={() => handleCategoryClick('referral')} 
+                    <button
+                        onClick={() => handleCategoryClick('referral')}
                         className={`px-4 py-2 rounded-full text-sm shadow-sm transition ${activeCategory === 'referral' ? 'bg-gradient-to-r from-spark-500 to-spark-600 text-white' : 'bg-white text-gray-600 hover:bg-spark-100'}`}
                     >
                         👥 Referrals
                     </button>
-                    <button 
-                        onClick={() => handleCategoryClick('account')} 
+                    <button
+                        onClick={() => handleCategoryClick('account')}
                         className={`px-4 py-2 rounded-full text-sm shadow-sm transition ${activeCategory === 'account' ? 'bg-gradient-to-r from-spark-500 to-spark-600 text-white' : 'bg-white text-gray-600 hover:bg-spark-100'}`}
                     >
                         🔐 Account
                     </button>
-                    <button 
-                        onClick={() => handleCategoryClick('support')} 
+                    <button
+                        onClick={() => handleCategoryClick('support')}
                         className={`px-4 py-2 rounded-full text-sm shadow-sm transition ${activeCategory === 'support' ? 'bg-gradient-to-r from-spark-500 to-spark-600 text-white' : 'bg-white text-gray-600 hover:bg-spark-100'}`}
                     >
                         📞 Support
                     </button>
-                    <button 
-                        onClick={() => handleCategoryClick('graduation')} 
+                    <button
+                        onClick={() => handleCategoryClick('graduation')}
                         className={`px-4 py-2 rounded-full text-sm shadow-sm transition ${activeCategory === 'graduation' ? 'bg-gradient-to-r from-spark-500 to-spark-600 text-white' : 'bg-white text-gray-600 hover:bg-spark-100'}`}
                     >
                         🎓 Graduation
                     </button>
-                    <button 
-                        onClick={() => handleCategoryClick('community')} 
+                    <button
+                        onClick={() => handleCategoryClick('community')}
                         className={`px-4 py-2 rounded-full text-sm shadow-sm transition ${activeCategory === 'community' ? 'bg-gradient-to-r from-spark-500 to-spark-600 text-white' : 'bg-white text-gray-600 hover:bg-spark-100'}`}
                     >
                         👥 Community
                     </button>
-                    <button 
-                        onClick={() => handleCategoryClick('content')} 
+                    <button
+                        onClick={() => handleCategoryClick('content')}
                         className={`px-4 py-2 rounded-full text-sm shadow-sm transition ${activeCategory === 'content' ? 'bg-gradient-to-r from-spark-500 to-spark-600 text-white' : 'bg-white text-gray-600 hover:bg-spark-100'}`}
                     >
                         📚 Content
                     </button>
-                    <button 
-                        onClick={() => handleCategoryClick('technical')} 
+                    <button
+                        onClick={() => handleCategoryClick('technical')}
                         className={`px-4 py-2 rounded-full text-sm shadow-sm transition ${activeCategory === 'technical' ? 'bg-gradient-to-r from-spark-500 to-spark-600 text-white' : 'bg-white text-gray-600 hover:bg-spark-100'}`}
                     >
                         🔧 Technical
                     </button>
                 </div>
-                
+
                 {/* Active Category Indicator */}
                 <div className="text-center mb-6">
                     <p className="text-sm text-gray-500">
@@ -958,7 +991,7 @@ export default function FAQ() {
                         {searchTerm && ` • filtered by "${searchTerm}"`}
                     </p>
                 </div>
-                
+
                 {/* FAQ Accordion */}
                 <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
                     {filteredFaqs.length === 0 ? (
@@ -991,23 +1024,23 @@ export default function FAQ() {
                         ))
                     )}
                 </div>
-                
-                {/* Premium Plans CTA - Beautiful Card */}
+
+                {/* Premium Plans CTA */}
                 <div className="text-center mt-10">
                     <div className="bg-gradient-to-r from-spark-50 to-orange-50 rounded-2xl p-8">
                         <div className="text-4xl mb-3">⭐</div>
                         <h3 className="text-xl font-bold text-gray-800 mb-2">Ready to unlock higher goals?</h3>
                         <p className="text-gray-600 mb-4">Premium plans let you set daily goals up to ₦20,000</p>
-                        <Link 
-                            to="/premium" 
+                        <Link
+                            to="/premium"
                             className="inline-block bg-gradient-to-r from-spark-500 to-spark-600 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105"
                         >
                             View Premium Plans →
                         </Link>
                     </div>
                 </div>
-                
-                {/* Still Have Questions - Contact Section */}
+
+                {/* Still Have Questions */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
                     <div className="bg-gradient-to-br from-spark-100 to-orange-100 rounded-2xl p-6 text-center">
                         <div className="text-5xl mb-3">📞</div>
@@ -1026,11 +1059,11 @@ export default function FAQ() {
                         </a>
                     </div>
                 </div>
-                
+
                 {/* FAQ Stats Footer */}
                 <div className="text-center mt-10 pt-6 border-t border-gray-200">
                     <p className="text-xs text-gray-400">
-                        📚 {faqs.length}+ frequently asked questions • Last updated June 2024
+                        📚 {faqs.length}+ frequently asked questions • Last updated {lastUpdated}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
                         Categories: General | How It Works | Premium Plans | Referrals | Account | Support | Graduation | Community | Content | Technical

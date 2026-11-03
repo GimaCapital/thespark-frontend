@@ -7,13 +7,13 @@ import HeaderMissionCard from '../components/Common/HeaderMissionCard';
 export default function About() {
     const [expandedSection, setExpandedSection] = useState(null);
     const [selectedStat, setSelectedStat] = useState(null);
-    
+
     // Interactive Book States
     const [isBookOpen, setIsBookOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [isFlipping, setIsFlipping] = useState(false);
     const totalPages = 155;
-    
+
     const nextPage = () => {
         if (currentPage < totalPages && !isFlipping) {
             setIsFlipping(true);
@@ -67,7 +67,7 @@ export default function About() {
         green: '#15803D',
         greenLight: '#F0FDF4',
     };
-    
+
     const stories = [
         {
             id: 1,
@@ -281,49 +281,54 @@ export default function About() {
     return (
         <div className="bg-gradient-to-br from-spark-50 via-white to-spark-50 min-h-screen">
             {/* <HeaderMissionCard /> */}
-            
+
             {/* ===== FULL WIDTH MAIN CONTENT ===== */}
             <div className="w-full px-4 sm:px-8 lg:px-16 xl:px-24 py-8 sm:py-12">
-                
+
                 {/* Hero Section */}
 
-             {/* Hero Section - Light Overlay */}
-<div className="relative rounded-3xl overflow-hidden mb-16">
-    <div className="absolute inset-0">
-        <img 
-            src="https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
-            alt="Financial Education Background"
-            className="w-full h-full object-cover"
-        />
-        {/* Reduced opacity - image visible, text readable */}
-        <div className="absolute inset-0 bg-black/50"></div>
-    </div>
-    <div className="relative z-10 text-center px-4 max-w-5xl mx-auto py-20 sm:py-28">
-        <div className="inline-block mb-6">
-            <div className="text-8xl sm:text-9xl animate-pulse drop-shadow-2xl">🔥</div>
-        </div>
-        <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-white mb-4 drop-shadow-lg">
-            About TheSpark
-        </h1>
-        <p className="text-xl sm:text-2xl md:text-3xl text-white/90 mb-4 font-light tracking-wide">
-            wealth-building platform
-        </p>
-        <div className="w-24 h-0.5 bg-spark-500 mx-auto rounded-full mb-6"></div>
-        <p className="text-base sm:text-lg md:text-xl text-white/80 mb-6">
-            One spark. One fire. One wealthy Nigeria.
-        </p>
-        <p className="text-xs sm:text-sm text-white/60 max-w-md mx-auto">
-            Teaching timeless wealth principles to reduce poverty in Nigeria
-        </p>
-    </div>
-</div>
+                {/* Hero Section - Light Overlay */}
+                <div className="relative rounded-3xl overflow-hidden mb-16">
+                    <div className="absolute inset-0">
+                        <img
+                            src="https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
+                            alt="Financial Education Background"
+                            className="w-full h-full object-cover"
+                        />
+                        {/* Reduced opacity - image visible, text readable */}
+                        <div className="absolute inset-0 bg-black/50"></div>
+                    </div>
+                    <div className="relative z-10 text-center px-4 max-w-5xl mx-auto py-20 sm:py-28">
+                        <div className="inline-block mb-6">
+                            <div className="text-8xl sm:text-9xl animate-pulse drop-shadow-2xl">🔥</div>
+                        </div>
+                        <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-white mb-4 drop-shadow-lg">
+                            About TheSpark
+                        </h1>
+                        <p className="text-xl sm:text-2xl md:text-3xl text-white/90 mb-4 font-light tracking-wide">
+                            wealth-building education platform
+                        </p>
+                        <div className="w-24 h-0.5 bg-spark-500 mx-auto rounded-full mb-6"></div>
+                        <p className="text-base sm:text-lg text-white/90 max-w-2xl mx-auto mb-4 leading-relaxed">
+                            <strong>TheSpark</strong> (thespark.cash) is a wealth-building education platform that
+                            teaches financial literacy based on principles from <em>The Richest Man in Babylon</em>.
+                            We help Nigerians build lasting money habits, one day, one 21-day cycle at a time.
+                        </p>
+                        <p className="text-base sm:text-lg md:text-xl text-white/80 mb-4">
+                            One spark. One fire. One wealthy Nigeria.
+                        </p>
+                        <p className="text-xs sm:text-sm text-white/60 max-w-md mx-auto">
+                            Teaching timeless wealth principles to reduce poverty in Nigeria
+                        </p>
+                    </div>
+                </div>
 
                 {/* ===== INTERACTIVE BOOK COMPONENT ===== */}
                 <div className="mb-20">
                     <div className="max-w-4xl mx-auto">
-                        
+
                         {!isBookOpen ? (
-                            <div 
+                            <div
                                 onClick={openBook}
                                 className="relative group cursor-pointer mx-auto max-w-md"
                             >
@@ -349,13 +354,13 @@ export default function About() {
                                 <div className="absolute -bottom-4 left-0 right-0 h-8 bg-black/20 blur-lg rounded-full"></div>
                                 <div className="relative bg-amber-50 rounded-lg shadow-2xl overflow-hidden">
                                     <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-amber-700 via-amber-600 to-amber-700 z-20 hidden md:block"></div>
-                                    <button 
+                                    <button
                                         onClick={closeBook}
                                         className="absolute top-2 right-2 z-30 bg-white/80 rounded-full w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-white shadow-md transition"
                                     >
                                         ✕
                                     </button>
-                                    
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-0 min-h-[500px]">
                                         {/* LEFT PAGE */}
                                         <div className={`p-6 md:p-8 bg-gradient-to-br from-amber-50 to-white border-r border-amber-200 transition-all duration-300 ${isFlipping ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
@@ -371,7 +376,7 @@ export default function About() {
                                                 <p className="text-amber-800 text-xs italic">"{bookPages[currentPage - 1].quote}"</p>
                                             </div>
                                         </div>
-                                        
+
                                         {/* RIGHT PAGE */}
                                         <div className={`p-6 md:p-8 bg-gradient-to-br from-amber-50 to-white transition-all duration-300 ${isFlipping ? 'opacity-0 -translate-x-4' : 'opacity-100 translate-x-0'}`}>
                                             {currentPage < totalPages ? (
@@ -401,7 +406,7 @@ export default function About() {
                                             )}
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex justify-between p-4 bg-amber-100/50 border-t border-amber-200">
                                         <button onClick={prevPage} disabled={currentPage === 1} className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${currentPage === 1 ? 'opacity-50 cursor-not-allowed text-gray-400' : 'bg-white text-gray-700 hover:bg-amber-50 shadow-sm'}`}>
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -705,19 +710,19 @@ export default function About() {
                     <h2 className="text-4xl sm:text-5xl font-bold text-center text-gray-800 mb-10">Who This Is For</h2>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                         <div><div className="text-center mb-6"><h3 className="text-2xl font-semibold text-spark-600 inline-block border-b-2 border-spark-400 pb-2">By Profile</h3></div>
-                        <div className="space-y-4">
-                            <div className="bg-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">🌱</div><h4 className="text-xl font-bold text-gray-800 mb-2">Beginners</h4><p className="text-gray-500">No experience needed. Start with ₦100/day and learn as you go.</p></div>
-                            <div className="bg-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">📈</div><h4 className="text-xl font-bold text-gray-800 mb-2">Consistent Savers</h4><p className="text-gray-500">Already saving? Structure your habit and track your progress.</p></div>
-                            <div className="bg-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">🎯</div><h4 className="text-xl font-bold text-gray-800 mb-2">Goal-Oriented</h4><p className="text-gray-500">Working toward a specific financial target? Let us help you get there.</p></div>
-                            <div className="bg-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">👥</div><h4 className="text-xl font-bold text-gray-800 mb-2">Community Builders</h4><p className="text-gray-500">Want to learn and grow alongside others on the same journey.</p></div>
-                        </div></div>
+                            <div className="space-y-4">
+                                <div className="bg-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">🌱</div><h4 className="text-xl font-bold text-gray-800 mb-2">Beginners</h4><p className="text-gray-500">No experience needed. Start with ₦100/day and learn as you go.</p></div>
+                                <div className="bg-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">📈</div><h4 className="text-xl font-bold text-gray-800 mb-2">Consistent Savers</h4><p className="text-gray-500">Already saving? Structure your habit and track your progress.</p></div>
+                                <div className="bg-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">🎯</div><h4 className="text-xl font-bold text-gray-800 mb-2">Goal-Oriented</h4><p className="text-gray-500">Working toward a specific financial target? Let us help you get there.</p></div>
+                                <div className="bg-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">👥</div><h4 className="text-xl font-bold text-gray-800 mb-2">Community Builders</h4><p className="text-gray-500">Want to learn and grow alongside others on the same journey.</p></div>
+                            </div></div>
                         <div><div className="text-center mb-6"><h3 className="text-2xl font-semibold text-spark-600 inline-block border-b-2 border-spark-400 pb-2">By Mindset</h3></div>
-                        <div className="space-y-4">
-                            <div className="bg-gradient-to-br from-spark-50 to-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">🌱</div><h4 className="text-xl font-bold text-spark-600 mb-2">Bansir & Kobbi</h4><p className="text-gray-500">Hard workers who never learned how to build wealth — until now.</p></div>
-                            <div className="bg-gradient-to-br from-spark-50 to-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">🎯</div><h4 className="text-xl font-bold text-spark-600 mb-2">Arkad's Students</h4><p className="text-gray-500">Those ready to learn, apply, and persist until they succeed.</p></div>
-                            <div className="bg-gradient-to-br from-spark-50 to-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">📚</div><h4 className="text-xl font-bold text-spark-600 mb-2">Life-Long Learners</h4><p className="text-gray-500">People who understand that wealth is a skill — and skills can be learned.</p></div>
-                            <div className="bg-gradient-to-br from-spark-50 to-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">🔥</div><h4 className="text-xl font-bold text-spark-600 mb-2">The Determined</h4><p className="text-gray-500">Those ready to be the spark that changes their family's financial future.</p></div>
-                        </div></div>
+                            <div className="space-y-4">
+                                <div className="bg-gradient-to-br from-spark-50 to-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">🌱</div><h4 className="text-xl font-bold text-spark-600 mb-2">Bansir & Kobbi</h4><p className="text-gray-500">Hard workers who never learned how to build wealth — until now.</p></div>
+                                <div className="bg-gradient-to-br from-spark-50 to-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">🎯</div><h4 className="text-xl font-bold text-spark-600 mb-2">Arkad's Students</h4><p className="text-gray-500">Those ready to learn, apply, and persist until they succeed.</p></div>
+                                <div className="bg-gradient-to-br from-spark-50 to-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">📚</div><h4 className="text-xl font-bold text-spark-600 mb-2">Life-Long Learners</h4><p className="text-gray-500">People who understand that wealth is a skill — and skills can be learned.</p></div>
+                                <div className="bg-gradient-to-br from-spark-50 to-white rounded-xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300"><div className="text-4xl mb-3">🔥</div><h4 className="text-xl font-bold text-spark-600 mb-2">The Determined</h4><p className="text-gray-500">Those ready to be the spark that changes their family's financial future.</p></div>
+                            </div></div>
                     </div>
                 </div>
 
@@ -728,93 +733,93 @@ export default function About() {
                 </div>
 
                 {/* ===== MUTUAL COMMITMENT ===== */}
-<div className="py-16 sm:py-20 px-4 bg-gradient-to-br from-spark-50 to-orange-50 rounded-3xl mb-12">
-    <div className="max-w-5xl mx-auto">
+                <div className="py-16 sm:py-20 px-4 bg-gradient-to-br from-spark-50 to-orange-50 rounded-3xl mb-12">
+                    <div className="max-w-5xl mx-auto">
 
-        {/* Header */}
-        <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-spark-100 rounded-full mb-4">
-                <span className="text-spark-600 text-sm font-semibold">OUR MUTUAL COMMITMENT</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-3">
-                Together, we build wealth <span className="text-spark-600">the right way</span>
-            </h2>
-            <div className="w-20 h-1 bg-gradient-to-r from-spark-500 to-orange-500 mx-auto rounded-full"></div>
-        </div>
-
-        {/* Two Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-            {/* Our Commitment */}
-            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
-                <div className="text-5xl mb-4">🤝</div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-1">
-                    Our Commitment <span className="text-spark-600">to You</span>
-                </h3>
-                <p className="text-gray-500 text-sm mb-6">
-                    What you can expect from TheSpark, every day.
-                </p>
-
-                <ul className="space-y-3 mb-6">
-                    {[
-                        'We provide clear, proven wealth principles',
-                        'We track your progress transparently',
-                        'We teach how consistency compounds over time',
-                        'We prepare you for real opportunities after graduation',
-                    ].map((item, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                            <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <span className="text-green-600 text-xs">✓</span>
+                        {/* Header */}
+                        <div className="text-center mb-10">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-spark-100 rounded-full mb-4">
+                                <span className="text-spark-600 text-sm font-semibold">OUR MUTUAL COMMITMENT</span>
                             </div>
-                            <span className="text-gray-700 text-sm">{item}</span>
-                        </li>
-                    ))}
-                </ul>
+                            <h2 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-3">
+                                Together, we build wealth <span className="text-spark-600">the right way</span>
+                            </h2>
+                            <div className="w-20 h-1 bg-gradient-to-r from-spark-500 to-orange-500 mx-auto rounded-full"></div>
+                        </div>
 
-                <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                    <p className="text-xs text-gray-700">
-                        ⚠️ Your results depend on your personal consistency. We provide the tools, you provide the dedication.
-                    </p>
-                </div>
-            </div>
+                        {/* Two Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-            {/* Your Commitment */}
-            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
-                <div className="text-5xl mb-4">💪</div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-1">
-                    Your Commitment <span className="text-spark-600">to Yourself</span>
-                </h3>
-                <p className="text-gray-500 text-sm mb-6">
-                    What you'll practice to build lasting wealth.
-                </p>
+                            {/* Our Commitment */}
+                            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+                                <div className="text-5xl mb-4">🤝</div>
+                                <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                                    Our Commitment <span className="text-spark-600">to You</span>
+                                </h3>
+                                <p className="text-gray-500 text-sm mb-6">
+                                    What you can expect from TheSpark, every day.
+                                </p>
 
-                <ul className="space-y-3 mb-6">
-                    {[
-                        'Save something every day even ₦100',
-                        'Stay consistent avoid unnecessary withdrawals',
-                        'Learn the lessons each cycle',
-                        'Teach someone else when you complete',
-                    ].map((item, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                            <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <span className="text-green-600 text-xs">✓</span>
+                                <ul className="space-y-3 mb-6">
+                                    {[
+                                        'We provide clear, proven wealth principles',
+                                        'We track your progress transparently',
+                                        'We teach how consistency compounds over time',
+                                        'We prepare you for real opportunities after graduation',
+                                    ].map((item, i) => (
+                                        <li key={i} className="flex items-start gap-3">
+                                            <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                <span className="text-green-600 text-xs">✓</span>
+                                            </div>
+                                            <span className="text-gray-700 text-sm">{item}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                                    <p className="text-xs text-gray-700">
+                                        ⚠️ Your results depend on your personal consistency. We provide the tools, you provide the dedication.
+                                    </p>
+                                </div>
                             </div>
-                            <span className="text-gray-700 text-sm">{item}</span>
-                        </li>
-                    ))}
-                </ul>
 
-                <div className="bg-spark-50 rounded-lg p-4 border border-spark-200">
-                    <p className="text-xs text-gray-700 italic">
-                        "The secret to getting ahead is getting started. The secret to getting started is breaking your complex overwhelming tasks into small manageable tasks."
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2 text-right">— Mark Twain</p>
+                            {/* Your Commitment */}
+                            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+                                <div className="text-5xl mb-4">💪</div>
+                                <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                                    Your Commitment <span className="text-spark-600">to Yourself</span>
+                                </h3>
+                                <p className="text-gray-500 text-sm mb-6">
+                                    What you'll practice to build lasting wealth.
+                                </p>
+
+                                <ul className="space-y-3 mb-6">
+                                    {[
+                                        'Save something every day even ₦100',
+                                        'Stay consistent avoid unnecessary withdrawals',
+                                        'Learn the lessons each cycle',
+                                        'Teach someone else when you complete',
+                                    ].map((item, i) => (
+                                        <li key={i} className="flex items-start gap-3">
+                                            <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                <span className="text-green-600 text-xs">✓</span>
+                                            </div>
+                                            <span className="text-gray-700 text-sm">{item}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                <div className="bg-spark-50 rounded-lg p-4 border border-spark-200">
+                                    <p className="text-xs text-gray-700 italic">
+                                        "The secret to getting ahead is getting started. The secret to getting started is breaking your complex overwhelming tasks into small manageable tasks."
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-2 text-right">— Mark Twain</p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
                 </div>
-            </div>
-
-        </div>
-    </div>
-</div>
 
                 {/* Call to Action */}
                 <div className="relative rounded-3xl overflow-hidden mb-12">
@@ -826,6 +831,18 @@ export default function About() {
                 <div className="text-center text-xs text-gray-400 mt-10 pt-6 border-t-2 border-gray-200">
                     <p className="mb-2">TheSpark is a wealth-building platform. We provide financial education and habit-tracking tools based on proven principles from "The Richest Man in Babylon." Individual results depend on personal consistency and commitment.</p>
                     <p>We do not guarantee specific financial outcomes. Wealth-building is a skill that requires time, effort, and discipline. TheSpark is here to guide and support you on your journey, but your success ultimately depends on your actions.</p>
+                </div>
+
+                {/* Investor Pitch Deck Link */}
+                <div className="text-center mt-8">
+                    <a
+                        href="https://thespark.xtensio.com/utz5iuzz"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block text-xs text-gray-400 hover:text-spark-600 transition-colors duration-200 underline underline-offset-2"
+                    >
+                        For investors: View our Pre-Seed Pitch Deck →
+                    </a>
                 </div>
 
                 {/* <p style={{ fontSize: 12, color: T.ink, textAlign: 'center', marginTop: 40, lineHeight: 1.7, borderTop: `1px solid ${T.border}`, paddingTop: 24 }}>TheSpark is a wealth-building education platform. Our program is based on proven principles from <em>The Richest Man in Babylon</em>. Individual results depend on personal consistency and commitment. We do not guarantee specific financial outcomes.</p> */}
